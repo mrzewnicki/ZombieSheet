@@ -1,0 +1,95 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    function isAuthed() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function gameRef(gameId) {
+      return /databases/$(database)/documents/games/$(gameId);
+    }
+
+    function memberRef(gameId) {
+      return /databases/$(database)/documents/games/$(gameId)/members/$(uid());
+    }
+
+    function isGameMaster(gameId) {
+      return isAuthed() && get(gameRef(gameId)).data.masterId == uid();
+    }
+
+    function isMember(gameId) {
+      return isAuthed() && exists(memberRef(gameId));
+    }
+
+    // ── User profiles ─────────────────────────────────────────────────────────
+
+    match /users/{userId} {
+      allow read: if isAuthed();
+      allow write: if isAuthed() && uid() == userId;
+    }
+
+    // ── Collection group query: collectionGroup('members') in Dashboard ───────
+    // Firestore requires a wildcard-path rule to permit collectionGroup reads.
+    match /{path=**}/members/{memberId} {
+      allow read: if isAuthed() && resource.data.uid == uid();
+    }
+
+    // ── Games ─────────────────────────────────────────────────────────────────
+
+    match /games/{gameId} {
+      allow read: if isAuthed();
+      allow create: if isAuthed();
+      allow update, delete: if isGameMaster(gameId);
+
+      // Members
+      match /members/{memberId} {
+        allow read: if isMember(gameId) || isGameMaster(gameId);
+        // GM can write any member; a user can write their own join record
+        allow write: if isGameMaster(gameId) || (isAuthed() && uid() == memberId);
+      }
+
+      // Heroes
+      match /heroes/{heroId} {
+        function isHeroOwner() {
+          return resource.data.ownerId == uid();
+        }
+        function canEditHero() {
+          return isGameMaster(gameId) || isHeroOwner();
+        }
+
+        allow read: if isMember(gameId) || isGameMaster(gameId);
+        allow create: if isMember(gameId) || isGameMaster(gameId);
+        allow update, delete: if canEditHero();
+
+        // Inventory items
+        match /inventory/{itemId} {
+          allow read: if isMember(gameId) || isGameMaster(gameId);
+          allow write: if isGameMaster(gameId) ||
+            get(/databases/$(database)/documents/games/$(gameId)/heroes/$(heroId)).data.ownerId == uid();
+        }
+
+        // Gallery images
+        match /gallery/{imageId} {
+          allow read: if isMember(gameId) || isGameMaster(gameId);
+          allow write: if isGameMaster(gameId) ||
+            get(/databases/$(database)/documents/games/$(gameId)/heroes/$(heroId)).data.ownerId == uid();
+        }
+
+        // Change log — immutable once written
+        match /changes/{changeId} {
+          allow read: if isMember(gameId) || isGameMaster(gameId);
+          allow create: if isGameMaster(gameId) ||
+            get(/databases/$(database)/documents/games/$(gameId)/heroes/$(heroId)).data.ownerId == uid();
+          allow update, delete: if false;
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply bg-dark text-ink;
+    font-family: 'Share Tech', system-ui, sans-serif;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-void;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border-light rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-blood-dark;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-blood/40 text-ink;
+  }
+
+  /* Number input spinners */
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+  }
+
+  input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+}
+
+@layer components {
+  /* Distressed heading style */
+  .font-heading {
+    font-family: 'Special Elite', Georgia, serif;
+    letter-spacing: 0.02em;
+  }
+
+  /* Markdown description renderer */
+  .prose-hero {
+    @apply text-sm text-ink leading-relaxed;
+  }
+  .prose-hero p { @apply mb-2 last:mb-0; }
+  .prose-hero strong { @apply text-ink font-semibold; }
+  .prose-hero em { @apply text-ink-muted italic; }
+  .prose-hero h1, .prose-hero h2, .prose-hero h3 {
+    @apply font-heading text-blood-light uppercase tracking-widest mt-3 mb-1;
+  }
+  .prose-hero h1 { @apply text-base; }
+  .prose-hero h2 { @apply text-sm; }
+  .prose-hero h3 { @apply text-xs; }
+  .prose-hero ul { @apply list-disc list-inside space-y-0.5 mb-2; }
+  .prose-hero ol { @apply list-decimal list-inside space-y-0.5 mb-2; }
+  .prose-hero li { @apply text-ink-muted; }
+  .prose-hero code {
+    @apply font-mono text-xs bg-elevated px-1 py-0.5 rounded text-blood-light;
+  }
+  .prose-hero blockquote {
+    @apply border-l-2 border-blood/40 pl-3 italic text-ink-muted;
+  }
+  .prose-hero hr { @apply border-border my-3; }
+  .prose-hero a { @apply text-blood-light underline underline-offset-2 hover:text-blood; }
+
+  /* Tab content fade-in */
+  .tab-enter {
+    animation: tab-enter 0.18s ease both;
+  }
+}
+
+@keyframes tab-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
