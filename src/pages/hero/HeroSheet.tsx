@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { useParams, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '@/config/firebase'
@@ -12,7 +12,6 @@ import Spinner from '@/components/ui/Spinner'
 export default function HeroSheet() {
   const { gameId = '', heroId = '' } = useParams()
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const location = useLocation()
   const [hero, setHero] = useState<Hero | null>(null)
   const [loading, setLoading] = useState(true)
