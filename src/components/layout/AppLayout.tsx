@@ -28,10 +28,10 @@ export default function AppLayout({ children, backTo, backLabel, title, actions 
       {/* Top bar */}
       <header className="border-b border-border bg-void sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-4">
-          <Link to="/dashboard" className="flex items-center gap-2 group/logo">
+          <Link to="/dashboard" className="flex items-center gap-1 group/logo">
             <img src={logoUrl} alt="ZombieSheet" className="h-8 w-8 object-contain" />
             <span className="font-heading text-xl text-blood-light group-hover/logo:text-blood transition-colors animate-flicker">
-              ZombieSheet
+              Sheet
             </span>
           </Link>
 
