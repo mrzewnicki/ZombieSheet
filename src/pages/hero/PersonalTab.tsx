@@ -86,13 +86,10 @@ export default function PersonalTab() {
 
   return (
     <div className="space-y-6 max-w-xl">
-      {/* Image */}
-      <div>
-        <p className="text-xs text-ink-muted uppercase tracking-widest mb-3">
-          {t('hero.personal.image')}
-        </p>
-        <div className="flex items-start gap-4">
-          <div className="flex flex-col items-center gap-2 shrink-0">
+      {/* Avatar + Personal Data side by side */}
+      <div className="flex items-start gap-4">
+        {/* Avatar column */}
+        <div className="flex flex-col items-center gap-2 shrink-0">
           <div className="relative w-24 h-24 rounded-lg border border-border overflow-hidden bg-void flex items-center justify-center group/avatar">
             {hero.imageURL ? (
               <img src={hero.imageURL} alt="" className="w-full h-full object-cover" />
@@ -100,7 +97,6 @@ export default function PersonalTab() {
               <span className="text-ink-faint text-3xl">☠</span>
             )}
 
-            {/* Upload overlay on hover */}
             {canEdit && (
               <>
                 <input
@@ -127,7 +123,6 @@ export default function PersonalTab() {
             )}
           </div>
 
-          {/* View full size */}
           {hero.imageURL && (
             <button
               onClick={() => setLightbox(true)}
@@ -136,7 +131,62 @@ export default function PersonalTab() {
               {t('hero.personal.viewFull')}
             </button>
           )}
+        </div>
+
+        {/* Name & Surname — next to avatar */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-ink-muted uppercase tracking-widest">{t('hero.personal.title')}</p>
+            {canEdit && !editName && (
+              <button
+                onClick={() => { setName(hero.name); setSurname(hero.surname); setNickname(hero.nickname ?? ''); setEditName(true) }}
+                className="text-xs text-ink-faint hover:text-ink"
+              >
+                {t('common.edit')}
+              </button>
+            )}
           </div>
+
+          {editName ? (
+            <div className="space-y-3">
+              <div className="flex gap-3">
+                <Input
+                  label={t('hero.personal.name')}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="flex-1"
+                  autoFocus
+                />
+                <Input
+                  label={t('hero.personal.surname')}
+                  value={surname}
+                  onChange={(e) => setSurname(e.target.value)}
+                  className="flex-1"
+                />
+              </div>
+              <Input
+                label={t('hero.personal.nickname')}
+                placeholder={t('hero.personal.nicknamePlaceholder')}
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <Button onClick={saveName} icon={<SaveIcon />}>{t('common.save')}</Button>
+                <Button variant="ghost" onClick={() => setEditName(false)}>{t('common.cancel')}</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-surface border border-border rounded-lg p-3">
+              <p className="font-heading text-xl text-ink">
+                {[hero.name, hero.surname].filter(Boolean).join(' ') || '—'}
+              </p>
+              {hero.nickname && (
+                <p className="text-sm text-ink-muted mt-0.5 font-mono">
+                  &ldquo;{hero.nickname}&rdquo;
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -146,18 +196,13 @@ export default function PersonalTab() {
           className="fixed inset-0 z-50 flex items-center justify-center cursor-zoom-out"
           onClick={() => setLightbox(false)}
         >
-          {/* Dark overlay */}
           <div className="absolute inset-0 bg-void/90 backdrop-blur-sm" />
-
-          {/* Image */}
           <img
             src={hero.imageURL}
             alt=""
             className="relative max-h-[90vh] max-w-[90vw] object-contain rounded shadow-2xl cursor-default"
             onClick={(e) => e.stopPropagation()}
           />
-
-          {/* Close button — fixed to viewport */}
           <button
             onClick={() => setLightbox(false)}
             className="fixed top-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-surface/80 border border-border text-ink-faint hover:text-ink hover:border-border-light transition-colors text-lg leading-none"
@@ -167,62 +212,6 @@ export default function PersonalTab() {
         </div>,
         document.body
       )}
-
-      {/* Name & Surname */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-xs text-ink-muted uppercase tracking-widest">{t('hero.personal.title')}</p>
-          {canEdit && !editName && (
-            <button
-              onClick={() => { setName(hero.name); setSurname(hero.surname); setNickname(hero.nickname ?? ''); setEditName(true) }}
-              className="text-xs text-ink-faint hover:text-ink"
-            >
-              {t('common.edit')}
-            </button>
-          )}
-        </div>
-
-        {editName ? (
-          <div className="space-y-3">
-            <div className="flex gap-3">
-              <Input
-                label={t('hero.personal.name')}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="flex-1"
-                autoFocus
-              />
-              <Input
-                label={t('hero.personal.surname')}
-                value={surname}
-                onChange={(e) => setSurname(e.target.value)}
-                className="flex-1"
-              />
-            </div>
-            <Input
-              label={t('hero.personal.nickname')}
-              placeholder={t('hero.personal.nicknamePlaceholder')}
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-            />
-            <div className="flex gap-2">
-              <Button onClick={saveName} icon={<SaveIcon />}>{t('common.save')}</Button>
-              <Button variant="ghost" onClick={() => setEditName(false)}>{t('common.cancel')}</Button>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-surface border border-border rounded-lg px-4 py-3">
-            <p className="font-heading text-xl text-ink">
-              {[hero.name, hero.surname].filter(Boolean).join(' ') || '—'}
-            </p>
-            {hero.nickname && (
-              <p className="text-sm text-ink-muted mt-0.5 font-mono">
-                &ldquo;{hero.nickname}&rdquo;
-              </p>
-            )}
-          </div>
-        )}
-      </div>
 
       {/* Description */}
       <div>
