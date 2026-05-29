@@ -13,6 +13,17 @@
     />
   </head>
   <body>
+    <!-- GitHub Pages SPA routing: restore path redirected via 404.html -->
+    <script>
+      (function() {
+        var redirect = sessionStorage.getItem('spa_redirect');
+        if (redirect) {
+          sessionStorage.removeItem('spa_redirect');
+          var url = new URL(redirect);
+          window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+        }
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
