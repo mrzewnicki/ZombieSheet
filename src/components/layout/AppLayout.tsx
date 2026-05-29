@@ -1,4 +1,5 @@
 import { ReactNode } from 'react'
+import logoUrl from '/logo.png'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/contexts/AuthContext'
@@ -27,8 +28,11 @@ export default function AppLayout({ children, backTo, backLabel, title, actions 
       {/* Top bar */}
       <header className="border-b border-border bg-void sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-4">
-          <Link to="/dashboard" className="font-heading text-xl text-blood-light hover:text-blood transition-colors animate-flicker">
-            ZombieSheet
+          <Link to="/dashboard" className="flex items-center gap-2 group/logo">
+            <img src={logoUrl} alt="ZombieSheet" className="h-8 w-8 object-contain" />
+            <span className="font-heading text-xl text-blood-light group-hover/logo:text-blood transition-colors animate-flicker">
+              ZombieSheet
+            </span>
           </Link>
 
           {backTo && (
