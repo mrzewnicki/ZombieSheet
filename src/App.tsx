@@ -17,7 +17,7 @@ import SettingsTab from '@/pages/hero/SettingsTab'
 
 export default function App() {
   return (
-    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <BrowserRouter basename={import.meta.env.BASE_URL.slice(0, -1)} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
         <Routes>
           {/* Public */}
