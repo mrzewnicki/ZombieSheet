@@ -2,8 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-export default defineConfig({
-  base: '/ZombieSheet/',
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? '/ZombieSheet/' : '/',
   plugins: [react()],
   resolve: {
     alias: {
@@ -12,8 +12,7 @@ export default defineConfig({
   },
   server: {
     headers: {
-      // Allow Firebase auth popup to talk back to the opener window
       'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
     },
   },
-})
+}))
