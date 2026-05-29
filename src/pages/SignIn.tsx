@@ -30,12 +30,6 @@ export default function SignIn() {
 
   return (
     <div className="min-h-screen bg-dark flex flex-col items-center justify-center px-4 relative overflow-hidden">
-      {/* Background texture */}
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{ backgroundImage: 'url(/noise.png)', backgroundSize: '200px' }}
-      />
-
       {/* Glow effect */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="w-64 h-64 rounded-full bg-blood/10 blur-3xl" />
