@@ -32,15 +32,24 @@ export default function AttributeGroup({ group, values, onChange, readOnly = fal
                 <span className="text-sm text-ink-muted cursor-default">{t(attr.labelKey)}</span>
                 {tooltip && (
                   <div className="
-                    pointer-events-none absolute left-0 bottom-full mb-2 z-50
-                    w-56 px-3 py-2 rounded border border-border bg-void
-                    text-xs text-ink-muted leading-snug shadow-lg
+                    absolute left-0 bottom-full z-50 pb-2
+                    pointer-events-none group-hover/attr:pointer-events-auto
                     opacity-0 group-hover/attr:opacity-100
                     translate-y-1 group-hover/attr:translate-y-0
                     transition-all duration-150
                   ">
-                    {tooltip}
-                    <span className="absolute left-3 top-full border-4 border-transparent border-t-border" />
+                    <div className="w-56 px-3 py-2 rounded border border-border bg-void text-xs text-ink-muted leading-snug shadow-lg">
+                      {tooltip}
+                      <a
+                        href={attr.docUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block mt-2 text-blood-light hover:text-blood transition-colors"
+                      >
+                        czytaj więcej →
+                      </a>
+                      <span className="absolute left-3 top-full border-4 border-transparent border-t-border" />
+                    </div>
                   </div>
                 )}
               </div>
@@ -51,7 +60,7 @@ export default function AttributeGroup({ group, values, onChange, readOnly = fal
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => onChange?.(attr.key, Math.max(0, value - 1))}
-                    className="w-7 h-7 rounded border border-border text-ink-muted hover:text-ink hover:border-blood transition-colors font-mono text-sm"
+                    className="w-5 h-5 rounded bg-elevated hover:bg-blood/20 text-ink-muted hover:text-ink transition-colors font-mono text-xs"
                     aria-label={`Zmniejsz ${t(attr.labelKey)}`}
                   >
                     −
@@ -61,7 +70,7 @@ export default function AttributeGroup({ group, values, onChange, readOnly = fal
                   </span>
                   <button
                     onClick={() => onChange?.(attr.key, value + 1)}
-                    className="w-7 h-7 rounded border border-border text-ink-muted hover:text-ink hover:border-blood transition-colors font-mono text-sm"
+                    className="w-5 h-5 rounded bg-elevated hover:bg-blood/20 text-ink-muted hover:text-ink transition-colors font-mono text-xs"
                     aria-label={`Zwiększ ${t(attr.labelKey)}`}
                   >
                     +

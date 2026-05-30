@@ -59,15 +59,24 @@ export default function SkillCategory({ category, values, onChange, readOnly = f
                 </span>
                 {tooltip && (
                   <div className="
-                    pointer-events-none absolute left-0 bottom-full mb-2 z-50
-                    w-56 px-3 py-2 rounded border border-border bg-void
-                    text-xs text-ink-muted leading-snug shadow-lg
+                    absolute left-0 bottom-full z-50 pb-2
+                    pointer-events-none group-hover/skill:pointer-events-auto
                     opacity-0 group-hover/skill:opacity-100
                     translate-y-1 group-hover/skill:translate-y-0
                     transition-all duration-150
                   ">
-                    {tooltip}
-                    <span className="absolute left-3 top-full border-4 border-transparent border-t-border" />
+                    <div className="w-56 px-3 py-2 rounded border border-border bg-void text-xs text-ink-muted leading-snug shadow-lg">
+                      {tooltip}
+                      <a
+                        href={skill.docUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block mt-2 text-blood-light hover:text-blood transition-colors"
+                      >
+                        czytaj więcej →
+                      </a>
+                      <span className="absolute left-3 top-full border-4 border-transparent border-t-border" />
+                    </div>
                   </div>
                 )}
               </div>
@@ -78,7 +87,7 @@ export default function SkillCategory({ category, values, onChange, readOnly = f
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => onChange?.(skill.key, Math.max(0, value - 1))}
-                    className="w-6 h-6 rounded border border-border text-ink-faint hover:text-ink hover:border-blood transition-colors font-mono text-xs"
+                    className="w-4 h-4 rounded bg-elevated hover:bg-blood/20 text-ink-faint hover:text-ink transition-colors font-mono text-[10px]"
                   >
                     −
                   </button>
@@ -87,7 +96,7 @@ export default function SkillCategory({ category, values, onChange, readOnly = f
                   </span>
                   <button
                     onClick={() => onChange?.(skill.key, value + 1)}
-                    className="w-6 h-6 rounded border border-border text-ink-faint hover:text-ink hover:border-blood transition-colors font-mono text-xs"
+                    className="w-4 h-4 rounded bg-elevated hover:bg-blood/20 text-ink-faint hover:text-ink transition-colors font-mono text-[10px]"
                   >
                     +
                   </button>
