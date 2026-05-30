@@ -5,6 +5,62 @@ export function rollDicePool(count: number): { rolls: number[]; result: number; 
   return { rolls, result: rolls.reduce((sum, r) => sum + r, 0), diceCount }
 }
 
+export type DiceOutcomeKind = 'problem' | 'failure' | 'success' | 'critical'
+
+export interface DicePoolSummary {
+  problem: number
+  failure: number
+  success: number
+  critical: number
+}
+
+const OUTCOME_I18N: Record<DiceOutcomeKind, string> = {
+  problem: 'dice.1',
+  failure: 'dice.4-5',
+  success: 'dice.6-9',
+  critical: 'dice.10',
+}
+
+export function getDiceOutcomeKind(value: number): DiceOutcomeKind {
+  if (value === 1) return 'problem'
+  if (value <= 5) return 'failure'
+  if (value <= 9) return 'success'
+  return 'critical'
+}
+
+export function summarizeDicePool(rolls: number[]): DicePoolSummary {
+  const summary: DicePoolSummary = { problem: 0, failure: 0, success: 0, critical: 0 }
+  for (const roll of rolls) {
+    summary[getDiceOutcomeKind(roll)]++
+  }
+  return summary
+}
+
+export function groupRollsByOutcome(rolls: number[]): Record<DiceOutcomeKind, number[]> {
+  const groups: Record<DiceOutcomeKind, number[]> = {
+    problem: [],
+    failure: [],
+    success: [],
+    critical: [],
+  }
+  for (const roll of rolls) {
+    groups[getDiceOutcomeKind(roll)].push(roll)
+  }
+  return groups
+}
+
+/** Best outcomes first — for chat roll display. */
+export const DICE_OUTCOME_DISPLAY_ORDER: DiceOutcomeKind[] = [
+  'critical',
+  'success',
+  'failure',
+  'problem',
+]
+
+export function diceOutcomeI18nKey(kind: DiceOutcomeKind): string {
+  return OUTCOME_I18N[kind]
+}
+
 function dicePoolTotal(data: Record<string, unknown>): number {
   const stored = data.total as number | undefined
   if (stored != null) return stored
@@ -21,15 +77,14 @@ export function rerollDiceData(data: Record<string, unknown>): Record<string, un
 }
 
 export function getDiceOutcomeClass(value: number): string {
-  if (value === 1) return 'text-red-400'
-  if (value <= 5) return 'text-orange-400'
-  if (value <= 9) return 'text-green-400'
-  return 'text-yellow-300'
+  switch (getDiceOutcomeKind(value)) {
+    case 'problem': return 'text-red-400'
+    case 'failure': return 'text-orange-400'
+    case 'success': return 'text-green-400'
+    case 'critical': return 'text-yellow-300'
+  }
 }
 
 export function getDiceOutcomeKey(value: number): string {
-  if (value === 1) return 'dice.1'
-  if (value <= 5) return 'dice.4-5'
-  if (value <= 9) return 'dice.6-9'
-  return 'dice.10'
+  return diceOutcomeI18nKey(getDiceOutcomeKind(value))
 }

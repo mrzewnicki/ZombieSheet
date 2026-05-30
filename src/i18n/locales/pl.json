@@ -306,7 +306,8 @@
     "1": "Problem",
     "4-5": "Porażka",
     "6-9": "Sukces",
-    "10": "Krytyczny sukces"
+    "10": "Krytyczny sukces",
+    "outcomeCount": "{{count}}× {{label}}"
   },
   "chat": {
     "title": "Czat",

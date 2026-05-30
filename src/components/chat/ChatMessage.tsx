@@ -6,7 +6,7 @@ import type { ChatMessage as ChatMessageType } from '@/types/chat'
 import { useChatContext } from '@/contexts/ChatContext'
 import { useAuth } from '@/contexts/AuthContext'
 import Avatar from '@/components/ui/Avatar'
-import { getDiceOutcomeClass, getDiceOutcomeKey } from '@/utils/diceRoll'
+import DiceRollCard from '@/components/chat/DiceRollCard'
 
 interface Props {
   message: ChatMessageType
@@ -58,84 +58,6 @@ function renderContent(content: string): ReactNode {
 
   if (last < content.length) nodes.push(content.slice(last))
   return <>{nodes}</>
-}
-
-function ColoredRolls({ rolls, total }: { rolls: number[]; total: number }) {
-  const sorted = [...rolls].sort((a, b) => a - b)
-  return (
-    <span className="font-mono tabular-nums inline-flex items-center flex-wrap gap-x-0.5">
-      {sorted.map((roll, i) => (
-        <span key={i} className="inline-flex items-center">
-          {i > 0 && <span className="text-ink-faint mx-0.5">+</span>}
-          <span className={`font-medium ${getDiceOutcomeClass(roll)}`}>{roll}</span>
-        </span>
-      ))}
-      <span className="text-ink-faint mx-1">=</span>
-      <span className="font-bold text-ink">{total}</span>
-    </span>
-  )
-}
-
-function DiceCard({
-  data,
-  heroName,
-  interactive,
-}: {
-  data: Record<string, unknown>
-  heroName: string
-  interactive?: boolean
-}) {
-  const { t } = useTranslation()
-  const result = data.result as number
-  const label = data.label as string
-  const skillLabel = data.skillLabel as string | undefined
-  const attributeLabel = data.attributeLabel as string | undefined
-  const poolTotal = data.total as number | undefined
-  const modifier = data.modifier as number | undefined
-  const rolls = (data.rolls as number[] | undefined) ?? (result != null ? [result] : [])
-  const diceCount = (data.diceCount as number | undefined) ?? rolls.length
-
-  const secondaryLabel = skillLabel && skillLabel !== label
-    ? skillLabel
-    : attributeLabel && attributeLabel !== label
-      ? attributeLabel
-      : null
-
-  const detail = secondaryLabel != null && poolTotal != null
-    ? `${secondaryLabel}${modifier ? (modifier > 0 ? ` +${modifier}` : ` ${modifier}`) : ''} = ${poolTotal}`
-    : diceCount > 0
-      ? t('mechanics.diceCount', { count: diceCount })
-      : null
-
-  const singleDie = rolls.length === 1
-  const outcomeKey = singleDie ? getDiceOutcomeKey(rolls[0]) : ''
-  const outcomeClass = singleDie ? getDiceOutcomeClass(rolls[0]) : ''
-
-  return (
-    <div
-      className={`mt-1 flex items-center gap-2 bg-elevated border border-border rounded px-3 py-1.5 text-xs w-fit max-w-full flex-wrap ${
-        interactive ? 'cursor-context-menu' : ''
-      }`}
-    >
-      <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" className="shrink-0 text-ink-muted">
-        <path d="M3 0a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V3a3 3 0 0 0-3-3H3zm1 5.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm8 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm-4 4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm-4 4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm8 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
-      </svg>
-      <span className="text-ink-faint">
-        {heroName} — {label}
-        {detail && <span className="text-ink-faint/70"> ({detail})</span>}:
-      </span>
-      {rolls.length === 0 ? (
-        <span className="font-mono text-ink-faint">—</span>
-      ) : rolls.length === 1 ? (
-        <>
-          <span className={`font-mono font-bold ${outcomeClass}`}>{rolls[0]}</span>
-          <span className={`font-mono font-medium ${outcomeClass}`}>{t(outcomeKey)}</span>
-        </>
-      ) : (
-        <ColoredRolls rolls={rolls} total={result} />
-      )}
-    </div>
-  )
 }
 
 function formatTime(ts: { toDate: () => Date } | null | undefined): string {
@@ -232,8 +154,9 @@ export default function ChatMessageComponent({ message, isGrouped }: Props) {
   }
 
   const isDiceRoll = message.contextRef?.type === 'dice_roll'
+  const canReroll = isDiceRoll && (isAuthor || isGm)
   const hasContent = message.content.trim().length > 0
-  const hasContextMenu = (isAuthor || (isGm && message.gmOnly) || (isDiceRoll && (isAuthor || isGm)))
+  const hasContextMenu = isAuthor || (isGm && message.gmOnly) || canReroll
 
   function openContextMenu(e: React.MouseEvent) {
     const items: ContextMenuItem[] = []
@@ -290,10 +213,11 @@ export default function ChatMessageComponent({ message, isGrouped }: Props) {
       )}
 
       {isDiceRoll && message.contextRef && (
-        <DiceCard
+        <DiceRollCard
           data={message.contextRef.data}
           heroName={message.contextRef.heroName}
-          interactive={hasContextMenu}
+          canReroll={canReroll}
+          onReroll={() => void handleReroll()}
         />
       )}
 
