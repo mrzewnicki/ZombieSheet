@@ -4,7 +4,7 @@ import {
   collection, addDoc, deleteDoc, updateDoc, doc,
 } from 'firebase/firestore'
 import { db } from '@/config/firebase'
-import type { InventoryItem } from '@/types'
+import type { ArmorItem } from '@/types'
 import { EMPTY_GEAR_VISUAL, gearVisualPayload } from '@/utils/gearVisual'
 import { nextGearSortOrder } from '@/utils/gearListOrder'
 import Button from '@/components/ui/Button'
@@ -20,15 +20,15 @@ import { persistGearListOrder } from '@/utils/persistGearListOrder'
 interface Props {
   gameId: string
   heroId: string
-  items: InventoryItem[]
+  items: ArmorItem[]
   readOnly?: boolean
 }
 
-const EMPTY_FORM = { name: '', qty: 1, description: '', ...EMPTY_GEAR_VISUAL }
+const EMPTY_FORM = { name: '', description: '', armorValue: 0, ...EMPTY_GEAR_VISUAL }
 
-type EquipmentFormData = Omit<InventoryItem, 'id'>
+type ArmorFormData = Omit<ArmorItem, 'id'>
 
-function EquipmentForm({
+function ArmorForm({
   data,
   onChange,
   onSubmit,
@@ -37,8 +37,8 @@ function EquipmentForm({
   saving = false,
   mode,
 }: {
-  data: EquipmentFormData
-  onChange: (data: EquipmentFormData) => void
+  data: ArmorFormData
+  onChange: (data: ArmorFormData) => void
   onSubmit: () => void
   onCancel: () => void
   submitLabel: string
@@ -50,7 +50,7 @@ function EquipmentForm({
   return (
     <div className="bg-surface border border-blood/25 rounded-lg p-4 space-y-4">
       <p className="text-xs font-mono uppercase tracking-widest text-blood-light/80">
-        {mode === 'add' ? t('inventory.addItem') : t('inventory.equipment.editItem')}
+        {mode === 'add' ? t('inventory.armor.addItem') : t('inventory.armor.editItem')}
       </p>
 
       <div className="flex flex-col sm:flex-row sm:items-start sm:gap-6">
@@ -62,18 +62,18 @@ function EquipmentForm({
           <div className="flex flex-col gap-4 w-96 max-w-full">
             <Input
               label={t('inventory.itemName')}
-              placeholder={t('inventory.itemNamePlaceholder')}
+              placeholder={t('inventory.armor.namePlaceholder')}
               value={data.name}
               onChange={(e) => onChange({ ...data, name: e.target.value })}
               autoFocus
             />
             <div className="w-24">
               <Input
-                label={t('inventory.qty')}
+                label={t('inventory.armor.armorValue')}
                 type="number"
-                min={1}
-                value={data.qty}
-                onChange={(e) => onChange({ ...data, qty: Math.max(1, Number(e.target.value) || 1) })}
+                min={0}
+                value={data.armorValue}
+                onChange={(e) => onChange({ ...data, armorValue: Number(e.target.value) })}
               />
             </div>
           </div>
@@ -112,23 +112,23 @@ function EquipmentForm({
   )
 }
 
-export default function InventoryList({ gameId, heroId, items, readOnly = false }: Props) {
+export default function ArmorList({ gameId, heroId, items, readOnly = false }: Props) {
   const { t } = useTranslation()
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<InventoryItem | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<ArmorItem | null>(null)
 
-  const inventoryRef = collection(db, 'games', gameId, 'heroes', heroId, 'inventory')
+  const armorRef = collection(db, 'games', gameId, 'heroes', heroId, 'armor')
 
   async function handleAdd() {
     if (!form.name.trim()) return
     setSaving(true)
     try {
-      await addDoc(inventoryRef, {
+      await addDoc(armorRef, {
         ...form,
-        qty: Number(form.qty) || 1,
+        armorValue: Number(form.armorValue) || 0,
         ...gearVisualPayload(form),
         sortOrder: nextGearSortOrder(items),
       })
@@ -139,29 +139,29 @@ export default function InventoryList({ gameId, heroId, items, readOnly = false 
     }
   }
 
-  async function handleUpdate(item: InventoryItem) {
-    await updateDoc(doc(inventoryRef, item.id), {
+  async function handleUpdate(item: ArmorItem) {
+    await updateDoc(doc(armorRef, item.id), {
       name: item.name,
-      qty: item.qty,
       description: item.description,
+      armorValue: item.armorValue,
       ...gearVisualPayload(item),
     })
     setEditingId(null)
   }
 
-  async function handleDelete(item: InventoryItem) {
-    await deleteDoc(doc(inventoryRef, item.id))
+  async function handleDelete(item: ArmorItem) {
+    await deleteDoc(doc(armorRef, item.id))
     setDeleteTarget(null)
   }
 
   async function handleReorder(orderedIds: string[]) {
-    await persistGearListOrder(inventoryRef, orderedIds)
+    await persistGearListOrder(armorRef, orderedIds)
   }
 
   return (
     <div className="space-y-3">
       {items.length === 0 && !showForm && (
-        <p className="text-ink-faint text-sm py-4 text-center">{t('inventory.noItems')}</p>
+        <p className="text-ink-faint text-sm py-4 text-center">{t('inventory.armor.noItems')}</p>
       )}
 
       <GearSortableList
@@ -187,15 +187,14 @@ export default function InventoryList({ gameId, heroId, items, readOnly = false 
             onDelete={() => setDeleteTarget(item)}
             editLabel={t('common.edit')}
             deleteLabel={t('common.delete')}
-            chips={<GearStatChip>×{item.qty}</GearStatChip>}
+            chips={<GearStatChip>{t('inventory.list.armorChip', { value: item.armorValue })}</GearStatChip>}
           />
         )}
       />
 
-      {/* Add form */}
       {!readOnly && (
         showForm ? (
-          <EquipmentForm
+          <ArmorForm
             mode="add"
             data={form}
             onChange={setForm}
@@ -209,7 +208,7 @@ export default function InventoryList({ gameId, heroId, items, readOnly = false 
             onClick={() => setShowForm(true)}
             className="w-full py-2 border border-dashed border-border rounded-lg text-ink-faint hover:text-ink hover:border-blood/50 text-sm transition-colors"
           >
-            + {t('inventory.addItem')}
+            + {t('inventory.armor.addItem')}
           </button>
         )
       )}
@@ -230,15 +229,15 @@ function EditableRow({
   onSave,
   onCancel,
 }: {
-  item: InventoryItem
-  onSave: (item: InventoryItem) => void
+  item: ArmorItem
+  onSave: (item: ArmorItem) => void
   onCancel: () => void
 }) {
   const { t } = useTranslation()
   const [draft, setDraft] = useState(item)
 
   return (
-    <EquipmentForm
+    <ArmorForm
       mode="edit"
       data={draft}
       onChange={(data) => setDraft({ ...data, id: item.id })}

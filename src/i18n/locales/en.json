@@ -292,7 +292,64 @@
     "descriptionPlaceholder": "Description, condition, notes...",
     "noItems": "Inventory is empty.",
     "deleteItem": "Delete item",
-    "deleteConfirm": "Delete \"{{name}}\"?"
+    "deleteConfirm": "Delete \"{{name}}\"?",
+    "data": "Data",
+    "list": {
+      "armorChip": "Armor {{value}}",
+      "dragHandle": "Drag to reorder",
+      "expandItem": "Expand {{name}}",
+      "collapseItem": "Collapse {{name}}"
+    },
+    "visual": {
+      "appearance": "Appearance",
+      "imageUrl": "Image URL",
+      "imageUrlPlaceholder": "https://…",
+      "icon": "Icon",
+      "iconPlaceholder": "Search icons…",
+      "iconSearchPlaceholder": "Search by name…",
+      "iconClear": "Clear icon",
+      "iconNone": "No icon",
+      "iconNoResults": "No matching icons",
+      "iconSetGi": "GI",
+      "iconSetRa": "RA",
+      "iconCatalogHint": "{{count}} icons — type to search",
+      "color": "Color",
+      "colorPicker": "Pick color",
+      "colorClear": "Clear color",
+      "colorPlaceholder": "#RRGGBBAA",
+      "image": "Image",
+      "viewImage": "View image",
+      "viewImageNamed": "View image: {{name}}"
+    },
+    "weapons": {
+      "title": "Weapons",
+      "addItem": "Add weapon",
+      "data": "Data",
+      "noItems": "No weapons.",
+      "namePlaceholder": "E.g. Baseball bat",
+      "typeLabel": "Type",
+      "type": {
+        "melee": "Melee",
+        "range": "Range"
+      },
+      "damageExpression": "Damage",
+      "damageExpressionPlaceholder": "E.g. 2d6+STR",
+      "editItem": "Edit weapon",
+      "notes": "Notes",
+      "notesHint": "Optional — condition, ammo, special rules…"
+    },
+    "armor": {
+      "title": "Armors",
+      "addItem": "Add armor",
+      "noItems": "No armor.",
+      "namePlaceholder": "E.g. Kevlar vest",
+      "armorValue": "Armor",
+      "editItem": "Edit armor"
+    },
+    "equipment": {
+      "title": "Equipment",
+      "editItem": "Edit item"
+    }
   },
   "history": {
     "title": "Change history",
@@ -330,5 +387,16 @@
     "notFound": "Not found",
     "unauthorized": "Access denied",
     "generic": "Something went wrong. Please try again."
+  },
+  "footer": {
+    "about": "About"
+  },
+  "about": {
+    "title": "About",
+    "description": "ZombieSheet is a web-based character sheet for post-apocalyptic tabletop RPG sessions. Create games, invite players, and keep hero stats, inventory, and roll history in one place.",
+    "licenses": {
+      "iconsTitle": "Icons",
+      "iconsHint": "Some icons are from Game Icons (game-icons.net), used via react-icons, licensed under CC BY 3.0. Others use RPG Awesome as an icon font (SIL OFL 1.1 for the font, MIT for CSS)."
+    }
   }
 }

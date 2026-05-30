@@ -79,6 +79,20 @@ service cloud.firestore {
             get(/databases/$(database)/documents/games/$(gameId)/heroes/$(heroId)).data.ownerId == uid();
         }
 
+        // Weapons
+        match /weapons/{itemId} {
+          allow read: if isMember(gameId) || isGameMaster(gameId);
+          allow write: if isGameMaster(gameId) ||
+            get(/databases/$(database)/documents/games/$(gameId)/heroes/$(heroId)).data.ownerId == uid();
+        }
+
+        // Armor
+        match /armor/{itemId} {
+          allow read: if isMember(gameId) || isGameMaster(gameId);
+          allow write: if isGameMaster(gameId) ||
+            get(/databases/$(database)/documents/games/$(gameId)/heroes/$(heroId)).data.ownerId == uid();
+        }
+
         // Gallery images
         match /gallery/{imageId} {
           allow read: if isMember(gameId) || isGameMaster(gameId);

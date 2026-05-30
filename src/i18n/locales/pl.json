@@ -292,7 +292,64 @@
     "descriptionPlaceholder": "Opis, stan, uwagi...",
     "noItems": "Ekwipunek jest pusty.",
     "deleteItem": "Usuń przedmiot",
-    "deleteConfirm": "Usunąć \"{{name}}\"?"
+    "deleteConfirm": "Usunąć \"{{name}}\"?",
+    "data": "Dane",
+    "list": {
+      "armorChip": "Pancerz {{value}}",
+      "dragHandle": "Przeciągnij, aby zmienić kolejność",
+      "expandItem": "Rozwiń {{name}}",
+      "collapseItem": "Zwiń {{name}}"
+    },
+    "visual": {
+      "appearance": "Wygląd",
+      "imageUrl": "URL obrazu",
+      "imageUrlPlaceholder": "https://…",
+      "icon": "Ikona",
+      "iconPlaceholder": "Szukaj ikon…",
+      "iconSearchPlaceholder": "Szukaj po nazwie…",
+      "iconClear": "Wyczyść ikonę",
+      "iconNone": "Brak ikony",
+      "iconNoResults": "Brak pasujących ikon",
+      "iconSetGi": "GI",
+      "iconSetRa": "RA",
+      "iconCatalogHint": "{{count}} ikon — wpisz, aby szukać",
+      "color": "Kolor",
+      "colorPicker": "Wybierz kolor",
+      "colorClear": "Wyczyść kolor",
+      "colorPlaceholder": "#RRGGBBAA",
+      "image": "Obraz",
+      "viewImage": "Pokaż obraz",
+      "viewImageNamed": "Pokaż obraz: {{name}}"
+    },
+    "weapons": {
+      "title": "Broń",
+      "addItem": "Dodaj broń",
+      "data": "Dane",
+      "noItems": "Brak broni.",
+      "namePlaceholder": "Np. Kij baseballowy",
+      "typeLabel": "Typ",
+      "type": {
+        "melee": "Wręcz",
+        "range": "Dystans"
+      },
+      "damageExpression": "Obrażenia",
+      "damageExpressionPlaceholder": "Np. 2d6+STR",
+      "editItem": "Edytuj broń",
+      "notes": "Notatki",
+      "notesHint": "Opcjonalnie — stan, amunicja, specjalne zasady…"
+    },
+    "armor": {
+      "title": "Pancerze",
+      "addItem": "Dodaj pancerz",
+      "noItems": "Brak pancerzy.",
+      "namePlaceholder": "Np. Kamizelka kevlarowa",
+      "armorValue": "Pancerz",
+      "editItem": "Edytuj pancerz"
+    },
+    "equipment": {
+      "title": "Ekwipunek",
+      "editItem": "Edytuj przedmiot"
+    }
   },
   "history": {
     "title": "Historia zmian",
@@ -330,5 +387,16 @@
     "notFound": "Nie znaleziono",
     "unauthorized": "Brak dostępu",
     "generic": "Coś poszło nie tak. Spróbuj ponownie."
+  },
+  "footer": {
+    "about": "O aplikacji"
+  },
+  "about": {
+    "title": "O aplikacji",
+    "description": "ZombieSheet to internetowa karta postaci do sesji postapokaliptycznych RPG. Twórz gry, zapraszaj graczy i trzymaj statystyki, ekwipunek oraz historię rzutów w jednym miejscu.",
+    "licenses": {
+      "iconsTitle": "Ikony",
+      "iconsHint": "Część ikon pochodzi z Game Icons (game-icons.net) przez react-icons (CC BY 3.0). Inne korzystają z RPG Awesome jako fontu ikon (SIL OFL 1.1 dla fontu, MIT dla CSS)."
+    }
   }
 }

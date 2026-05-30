@@ -58,11 +58,38 @@ export interface Hero {
   updatedAt: Timestamp
 }
 
-export interface InventoryItem {
+export interface GearVisualFields {
+  imageUrl: string
+  icon: string
+  color: string
+}
+
+export interface InventoryItem extends GearVisualFields {
   id: string
   name: string
   qty: number
   description: string
+  sortOrder?: number
+}
+
+export type WeaponType = 'range' | 'melee'
+
+export interface WeaponItem extends GearVisualFields {
+  id: string
+  name: string
+  description: string
+  qty: number
+  type: WeaponType
+  damageExpression: string
+  sortOrder?: number
+}
+
+export interface ArmorItem extends GearVisualFields {
+  id: string
+  name: string
+  description: string
+  armorValue: number
+  sortOrder?: number
 }
 
 export interface HeroGalleryImage {
