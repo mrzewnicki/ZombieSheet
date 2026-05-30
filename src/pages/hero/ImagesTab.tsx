@@ -175,13 +175,13 @@ export default function ImagesTab() {
             <div className="flex gap-2">
               <button
                 onClick={() => { setMode('upload'); setCaption('') }}
-                className="text-xs px-3 py-1.5 rounded border border-border text-ink-faint hover:text-ink hover:border-border-light transition-colors"
+                className="text-xs px-3 py-1.5 rounded border border-border text-ink/60 hover:text-ink hover:border-border-light transition-colors"
               >
                 {t('images.uploadFile')}
               </button>
               <button
                 onClick={() => { setMode('external'); setCaption('') }}
-                className="text-xs px-3 py-1.5 rounded border border-border text-ink-faint hover:text-ink hover:border-border-light transition-colors"
+                className="text-xs px-3 py-1.5 rounded border border-border text-ink/60 hover:text-ink hover:border-border-light transition-colors"
               >
                 {t('images.pasteLink')}
               </button>
