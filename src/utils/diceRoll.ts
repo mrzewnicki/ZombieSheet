@@ -5,6 +5,21 @@ export function rollDicePool(count: number): { rolls: number[]; result: number; 
   return { rolls, result: rolls.reduce((sum, r) => sum + r, 0), diceCount }
 }
 
+function dicePoolTotal(data: Record<string, unknown>): number {
+  const stored = data.total as number | undefined
+  if (stored != null) return stored
+  const skillValue = (data.skillValue as number | undefined) ?? 0
+  const attributeValue = (data.attributeValue as number | undefined) ?? 0
+  const modifier = (data.modifier as number | undefined) ?? 0
+  return skillValue + attributeValue + modifier
+}
+
+/** Re-roll dice for an existing pool configuration, keeping stats and labels intact. */
+export function rerollDiceData(data: Record<string, unknown>): Record<string, unknown> {
+  const { rolls, result, diceCount } = rollDicePool(dicePoolTotal(data))
+  return { ...data, rolls, result, diceCount }
+}
+
 export function getDiceOutcomeClass(value: number): string {
   if (value === 1) return 'text-red-400'
   if (value <= 5) return 'text-orange-400'

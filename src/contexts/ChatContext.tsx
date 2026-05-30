@@ -2,7 +2,7 @@ import {
   createContext, useContext, useEffect, useState, useMemo, useRef, ReactNode,
 } from 'react'
 import {
-  collection, query, orderBy, limit, where, addDoc, updateDoc,
+  collection, query, orderBy, limit, where, addDoc, updateDoc, deleteDoc,
   doc, onSnapshot, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '@/config/firebase'
@@ -11,6 +11,7 @@ import { memberLabel } from '@/types'
 import type { ChatMessage, ContextRef } from '@/types/chat'
 import type { GameMember } from '@/types'
 import { FEATURES } from '@/config/features'
+import { rerollDiceData } from '@/utils/diceRoll'
 
 export interface SendMessageOptions {
   gmOnly?: boolean
@@ -23,7 +24,9 @@ export interface ChatContextValue {
   members: GameMember[]
   sendMessage: (content: string, opts?: SendMessageOptions) => Promise<void>
   pushContextMessage: (contextRef: ContextRef) => Promise<void>
+  rerollContextMessage: (contextRef: ContextRef) => Promise<void>
   removeGmOnly: (messageId: string) => Promise<void>
+  deleteMessage: (messageId: string) => Promise<void>
   loading: boolean
   gameId: string
   sidebarOpen: boolean
@@ -41,7 +44,9 @@ const NOOP: ChatContextValue = {
   members: [],
   sendMessage: async () => {},
   pushContextMessage: async () => {},
+  rerollContextMessage: async () => {},
   removeGmOnly: async () => {},
+  deleteMessage: async () => {},
   loading: false,
   gameId: '',
   sidebarOpen: false,
@@ -172,13 +177,26 @@ export function ChatProvider({ gameId, children }: ProviderProps) {
     })
   }
 
+  async function rerollContextMessage(contextRef: ContextRef) {
+    if (!user || contextRef.type !== 'dice_roll') return
+    await pushContextMessage({
+      ...contextRef,
+      data: rerollDiceData(contextRef.data),
+    })
+  }
+
   async function removeGmOnly(messageId: string) {
     await updateDoc(doc(db, 'games', gameId, 'messages', messageId), { gmOnly: false })
   }
 
+  async function deleteMessage(messageId: string) {
+    if (!user) return
+    await deleteDoc(doc(db, 'games', gameId, 'messages', messageId))
+  }
+
   return (
     <ChatContext.Provider value={{
-      messages, members, sendMessage, pushContextMessage, removeGmOnly,
+      messages, members, sendMessage, pushContextMessage, rerollContextMessage, removeGmOnly, deleteMessage,
       loading, gameId, sidebarOpen, toggleSidebar,
     }}>
       {children}

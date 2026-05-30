@@ -321,7 +321,9 @@
     "collapse": "Collapse chat",
     "expand": "Expand chat",
     "rollDice": "Roll dice and send to chat",
-    "showToEveryone": "Show to everyone"
+    "showToEveryone": "Show to everyone",
+    "rollAgain": "Roll again with same configuration",
+    "removeMessage": "Remove"
   },
   "errors": {
     "notFound": "Not found",

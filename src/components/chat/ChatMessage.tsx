@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ChatMessage as ChatMessageType } from '@/types/chat'
@@ -75,7 +76,15 @@ function ColoredRolls({ rolls, total }: { rolls: number[]; total: number }) {
   )
 }
 
-function DiceCard({ data, heroName }: { data: Record<string, unknown>; heroName: string }) {
+function DiceCard({
+  data,
+  heroName,
+  interactive,
+}: {
+  data: Record<string, unknown>
+  heroName: string
+  interactive?: boolean
+}) {
   const { t } = useTranslation()
   const result = data.result as number
   const label = data.label as string
@@ -103,7 +112,11 @@ function DiceCard({ data, heroName }: { data: Record<string, unknown>; heroName:
   const outcomeClass = singleDie ? getDiceOutcomeClass(rolls[0]) : ''
 
   return (
-    <div className="mt-1 flex items-center gap-2 bg-elevated border border-border rounded px-3 py-1.5 text-xs w-fit max-w-full flex-wrap">
+    <div
+      className={`mt-1 flex items-center gap-2 bg-elevated border border-border rounded px-3 py-1.5 text-xs w-fit max-w-full flex-wrap ${
+        interactive ? 'cursor-context-menu' : ''
+      }`}
+    >
       <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" className="shrink-0 text-ink-muted">
         <path d="M3 0a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V3a3 3 0 0 0-3-3H3zm1 5.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm8 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm-4 4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm-4 4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm8 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
       </svg>
@@ -130,38 +143,128 @@ function formatTime(ts: { toDate: () => Date } | null | undefined): string {
   return ts.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-export default function ChatMessageComponent({ message, isGrouped }: Props) {
-  const { user } = useAuth()
-  const { members, removeGmOnly } = useChatContext()
-  const isGm = members.find((m) => m.uid === user?.uid)?.role === 'gm'
+interface ContextMenuItem {
+  id: string
+  label: string
+  danger?: boolean
+  onSelect: () => void
+}
 
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null)
+function MessageContextMenu({
+  x,
+  y,
+  items,
+  menuRef,
+}: {
+  x: number
+  y: number
+  items: ContextMenuItem[]
+  menuRef: React.RefObject<HTMLDivElement>
+}) {
+  return createPortal(
+    <div
+      ref={menuRef}
+      className="fixed z-[200] bg-void border border-border rounded shadow-lg py-1 min-w-[170px]"
+      style={{ left: x, top: y }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      {items.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          className={`w-full text-left px-3 py-1.5 text-xs hover:bg-elevated transition-colors ${
+            item.danger ? 'text-blood-light' : 'text-ink'
+          }`}
+          onClick={() => item.onSelect()}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>,
+    document.body,
+  )
+}
+
+export default function ChatMessageComponent({ message, isGrouped }: Props) {
+  const { t } = useTranslation()
+  const { user } = useAuth()
+  const { members, removeGmOnly, rerollContextMessage, deleteMessage } = useChatContext()
+  const isGm = members.find((m) => m.uid === user?.uid)?.role === 'gm'
+  const isAuthor = Boolean(user?.uid && message.authorId === user.uid)
+
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const menuOpenedAt = useRef(0)
 
   useEffect(() => {
     if (!ctxMenu) return
+
+    menuOpenedAt.current = performance.now()
+
     function close(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setCtxMenu(null)
+      if (performance.now() - menuOpenedAt.current < 50) return
+      if (e.button === 2) return
+      if (menuRef.current?.contains(e.target as Node)) return
+      setCtxMenu(null)
     }
+
+    function closeOnScroll() {
+      setCtxMenu(null)
+    }
+
     document.addEventListener('mousedown', close)
-    return () => document.removeEventListener('mousedown', close)
+    document.addEventListener('scroll', closeOnScroll, true)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('scroll', closeOnScroll, true)
+    }
   }, [ctxMenu])
 
-  function handleContextMenu(e: React.MouseEvent) {
-    if (!isGm || !message.gmOnly) return
-    e.preventDefault()
-    setCtxMenu({ x: e.clientX, y: e.clientY })
+  async function handleReroll() {
+    if (!message.contextRef) return
+    setCtxMenu(null)
+    await rerollContextMessage(message.contextRef)
+  }
+
+  async function handleRemove() {
+    setCtxMenu(null)
+    await deleteMessage(message.id)
   }
 
   const isDiceRoll = message.contextRef?.type === 'dice_roll'
   const hasContent = message.content.trim().length > 0
+  const hasContextMenu = (isAuthor || (isGm && message.gmOnly) || (isDiceRoll && (isAuthor || isGm)))
+
+  function openContextMenu(e: React.MouseEvent) {
+    const items: ContextMenuItem[] = []
+
+    if (isDiceRoll && (isAuthor || isGm)) {
+      items.push({ id: 'reroll', label: t('chat.rollAgain'), onSelect: () => void handleReroll() })
+    }
+    if (isAuthor) {
+      items.push({ id: 'remove', label: t('chat.removeMessage'), danger: true, onSelect: () => void handleRemove() })
+    }
+    if (isGm && message.gmOnly) {
+      items.push({
+        id: 'gm',
+        label: t('chat.showToEveryone'),
+        onSelect: () => { removeGmOnly(message.id); setCtxMenu(null) },
+      })
+    }
+
+    if (items.length === 0) return
+
+    e.preventDefault()
+    e.stopPropagation()
+    setCtxMenu({ x: e.clientX, y: e.clientY, items })
+  }
 
   return (
     <div
       className={`relative group/msg px-3 ${isGrouped ? 'pt-0.5 pb-0.5' : 'pt-2.5 pb-0.5'} ${
         message.gmOnly ? 'bg-blood/5 border-l-2 border-blood/30' : ''
-      }`}
-      onContextMenu={handleContextMenu}
+      } ${hasContextMenu ? 'cursor-context-menu' : ''}`}
+      onContextMenu={openContextMenu}
     >
       {/* Author header — only for the first message in a group */}
       {!isGrouped && (
@@ -186,25 +289,21 @@ export default function ChatMessageComponent({ message, isGrouped }: Props) {
         </p>
       )}
 
-      {/* Dice roll card */}
       {isDiceRoll && message.contextRef && (
-        <DiceCard data={message.contextRef.data} heroName={message.contextRef.heroName} />
+        <DiceCard
+          data={message.contextRef.data}
+          heroName={message.contextRef.heroName}
+          interactive={hasContextMenu}
+        />
       )}
 
-      {/* GM-only context menu */}
       {ctxMenu && (
-        <div
-          ref={menuRef}
-          className="fixed z-50 bg-void border border-border rounded shadow-lg py-1 min-w-[170px]"
-          style={{ left: ctxMenu.x, top: ctxMenu.y }}
-        >
-          <button
-            className="w-full text-left px-3 py-1.5 text-xs text-ink hover:bg-elevated transition-colors"
-            onClick={() => { removeGmOnly(message.id); setCtxMenu(null) }}
-          >
-            Show to everyone
-          </button>
-        </div>
+        <MessageContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          items={ctxMenu.items}
+          menuRef={menuRef}
+        />
       )}
     </div>
   )

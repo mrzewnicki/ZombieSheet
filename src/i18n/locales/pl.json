@@ -321,7 +321,9 @@
     "collapse": "Zwiń czat",
     "expand": "Rozwiń czat",
     "rollDice": "Rzuć kością i wyślij do czatu",
-    "showToEveryone": "Pokaż wszystkim"
+    "showToEveryone": "Pokaż wszystkim",
+    "rollAgain": "Rzuć ponownie tą samą konfiguracją",
+    "removeMessage": "Usuń"
   },
   "errors": {
     "notFound": "Nie znaleziono",
