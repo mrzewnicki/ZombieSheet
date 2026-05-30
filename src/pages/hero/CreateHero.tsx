@@ -5,7 +5,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/config/firebase'
 import { useAuth } from '@/contexts/AuthContext'
 import { DEFAULT_ATTRIBUTES, DEFAULT_SKILLS, SHEET_VERSION } from '@/config/rpg-system'
-import AppLayout from '@/components/layout/AppLayout'
+import { useLayoutHeader } from '@/contexts/LayoutContext'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 
@@ -14,6 +14,7 @@ export default function CreateHero() {
   const { user } = useAuth()
   const { t } = useTranslation()
   const navigate = useNavigate()
+  useLayoutHeader({ backTo: `/game/${gameId}`, backLabel: t('game.lobby') }, [gameId])
   const [name, setName] = useState('')
   const [surname, setSurname] = useState('')
   const [loading, setLoading] = useState(false)
@@ -44,8 +45,7 @@ export default function CreateHero() {
   }
 
   return (
-    <AppLayout backTo={`/game/${gameId}`} backLabel={t('game.lobby')}>
-      <div className="max-w-sm">
+    <div className="max-w-sm">
         <h1 className="font-heading text-2xl text-ink mb-6">{t('hero.createTitle')}</h1>
 
         <div className="space-y-4">
@@ -74,7 +74,6 @@ export default function CreateHero() {
             </Button>
           </div>
         </div>
-      </div>
-    </AppLayout>
+    </div>
   )
 }

@@ -6,6 +6,7 @@
   html {
     @apply bg-dark text-ink;
     font-family: 'Share Tech', system-ui, sans-serif;
+    scrollbar-gutter: stable;
   }
 
   /* Scrollbar */
@@ -43,6 +44,21 @@
 }
 
 @layer components {
+  .bg-cracked {
+    position: relative;
+  }
+  .bg-cracked::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url('./assets/cracked-texture.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    opacity: 0.02;
+    pointer-events: none;
+  }
+
   /* Distressed heading style */
   .font-heading {
     font-family: 'Special Elite', Georgia, serif;
@@ -76,7 +92,7 @@
 
   /* Tab content fade-in */
   .tab-enter {
-    animation: tab-enter 0.18s ease both;
+    animation: tab-enter 0.22s ease-out both;
   }
 }
 

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
+import AppShell from '@/components/layout/AppShell'
 import ProtectedRoute from '@/components/layout/ProtectedRoute'
 import SignIn from '@/pages/SignIn'
 import Dashboard from '@/pages/Dashboard'
@@ -24,20 +25,22 @@ export default function App() {
           <Route path="/" element={<SignIn />} />
           <Route path="/game/:gameId/invite/:token" element={<JoinGame />} />
 
-          {/* Protected */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/game/new" element={<CreateGame />} />
-            <Route path="/game/:gameId" element={<GameLobby />} />
-            <Route path="/game/:gameId/hero/new" element={<CreateHero />} />
-            <Route path="/game/:gameId/hero/:heroId" element={<HeroSheet />}>
-              <Route index element={<Navigate to="personal" replace />} />
-              <Route path="personal"  element={<PersonalTab />} />
-              <Route path="mechanics" element={<MechanicsTab />} />
-              <Route path="inventory" element={<InventoryTab />} />
-              <Route path="images"    element={<ImagesTab />} />
-              <Route path="history"   element={<HistoryTab />} />
-              <Route path="settings" element={<SettingsTab />} />
+          {/* Protected — AppShell persists across all protected navigations */}
+          <Route element={<AppShell />}>
+            <Route element={<ProtectedRoute />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/game/new" element={<CreateGame />} />
+              <Route path="/game/:gameId" element={<GameLobby />} />
+              <Route path="/game/:gameId/hero/new" element={<CreateHero />} />
+              <Route path="/game/:gameId/hero/:heroId" element={<HeroSheet />}>
+                <Route index element={<Navigate to="personal" replace />} />
+                <Route path="personal"  element={<PersonalTab />} />
+                <Route path="mechanics" element={<MechanicsTab />} />
+                <Route path="inventory" element={<InventoryTab />} />
+                <Route path="images"    element={<ImagesTab />} />
+                <Route path="history"   element={<HistoryTab />} />
+                <Route path="settings" element={<SettingsTab />} />
+              </Route>
             </Route>
           </Route>
 

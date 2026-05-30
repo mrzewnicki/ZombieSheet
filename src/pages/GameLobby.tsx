@@ -9,8 +9,8 @@ import { memberLabel } from '@/types'
 import { db } from '@/config/firebase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useGameRole } from '@/hooks/useGameRole'
+import { useLayoutHeader } from '@/contexts/LayoutContext'
 import type { Game, GameMember, Hero } from '@/types'
-import AppLayout from '@/components/layout/AppLayout'
 import HeroCard from '@/components/hero/HeroCard'
 import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
@@ -33,6 +33,19 @@ export default function GameLobby() {
   const [regenerating, setRegenerating] = useState(false)
   const [editingNick, setEditingNick] = useState<string | null>(null)
   const [nickDraft, setNickDraft] = useState('')
+
+  const isGm = role === 'gm'
+
+  useLayoutHeader({
+    backTo: '/dashboard',
+    backLabel: t('dashboard.title'),
+    title: game?.title,
+    actions: isGm ? (
+      <Button variant="ghost" onClick={() => setDeleteOpen(true)} className="text-xs text-ink-faint hover:text-blood">
+        {t('game.deleteGame')}
+      </Button>
+    ) : undefined,
+  }, [game?.title, isGm, t])
 
   useEffect(() => {
     const gameRef = doc(db, 'games', gameId)
@@ -93,32 +106,15 @@ export default function GameLobby() {
   }
 
   if (loading || roleLoading) {
-    return (
-      <AppLayout>
-        <div className="flex justify-center py-16"><Spinner size="lg" /></div>
-      </AppLayout>
-    )
+    return <div className="flex justify-center py-16"><Spinner size="lg" /></div>
   }
 
   if (!game) {
-    return <AppLayout><p className="text-blood">{t('errors.notFound')}</p></AppLayout>
+    return <p className="text-blood">{t('errors.notFound')}</p>
   }
 
-  const isGm = role === 'gm'
-
   return (
-    <AppLayout
-      backTo="/dashboard"
-      backLabel={t('dashboard.title')}
-      title={game.title}
-      actions={
-        isGm ? (
-          <Button variant="ghost" onClick={() => setDeleteOpen(true)} className="text-xs text-ink-faint hover:text-blood">
-            {t('game.deleteGame')}
-          </Button>
-        ) : undefined
-      }
-    >
+    <>
       <div className="space-y-8">
         {/* Header */}
         <div>
@@ -257,6 +253,6 @@ export default function GameLobby() {
         onCancel={() => setDeleteOpen(false)}
         dangerous
       />
-    </AppLayout>
+    </>
   )
 }

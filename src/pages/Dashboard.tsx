@@ -7,8 +7,8 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/config/firebase'
 import { useAuth } from '@/contexts/AuthContext'
+import { useLayoutHeader } from '@/contexts/LayoutContext'
 import type { Game } from '@/types'
-import AppLayout from '@/components/layout/AppLayout'
 import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
@@ -25,6 +25,7 @@ export default function Dashboard() {
   const [games, setGames] = useState<GameWithMeta[]>([])
   const [loading, setLoading] = useState(true)
   const [pendingDelete, setPendingDelete] = useState<GameWithMeta | null>(null)
+  useLayoutHeader({}, [])
 
   useEffect(() => {
     if (!user) return
@@ -83,7 +84,7 @@ export default function Dashboard() {
   }
 
   return (
-    <AppLayout>
+    <>
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-heading text-2xl text-ink">{t('dashboard.title')}</h1>
         <Link to="/game/new">
@@ -161,6 +162,6 @@ export default function Dashboard() {
         onCancel={() => setPendingDelete(null)}
         dangerous
       />
-    </AppLayout>
+    </>
   )
 }

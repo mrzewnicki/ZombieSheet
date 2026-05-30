@@ -1,22 +1,21 @@
-import { ReactNode } from 'react'
+import { ReactNode, useContext } from 'react'
 import logoUrl from '/logo.png'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/contexts/AuthContext'
+import { LayoutContext } from '@/contexts/LayoutContext'
 import Avatar from '@/components/ui/Avatar'
 
 interface Props {
   children: ReactNode
-  backTo?: string
-  backLabel?: string
-  title?: string
-  actions?: ReactNode
 }
 
-export default function AppLayout({ children, backTo, backLabel, title, actions }: Props) {
+export default function AppLayout({ children }: Props) {
   const { user, signOut } = useAuth()
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const ctx = useContext(LayoutContext)
+  const { backTo, backLabel, title, actions } = ctx?.header ?? {}
 
   async function handleSignOut() {
     await signOut()
@@ -24,8 +23,7 @@ export default function AppLayout({ children, backTo, backLabel, title, actions 
   }
 
   return (
-    <div className="min-h-screen bg-dark text-ink font-body">
-      {/* Top bar */}
+    <div className="min-h-screen bg-dark bg-cracked text-ink font-body">
       <header className="border-b border-border bg-void sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-4">
           <Link to="/dashboard" className="flex items-center gap-1 group/logo">

@@ -6,17 +6,30 @@ import { db } from '@/config/firebase'
 import { useCanEdit } from '@/hooks/useCanEdit'
 import { SHEET_VERSION } from '@/config/rpg-system'
 import { heroFullName, type Hero } from '@/types'
-import AppLayout from '@/components/layout/AppLayout'
+import { useLayoutHeader } from '@/contexts/LayoutContext'
 import Spinner from '@/components/ui/Spinner'
 
 export default function HeroSheet() {
   const { gameId = '', heroId = '' } = useParams()
   const { t } = useTranslation()
-  const location = useLocation()
+  const { pathname } = useLocation()
+  const activeTab = pathname.split('/').pop() ?? ''
   const [hero, setHero] = useState<Hero | null>(null)
   const [loading, setLoading] = useState(true)
 
   const canEdit = useCanEdit(gameId, hero?.ownerId ?? '')
+  const heroName = hero ? heroFullName(hero, '...') : '...'
+
+  useLayoutHeader({
+    backTo: `/game/${gameId}`,
+    backLabel: t('game.lobby'),
+    title: heroName,
+    actions: !canEdit ? (
+      <span className="text-xs text-ink-faint border border-border px-2 py-1 rounded font-mono">
+        {t('common.readOnly')}
+      </span>
+    ) : undefined,
+  }, [gameId, heroName, canEdit, t])
 
   useEffect(() => {
     const heroRef = doc(db, 'games', gameId, 'heroes', heroId)
@@ -30,8 +43,6 @@ export default function HeroSheet() {
   const heroVersion = hero?.sheetVersion ?? 0
   const needsMigration = heroVersion !== SHEET_VERSION
 
-  const heroName = hero ? heroFullName(hero, '...') : '...'
-
   const tabs = [
     { key: 'personal',  label: t('hero.tabs.personal') },
     { key: 'mechanics', label: t('hero.tabs.mechanics') },
@@ -42,30 +53,15 @@ export default function HeroSheet() {
   ]
 
   if (loading) {
-    return (
-      <AppLayout>
-        <div className="flex justify-center py-16"><Spinner size="lg" /></div>
-      </AppLayout>
-    )
+    return <div className="flex justify-center py-16"><Spinner size="lg" /></div>
   }
 
   if (!hero) {
-    return <AppLayout><p className="text-blood">{t('errors.notFound')}</p></AppLayout>
+    return <p className="text-blood">{t('errors.notFound')}</p>
   }
 
   return (
-    <AppLayout
-      backTo={`/game/${gameId}`}
-      backLabel={t('game.lobby')}
-      title={heroName}
-      actions={
-        !canEdit ? (
-          <span className="text-xs text-ink-faint border border-border px-2 py-1 rounded font-mono">
-            {t('common.readOnly')}
-          </span>
-        ) : undefined
-      }
-    >
+    <>
       {/* Hero header */}
       <div className="flex items-center gap-4 mb-6">
         <div className="w-14 h-14 rounded-lg border border-border overflow-hidden bg-void flex items-center justify-center shrink-0">
@@ -136,10 +132,10 @@ export default function HeroSheet() {
       </nav>
 
       {/* Tab content rendered by nested routes */}
-      <div key={location.pathname} className="tab-enter">
+      <div key={activeTab} className="tab-enter">
         <Outlet context={{ hero, gameId, heroId, canEdit }} />
       </div>
 
-    </AppLayout>
+    </>
   )
 }

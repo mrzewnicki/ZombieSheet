@@ -162,8 +162,6 @@ export default function ImagesTab() {
     await deleteDoc(doc(galleryRef, image.id))
   }
 
-  if (loading) return <div className="flex justify-center py-8"><Spinner /></div>
-
   return (
     <div className="space-y-5">
       <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase">
@@ -259,7 +257,15 @@ export default function ImagesTab() {
       )}
 
       {/* Gallery grid */}
-      {images.length === 0 ? (
+      {loading ? (
+        <div className="columns-2 sm:columns-3 lg:columns-4 gap-3 space-y-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="break-inside-avoid rounded-lg overflow-hidden bg-void border border-border mb-3">
+              <div className="w-full animate-pulse bg-elevated" style={{ paddingBottom: '70%' }} />
+            </div>
+          ))}
+        </div>
+      ) : images.length === 0 ? (
         <p className="text-ink-faint text-sm text-center py-8">{t('images.noImages')}</p>
       ) : (
         <div className="columns-2 sm:columns-3 lg:columns-4 gap-3 space-y-3">
