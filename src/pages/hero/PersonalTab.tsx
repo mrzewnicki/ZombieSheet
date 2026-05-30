@@ -1,11 +1,11 @@
 import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { useOutletContext } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { storage } from '@/config/firebase'
 import { useHeroField } from '@/hooks/useHeroField'
-import type { Hero } from '@/types'
+import { useHeroOutletContext } from '@/hooks/useHeroOutletContext'
+import { heroFullName } from '@/types'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
 import Button from '@/components/ui/Button'
@@ -20,15 +20,8 @@ import ImageCropModal from '@/components/ui/ImageCropModal'
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 
-interface Ctx {
-  hero: Hero
-  gameId: string
-  heroId: string
-  canEdit: boolean
-}
-
 export default function PersonalTab() {
-  const { hero, gameId, heroId, canEdit } = useOutletContext<Ctx>()
+  const { hero, gameId, heroId, canEdit } = useHeroOutletContext()
   const { t } = useTranslation()
   const { updateField } = useHeroField(gameId, heroId)
 
@@ -178,7 +171,7 @@ export default function PersonalTab() {
           ) : (
             <div className="bg-surface border border-border rounded-lg p-3">
               <p className="font-heading text-xl text-ink">
-                {[hero.name, hero.surname].filter(Boolean).join(' ') || '—'}
+                {heroFullName(hero)}
               </p>
               {hero.nickname && (
                 <p className="text-sm text-ink-muted mt-0.5 font-mono">

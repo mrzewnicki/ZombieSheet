@@ -33,6 +33,14 @@ export function memberLabel(m: Pick<GameMember, 'nick' | 'displayName'>): string
   return m.nick?.trim() || m.displayName
 }
 
+/** Resolves the full display name for a hero, with an optional fallback when both fields are empty. */
+export function heroFullName(
+  hero: Pick<Hero, 'name' | 'surname'>,
+  fallback = '—'
+): string {
+  return [hero.name, hero.surname].filter(Boolean).join(' ') || fallback
+}
+
 export interface Hero {
   id: string
   ownerId: string
@@ -70,4 +78,11 @@ export interface HeroChange {
   oldValue: unknown
   newValue: unknown
   changedAt: Timestamp
+}
+
+export interface HeroSheetOutletContext {
+  hero: Hero
+  gameId: string
+  heroId: string
+  canEdit: boolean
 }

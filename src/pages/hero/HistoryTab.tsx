@@ -1,21 +1,14 @@
 import { useEffect, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore'
 import { db } from '@/config/firebase'
-import type { Hero, HeroChange } from '@/types'
+import type { HeroChange } from '@/types'
+import { useHeroOutletContext } from '@/hooks/useHeroOutletContext'
 import ChangeHistory from '@/components/hero/ChangeHistory'
 import Spinner from '@/components/ui/Spinner'
 
-interface Ctx {
-  hero: Hero
-  gameId: string
-  heroId: string
-  canEdit: boolean
-}
-
 export default function HistoryTab() {
-  const { gameId, heroId } = useOutletContext<Ctx>()
+  const { gameId, heroId } = useHeroOutletContext()
   const { t } = useTranslation()
   const [changes, setChanges] = useState<HeroChange[]>([])
   const [loading, setLoading] = useState(true)

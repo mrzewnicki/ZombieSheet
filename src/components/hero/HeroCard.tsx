@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { Hero, GameMember } from '@/types'
-import { memberLabel } from '@/types'
+import { memberLabel, heroFullName } from '@/types'
 
 interface Props {
   gameId: string
@@ -10,7 +10,7 @@ interface Props {
 }
 
 export default function HeroCard({ gameId, hero, owner, isGm }: Props) {
-  const displayName = [hero.name, hero.surname].filter(Boolean).join(' ') || '—'
+  const displayName = heroFullName(hero)
 
   return (
     <Link

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useOutletContext } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   collection, addDoc, deleteDoc, doc,
@@ -8,18 +7,41 @@ import {
 } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage } from '@/config/firebase'
-import type { Hero, HeroGalleryImage } from '@/types'
+import type { HeroGalleryImage } from '@/types'
+import { useHeroOutletContext } from '@/hooks/useHeroOutletContext'
 import Spinner from '@/components/ui/Spinner'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
-interface Ctx {
-  hero: Hero
-  gameId: string
-  heroId: string
-  canEdit: boolean
+type Mode = 'idle' | 'upload' | 'external'
+
+interface LazyGalleryImageProps {
+  src: string
+  alt: string
+  onClick: () => void
 }
 
-type Mode = 'idle' | 'upload' | 'external'
+function LazyGalleryImage({ src, alt, onClick }: LazyGalleryImageProps) {
+  const [loaded, setLoaded] = useState(false)
+
+  return (
+    <div className="relative w-full">
+      {!loaded && (
+        <div className="absolute inset-0 min-h-[120px] bg-void animate-pulse rounded" />
+      )}
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onLoad={() => setLoaded(true)}
+        onClick={onClick}
+        className={`w-full h-auto block cursor-zoom-in transition-opacity duration-300 ${
+          loaded ? 'opacity-90 group-hover/img:opacity-100' : 'opacity-0'
+        }`}
+      />
+    </div>
+  )
+}
 
 function ExternalBadge({ url }: { url: string }) {
   const [copied, setCopied] = useState(false)
@@ -59,7 +81,7 @@ function ExternalBadge({ url }: { url: string }) {
 }
 
 export default function ImagesTab() {
-  const { gameId, heroId, canEdit } = useOutletContext<Ctx>()
+  const { gameId, heroId, canEdit } = useHeroOutletContext()
   const { t } = useTranslation()
 
   const [images, setImages] = useState<HeroGalleryImage[]>([])
@@ -250,12 +272,10 @@ export default function ImagesTab() {
                   : 'border-border'
               }`}
             >
-              <img
+              <LazyGalleryImage
                 src={img.url}
                 alt={img.caption || ''}
-                referrerPolicy="no-referrer"
                 onClick={() => setLightboxIdx(idx)}
-                className="w-full h-auto block cursor-zoom-in opacity-90 group-hover/img:opacity-100 transition-opacity"
               />
 
               {/* External source badge + copy link */}

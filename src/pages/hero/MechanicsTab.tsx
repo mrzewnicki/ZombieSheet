@@ -1,21 +1,13 @@
-import { useOutletContext } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { ATTRIBUTE_GROUPS, SKILL_CATEGORIES } from '@/config/rpg-system'
 import { useHeroField } from '@/hooks/useHeroField'
-import type { Hero } from '@/types'
+import { useHeroOutletContext } from '@/hooks/useHeroOutletContext'
 import AttributeGroup from '@/components/hero/AttributeGroup'
 import SkillCategory from '@/components/hero/SkillCategory'
 
-interface Ctx {
-  hero: Hero
-  gameId: string
-  heroId: string
-  canEdit: boolean
-}
-
 export default function MechanicsTab() {
-  const { hero, gameId, heroId, canEdit } = useOutletContext<Ctx>()
+  const { hero, gameId, heroId, canEdit } = useHeroOutletContext()
   const { t } = useTranslation()
   const { updateField } = useHeroField(gameId, heroId)
   const [editing, setEditing] = useState(false)

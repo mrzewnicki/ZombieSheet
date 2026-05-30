@@ -1,21 +1,14 @@
 import { useEffect, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore'
 import { db } from '@/config/firebase'
-import type { Hero, InventoryItem } from '@/types'
+import type { InventoryItem } from '@/types'
+import { useHeroOutletContext } from '@/hooks/useHeroOutletContext'
 import InventoryList from '@/components/hero/InventoryList'
 import Spinner from '@/components/ui/Spinner'
 
-interface Ctx {
-  hero: Hero
-  gameId: string
-  heroId: string
-  canEdit: boolean
-}
-
 export default function InventoryTab() {
-  const { gameId, heroId, canEdit } = useOutletContext<Ctx>()
+  const { gameId, heroId, canEdit } = useHeroOutletContext()
   const { t } = useTranslation()
   const [items, setItems] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(true)

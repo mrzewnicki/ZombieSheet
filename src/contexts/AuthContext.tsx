@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import {
-  User, onAuthStateChanged, signInWithPopup, signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
+  User, onAuthStateChanged, signInWithRedirect, getRedirectResult,
+  signInWithEmailAndPassword, signOut as firebaseSignOut,
 } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
 import { auth, db, googleProvider } from '@/config/firebase'
@@ -18,6 +18,10 @@ interface AuthContextValue {
 /** Dev-only credentials, gated behind import.meta.env.DEV so they are stripped from production builds. */
 const DEV_EMAIL = 'ootexh@gmail.com'
 const DEV_PASSWORD = 'devdev123'
+
+function getErrorMessage(err: unknown): string {
+  return (err as { message?: string }).message ?? String(err)
+}
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
@@ -40,6 +44,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authError, setAuthError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Handle result from signInWithRedirect (runs once on page load after redirect)
+    getRedirectResult(auth).then(async (result) => {
+      if (result?.user) await persistUser(result.user)
+    }).catch((err: unknown) => {
+      console.error('[Auth] redirect result error:', err)
+      setAuthError(getErrorMessage(err))
+    })
+
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser)
       if (firebaseUser) await persistUser(firebaseUser)
@@ -51,17 +63,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signInWithGoogle() {
     setAuthError(null)
     try {
-      const result = await signInWithPopup(auth, googleProvider)
-      await persistUser(result.user)
+      await signInWithRedirect(auth, googleProvider)
     } catch (err: unknown) {
-      const code = (err as { code?: string }).code ?? ''
-      // User closing the popup is not a real error
-      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
-        return
-      }
-      const msg = (err as { message?: string }).message ?? String(err)
       console.error('[Auth] signIn error:', err)
-      setAuthError(msg)
+      setAuthError(getErrorMessage(err))
     }
   }
 
@@ -71,9 +76,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const result = await signInWithEmailAndPassword(auth, DEV_EMAIL, DEV_PASSWORD)
       await persistUser(result.user)
     } catch (err: unknown) {
-      const msg = (err as { message?: string }).message ?? String(err)
       console.error('[Auth] dev signIn error:', err)
-      setAuthError(msg)
+      setAuthError(getErrorMessage(err))
     }
   }
 

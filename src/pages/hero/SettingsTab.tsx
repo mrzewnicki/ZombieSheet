@@ -1,22 +1,16 @@
 import { useState } from 'react'
-import { useOutletContext, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { doc, deleteDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/config/firebase'
 import { SHEET_VERSION, DEFAULT_ATTRIBUTES, DEFAULT_SKILLS } from '@/config/rpg-system'
-import type { Hero } from '@/types'
+import { useHeroOutletContext } from '@/hooks/useHeroOutletContext'
+import { heroFullName } from '@/types'
 import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
-interface Ctx {
-  hero: Hero
-  gameId: string
-  heroId: string
-  canEdit: boolean
-}
-
 export default function SettingsTab() {
-  const { hero, gameId, heroId, canEdit } = useOutletContext<Ctx>()
+  const { hero, gameId, heroId, canEdit } = useHeroOutletContext()
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { gameId: paramGameId = gameId } = useParams()
@@ -26,7 +20,7 @@ export default function SettingsTab() {
 
   const heroVersion = hero.sheetVersion ?? 0
   const needsMigration = heroVersion !== SHEET_VERSION
-  const heroName = [hero.name, hero.surname].filter(Boolean).join(' ') || '—'
+  const heroName = heroFullName(hero)
 
   async function handleDelete() {
     await deleteDoc(doc(db, 'games', paramGameId, 'heroes', heroId))

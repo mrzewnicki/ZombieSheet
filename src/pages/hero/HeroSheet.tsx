@@ -5,7 +5,7 @@ import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '@/config/firebase'
 import { useCanEdit } from '@/hooks/useCanEdit'
 import { SHEET_VERSION } from '@/config/rpg-system'
-import type { Hero } from '@/types'
+import { heroFullName, type Hero } from '@/types'
 import AppLayout from '@/components/layout/AppLayout'
 import Spinner from '@/components/ui/Spinner'
 
@@ -30,7 +30,7 @@ export default function HeroSheet() {
   const heroVersion = hero?.sheetVersion ?? 0
   const needsMigration = heroVersion !== SHEET_VERSION
 
-  const heroName = hero ? [hero.name, hero.surname].filter(Boolean).join(' ') : '...'
+  const heroName = hero ? heroFullName(hero, '...') : '...'
 
   const tabs = [
     { key: 'personal',  label: t('hero.tabs.personal') },
