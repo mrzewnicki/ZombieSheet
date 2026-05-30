@@ -33,11 +33,7 @@ export interface ChatContextValue {
   toggleSidebar: () => void
 }
 
-const LS_SIDEBAR = 'chat_sidebar_open'
-
-function loadSidebarOpen(): boolean {
-  try { return localStorage.getItem(LS_SIDEBAR) !== 'false' } catch { return true }
-}
+import { CHAT_SIDEBAR_LS_KEY, loadChatSidebarOpen } from '@/utils/chatPreferences'
 
 const NOOP: ChatContextValue = {
   messages: [],
@@ -66,19 +62,19 @@ export function ChatProvider({ gameId, children }: ProviderProps) {
   const [membersLoaded, setMembersLoaded] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(true)
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(loadSidebarOpen)
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(loadChatSidebarOpen)
   const isInitialMessages = useRef(true)
   const knownMessageIds = useRef<Set<string>>(new Set())
 
   function expandSidebar() {
     setSidebarOpen(true)
-    try { localStorage.setItem(LS_SIDEBAR, 'true') } catch { /* ignore */ }
+    try { localStorage.setItem(CHAT_SIDEBAR_LS_KEY, 'true') } catch { /* ignore */ }
   }
 
   function toggleSidebar() {
     setSidebarOpen((v) => {
       const next = !v
-      try { localStorage.setItem(LS_SIDEBAR, String(next)) } catch { /* ignore */ }
+      try { localStorage.setItem(CHAT_SIDEBAR_LS_KEY, String(next)) } catch { /* ignore */ }
       return next
     })
   }

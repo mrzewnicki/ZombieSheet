@@ -4,6 +4,7 @@ import { ATTRIBUTE_GROUPS, SKILL_CATEGORIES } from '@/config/rpg-system'
 import DraggablePanel from '@/components/ui/DraggablePanel'
 import ThrowDialogContent from '@/components/hero/ThrowDialogContent'
 import { useThrowDialogKeyboard } from '@/hooks/useThrowDialogKeyboard'
+import { computeThrowTotal } from '@/utils/throwTotal'
 
 const ALL_ATTRIBUTES = ATTRIBUTE_GROUPS.flatMap((g) => g.attributes)
 const ALL_SKILLS = SKILL_CATEGORIES.flatMap((c) => c.skills)
@@ -60,7 +61,7 @@ export default function ThrowDialog({
   const skillLabel = hasSkill ? t(`skills.${skillKey}`, { defaultValue: skillKey }) : ''
   const attributeLabel = hasAttribute ? t(`attributes.${attributeKey}`, { defaultValue: attributeKey }) : ''
   const modifierNum = Number(modifier) || 0
-  const total = skillValue + attributeValue + modifierNum
+  const total = computeThrowTotal(skillValue, attributeValue, modifierNum)
 
   const attributeOptions = ALL_ATTRIBUTES.map((attr) => ({
     value: attr.key,

@@ -4,13 +4,8 @@ import EmojiPicker, { Theme, EmojiClickData } from 'emoji-picker-react'
 import { useChatContext } from '@/contexts/ChatContext'
 import { memberLabel } from '@/types'
 import type { GameMember } from '@/types'
+import { extractMentionUids } from '@/utils/chatMentions'
 import Avatar from '@/components/ui/Avatar'
-
-function extractMentionUids(text: string, members: GameMember[]): string[] {
-  return members
-    .filter((m) => text.includes('@' + memberLabel(m)))
-    .map((m) => m.uid)
-}
 
 export default function ChatInput() {
   const { t } = useTranslation()

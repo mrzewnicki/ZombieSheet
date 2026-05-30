@@ -1,6 +1,11 @@
 import { useTranslation } from 'react-i18next'
 import { useState, useRef, useCallback } from 'react'
 import { ATTRIBUTE_GROUPS, SKILL_CATEGORIES } from '@/config/rpg-system'
+import {
+  DEFAULT_SKILL_CATEGORY_ORDER,
+  loadSkillCategoryOrder,
+  saveSkillCategoryOrder,
+} from '@/utils/skillCategoryOrder'
 import { useHeroField } from '@/hooks/useHeroField'
 import { useHeroOutletContext } from '@/hooks/useHeroOutletContext'
 import { heroFullName } from '@/types'
@@ -10,32 +15,13 @@ import SkillCategory from '@/components/hero/SkillCategory'
 import ThrowDialog, { type ThrowParams, type ThrowDialogInitial } from '@/components/hero/ThrowDialog'
 import { rollDicePool } from '@/utils/diceRoll'
 
-const DEFAULT_ORDER = SKILL_CATEGORIES.map((c) => c.key)
-
-function loadOrder(heroId: string): string[] {
-  try {
-    const raw = localStorage.getItem(`skillOrder_${heroId}`)
-    if (!raw) return DEFAULT_ORDER
-    const parsed: string[] = JSON.parse(raw)
-    if (
-      parsed.length === DEFAULT_ORDER.length &&
-      DEFAULT_ORDER.every((k) => parsed.includes(k))
-    ) return parsed
-  } catch { /* ignore */ }
-  return DEFAULT_ORDER
-}
-
-function saveOrder(heroId: string, order: string[]) {
-  try { localStorage.setItem(`skillOrder_${heroId}`, JSON.stringify(order)) } catch { /* ignore */ }
-}
-
 export default function MechanicsTab() {
   const { hero, gameId, heroId, canEdit } = useHeroOutletContext()
   const { t } = useTranslation()
   const { updateField } = useHeroField(gameId, heroId)
   const [editing, setEditing] = useState(false)
   const [skillSearch, setSkillSearch] = useState('')
-  const [order, setOrder] = useState<string[]>(() => loadOrder(heroId))
+  const [order, setOrder] = useState<string[]>(() => loadSkillCategoryOrder(heroId))
   const dragIdx = useRef<number | null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
   const [throwDialog, setThrowDialog] = useState<ThrowDialogInitial | null>(null)
@@ -90,7 +76,7 @@ export default function MechanicsTab() {
     const [moved] = next.splice(from, 1)
     next.splice(idx, 0, moved)
     setOrder(next)
-    saveOrder(heroId, next)
+    saveSkillCategoryOrder(heroId, next)
     dragIdx.current = null
     setDragOverIdx(null)
   }
@@ -161,9 +147,12 @@ export default function MechanicsTab() {
             {t('skills.title')}
           </h2>
           <div className="ml-auto flex items-center gap-2">
-          {order.join(',') !== DEFAULT_ORDER.join(',') && (
+          {order.join(',') !== DEFAULT_SKILL_CATEGORY_ORDER.join(',') && (
             <button
-              onClick={() => { setOrder(DEFAULT_ORDER); saveOrder(heroId, DEFAULT_ORDER) }}
+              onClick={() => {
+                setOrder(DEFAULT_SKILL_CATEGORY_ORDER)
+                saveSkillCategoryOrder(heroId, DEFAULT_SKILL_CATEGORY_ORDER)
+              }}
               className="text-xs font-mono px-2 py-1 rounded border border-border text-ink-faint bg-surface hover:border-blood/50 hover:text-blood hover:bg-blood/10 transition-colors"
               title={t('skills.resetOrder')}
             >
