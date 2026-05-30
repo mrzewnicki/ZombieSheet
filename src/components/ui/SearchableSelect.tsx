@@ -3,6 +3,8 @@ import { useEffect, useId, useRef, useState } from 'react'
 export interface SearchableSelectOption {
   value: string
   label: string
+  /** Shown as a separate badge on the right (e.g. stat value). */
+  detail?: string | number
 }
 
 interface Props {
@@ -11,7 +13,69 @@ interface Props {
   options: SearchableSelectOption[]
   noneLabel: string
   noResultsLabel: string
+  searchPlaceholder?: string
   className?: string
+}
+
+function optionText(opt: SearchableSelectOption): string {
+  if (!opt.value) return opt.label
+  return opt.detail != null ? `${opt.label} (${opt.detail})` : opt.label
+}
+
+function matchesQuery(opt: SearchableSelectOption, q: string): boolean {
+  return `${opt.label} ${opt.detail ?? ''}`.toLowerCase().includes(q)
+}
+
+function OptionRow({
+  opt,
+  highlighted,
+  selected,
+  onSelect,
+  onHover,
+}: {
+  opt: SearchableSelectOption
+  highlighted: boolean
+  selected: boolean
+  onSelect: () => void
+  onHover: () => void
+}) {
+  const isNone = !opt.value
+
+  return (
+    <li
+      role="option"
+      aria-selected={selected}
+      onMouseDown={(e) => {
+        e.preventDefault()
+        onSelect()
+      }}
+      onMouseEnter={onHover}
+      className={`flex items-center justify-between gap-3 px-3 py-2 cursor-pointer border-b border-border/50 last:border-b-0 transition-colors ${
+        highlighted
+          ? 'bg-elevated text-ink border-l-2 border-l-blood/70 pl-[calc(0.75rem-2px)]'
+          : 'border-l-2 border-l-transparent text-ink-muted hover:bg-elevated/60 hover:text-ink'
+      }`}
+    >
+      <span
+        className={`min-w-0 text-sm leading-snug ${
+          isNone ? 'text-ink-faint italic' : highlighted ? 'text-ink' : ''
+        }`}
+      >
+        {opt.label}
+      </span>
+      {!isNone && opt.detail != null && (
+        <span
+          className={`shrink-0 min-w-[1.75rem] rounded border px-1.5 py-0.5 text-center font-mono text-xs tabular-nums ${
+            highlighted
+              ? 'border-blood/30 bg-void text-blood-light'
+              : 'border-border bg-void/80 text-ink-muted'
+          }`}
+        >
+          {opt.detail}
+        </span>
+      )}
+    </li>
+  )
 }
 
 export default function SearchableSelect({
@@ -20,6 +84,7 @@ export default function SearchableSelect({
   options,
   noneLabel,
   noResultsLabel,
+  searchPlaceholder,
   className = '',
 }: Props) {
   const [open, setOpen] = useState(false)
@@ -30,14 +95,15 @@ export default function SearchableSelect({
   const listRef = useRef<HTMLUListElement>(null)
   const listId = useId()
 
-  const selectedLabel = value ? (options.find((o) => o.value === value)?.label ?? '') : ''
+  const selected = options.find((o) => o.value === value)
+  const selectedLabel = selected ? optionText(selected) : ''
 
   const noneOption: SearchableSelectOption = { value: '', label: noneLabel }
   const filtered = (() => {
     const q = query.trim().toLowerCase()
     const list = [noneOption, ...options]
     if (!q) return list
-    return list.filter((o) => o.label.toLowerCase().includes(q))
+    return list.filter((o) => matchesQuery(o, q))
   })()
 
   useEffect(() => {
@@ -117,7 +183,7 @@ export default function SearchableSelect({
         aria-controls={listId}
         aria-autocomplete="list"
         value={open ? query : selectedLabel}
-        placeholder={noneLabel}
+        placeholder={open ? (searchPlaceholder ?? noneLabel) : noneLabel}
         onChange={(e) => {
           setQuery(e.target.value)
           setOpen(true)
@@ -131,26 +197,20 @@ export default function SearchableSelect({
           ref={listRef}
           id={listId}
           role="listbox"
-          className="absolute z-10 left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-surface border border-border rounded shadow-lg"
+          className="absolute z-10 left-0 right-0 mt-1 max-h-56 overflow-y-auto rounded border border-border bg-surface py-1 shadow-xl shadow-black/30"
         >
           {filtered.length === 0 ? (
-            <li className="px-2.5 py-1.5 text-sm text-ink-faint">{noResultsLabel}</li>
+            <li className="px-3 py-2.5 text-sm text-ink-faint">{noResultsLabel}</li>
           ) : (
             filtered.map((opt, idx) => (
-              <li
+              <OptionRow
                 key={opt.value || '__none__'}
-                role="option"
-                aria-selected={value === opt.value}
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  select(opt.value)
-                }}
-                className={`px-2.5 py-1.5 text-sm cursor-pointer ${
-                  idx === highlight ? 'bg-elevated text-ink' : 'text-ink-muted hover:bg-elevated/50'
-                }`}
-              >
-                {opt.label}
-              </li>
+                opt={opt}
+                highlighted={idx === highlight}
+                selected={value === opt.value}
+                onSelect={() => select(opt.value)}
+                onHover={() => setHighlight(idx)}
+              />
             ))
           )}
         </ul>

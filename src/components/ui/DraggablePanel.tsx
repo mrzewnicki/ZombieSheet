@@ -1,30 +1,35 @@
-import { useEffect, useRef, useState, ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, ReactNode } from 'react'
 
 interface Props {
   open: boolean
   title: string
+  badge?: string
   /** Changing this resets panel position when reopened */
   resetKey?: string
   children: ReactNode
 }
 
-const PANEL_W = 320
-const PANEL_H = 280
-
-function centerPosition() {
+function centerPanel(el: HTMLElement) {
+  const { offsetWidth: w, offsetHeight: h } = el
   return {
-    x: Math.max(8, (window.innerWidth - PANEL_W) / 2),
-    y: Math.max(8, (window.innerHeight - PANEL_H) / 2),
+    x: Math.max(8, (window.innerWidth - w) / 2),
+    y: Math.max(8, (window.innerHeight - h) / 2),
   }
 }
 
-export default function DraggablePanel({ open, title, resetKey, children }: Props) {
-  const [pos, setPos] = useState(centerPosition)
+export default function DraggablePanel({ open, title, badge, resetKey, children }: Props) {
+  const panelRef = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState({ x: 0, y: 0 })
   const dragOffset = useRef({ x: 0, y: 0 })
   const dragging = useRef(false)
 
-  useEffect(() => {
-    if (open) setPos(centerPosition())
+  useLayoutEffect(() => {
+    if (!open) return
+    const el = panelRef.current
+    if (!el) return
+    const apply = () => setPos(centerPanel(el))
+    apply()
+    requestAnimationFrame(apply)
   }, [open, resetKey])
 
   useEffect(() => {
@@ -56,6 +61,7 @@ export default function DraggablePanel({ open, title, resetKey, children }: Prop
 
   return (
     <div
+      ref={panelRef}
       className="fixed z-50 w-80 bg-surface border border-blood/50 rounded-lg shadow-xl shadow-blood/10"
       style={{ left: pos.x, top: pos.y }}
     >
@@ -67,8 +73,13 @@ export default function DraggablePanel({ open, title, resetKey, children }: Prop
           <path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
         </svg>
         <h3 className="font-heading text-sm text-ink tracking-wide flex-1 truncate">{title}</h3>
+        {badge && (
+          <span className="shrink-0 text-[10px] font-mono uppercase tracking-wider text-ink-faint border border-border rounded px-1.5 py-0.5">
+            {badge}
+          </span>
+        )}
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-4">{children}</div>
     </div>
   )
 }

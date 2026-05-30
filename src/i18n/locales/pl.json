@@ -123,7 +123,12 @@
     "rollTitle": "Rzut",
     "decrease": "Zmniejsz",
     "increase": "Zwiększ",
-    "noResults": "Brak wyników"
+    "noResults": "Brak wyników",
+    "optionalAttribute": "Opcjonalnie — połącz z cechą",
+    "optionalSkill": "Opcjonalnie — połącz z umiejętnością",
+    "searchAttribute": "Szukaj cechy…",
+    "searchSkill": "Szukaj umiejętności…",
+    "throwWithCount": "Rzuć {{count}} kości"
   },
   "attributes": {
     "title": "Cechy",

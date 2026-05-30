@@ -120,10 +120,15 @@
     "total": "Total",
     "diceCount": "{{count}} dice",
     "throw": "Roll",
-    "rollTitle": "Roll",
+    "rollTitle": "Rolling",
     "decrease": "Decrease",
     "increase": "Increase",
-    "noResults": "No results"
+    "noResults": "No results",
+    "optionalAttribute": "Optional — combine with an attribute",
+    "optionalSkill": "Optional — combine with a skill",
+    "searchAttribute": "Search attribute…",
+    "searchSkill": "Search skill…",
+    "throwWithCount": "Roll {{count}} dice"
   },
   "attributes": {
     "title": "Attributes",

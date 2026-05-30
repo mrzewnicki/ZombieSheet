@@ -7,8 +7,7 @@ import { heroFullName } from '@/types'
 import { useChatContext } from '@/contexts/ChatContext'
 import AttributeGroup from '@/components/hero/AttributeGroup'
 import SkillCategory from '@/components/hero/SkillCategory'
-import SkillThrowDialog, { type SkillThrowParams } from '@/components/hero/SkillThrowDialog'
-import AttributeThrowDialog, { type AttributeThrowParams } from '@/components/hero/AttributeThrowDialog'
+import ThrowDialog, { type ThrowParams, type ThrowDialogInitial } from '@/components/hero/ThrowDialog'
 import { rollDicePool } from '@/utils/diceRoll'
 
 const DEFAULT_ORDER = SKILL_CATEGORIES.map((c) => c.key)
@@ -39,23 +38,25 @@ export default function MechanicsTab() {
   const [order, setOrder] = useState<string[]>(() => loadOrder(heroId))
   const dragIdx = useRef<number | null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
-  const [throwTarget, setThrowTarget] = useState<{ key: string; label: string; value: number } | null>(null)
-  const [attrThrowTarget, setAttrThrowTarget] = useState<{ key: string; label: string; value: number } | null>(null)
+  const [throwDialog, setThrowDialog] = useState<ThrowDialogInitial | null>(null)
 
   const isEditable = canEdit && editing
   const { pushContextMessage } = useChatContext()
 
-  const handleSkillThrow = useCallback((params: SkillThrowParams) => {
-    if (!throwTarget) return
+  const handleThrow = useCallback((params: ThrowParams) => {
     const { rolls, result, diceCount } = rollDicePool(params.total)
+    const label = params.skillLabel || params.attributeLabel
+    const key = params.skillKey || params.attributeKey
     void pushContextMessage({
       type: 'dice_roll',
       heroId,
       heroName: heroFullName(hero),
       data: {
-        key: throwTarget.key,
-        label: throwTarget.label,
-        skillValue: throwTarget.value,
+        key,
+        label,
+        skillKey: params.skillKey,
+        skillLabel: params.skillLabel,
+        skillValue: params.skillValue,
         attributeKey: params.attributeKey,
         attributeLabel: params.attributeLabel,
         attributeValue: params.attributeValue,
@@ -66,32 +67,8 @@ export default function MechanicsTab() {
         diceCount,
       },
     })
-    setThrowTarget(null)
-  }, [pushContextMessage, heroId, hero, throwTarget])
-
-  const handleAttributeThrow = useCallback((params: AttributeThrowParams) => {
-    if (!attrThrowTarget) return
-    const { rolls, result, diceCount } = rollDicePool(params.total)
-    void pushContextMessage({
-      type: 'dice_roll',
-      heroId,
-      heroName: heroFullName(hero),
-      data: {
-        key: attrThrowTarget.key,
-        label: attrThrowTarget.label,
-        attributeValue: attrThrowTarget.value,
-        skillKey: params.skillKey,
-        skillLabel: params.skillLabel,
-        skillValue: params.skillValue,
-        modifier: params.modifier,
-        total: params.total,
-        rolls,
-        result,
-        diceCount,
-      },
-    })
-    setAttrThrowTarget(null)
-  }, [pushContextMessage, heroId, hero, attrThrowTarget])
+    setThrowDialog(null)
+  }, [pushContextMessage, heroId, hero])
 
   const orderedCategories = order
     .map((key) => SKILL_CATEGORIES.find((c) => c.key === key)!)
@@ -170,7 +147,7 @@ export default function MechanicsTab() {
               group={group}
               values={hero.attributes}
               onChange={isEditable ? handleAttrChange : undefined}
-              onAttributeClick={(key, label, value) => setAttrThrowTarget({ key, label, value })}
+              onAttributeClick={(key) => setThrowDialog({ attributeKey: key })}
               readOnly={!isEditable}
             />
           ))}
@@ -242,7 +219,7 @@ export default function MechanicsTab() {
                 category={cat}
                 values={hero.skills}
                 onChange={isEditable ? handleSkillChange : undefined}
-                onSkillClick={(key, label, value) => setThrowTarget({ key, label, value })}
+                onSkillClick={(key) => setThrowDialog({ skillKey: key })}
                 readOnly={!isEditable}
                 search={skillSearch}
               />
@@ -251,22 +228,13 @@ export default function MechanicsTab() {
         </div>
       </section>
 
-      <SkillThrowDialog
-        open={throwTarget !== null}
-        skillLabel={throwTarget?.label ?? ''}
-        skillValue={throwTarget?.value ?? 0}
-        attributes={hero.attributes}
-        onClose={() => setThrowTarget(null)}
-        onThrow={handleSkillThrow}
-      />
-
-      <AttributeThrowDialog
-        open={attrThrowTarget !== null}
-        attributeLabel={attrThrowTarget?.label ?? ''}
-        attributeValue={attrThrowTarget?.value ?? 0}
+      <ThrowDialog
+        open={throwDialog !== null}
+        initial={throwDialog}
         skills={hero.skills}
-        onClose={() => setAttrThrowTarget(null)}
-        onThrow={handleAttributeThrow}
+        attributes={hero.attributes}
+        onClose={() => setThrowDialog(null)}
+        onThrow={handleThrow}
       />
     </div>
   )
