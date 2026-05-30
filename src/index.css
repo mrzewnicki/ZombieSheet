@@ -89,6 +89,10 @@
   }
   .prose-hero hr { @apply border-border my-3; }
   .prose-hero a { @apply text-blood-light underline underline-offset-2 hover:text-blood; }
+  .prose-hero table { @apply w-full text-sm border-collapse my-2; }
+  .prose-hero th { @apply px-3 py-1.5 text-left font-heading text-xs text-blood-light uppercase tracking-wider border border-border bg-elevated; }
+  .prose-hero td { @apply px-3 py-1.5 border border-border text-ink-muted; }
+  .prose-hero tr:nth-child(even) td { @apply bg-elevated/50; }
 
   /* Tab content fade-in */
   .tab-enter {

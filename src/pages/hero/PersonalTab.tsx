@@ -7,7 +7,7 @@ import { useHeroField } from '@/hooks/useHeroField'
 import { useHeroOutletContext } from '@/hooks/useHeroOutletContext'
 import { heroFullName } from '@/types'
 import Input from '@/components/ui/Input'
-import Textarea from '@/components/ui/Textarea'
+import RichTextEditor from '@/components/ui/RichTextEditor'
 import Button from '@/components/ui/Button'
 
 const SaveIcon = () => (
@@ -19,6 +19,8 @@ import Spinner from '@/components/ui/Spinner'
 import ImageCropModal from '@/components/ui/ImageCropModal'
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
+import rehypeSanitize from 'rehype-sanitize'
+import remarkGfm from 'remark-gfm'
 
 export default function PersonalTab() {
   const { hero, gameId, heroId, canEdit } = useHeroOutletContext()
@@ -224,11 +226,11 @@ export default function PersonalTab() {
 
         {editDesc ? (
           <div className="space-y-3">
-            <Textarea
+            <RichTextEditor
               placeholder={t('hero.personal.descriptionPlaceholder')}
               rows={6}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={setDescription}
               autoFocus
             />
             <div className="flex gap-2">
@@ -240,7 +242,7 @@ export default function PersonalTab() {
           <div className="bg-surface border border-border rounded-lg px-4 py-3 min-h-[80px]">
             {hero.description ? (
               <div className="prose-hero">
-                <ReactMarkdown rehypePlugins={[rehypeRaw]}>{hero.description}</ReactMarkdown>
+                <ReactMarkdown rehypePlugins={[rehypeRaw, rehypeSanitize]} remarkPlugins={[remarkGfm]}>{hero.description}</ReactMarkdown>
               </div>
             ) : (
               <p className="text-ink-faint text-sm italic">—</p>

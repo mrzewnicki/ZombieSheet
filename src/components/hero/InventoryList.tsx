@@ -7,10 +7,12 @@ import { db } from '@/config/firebase'
 import type { InventoryItem } from '@/types'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import Textarea from '@/components/ui/Textarea'
+import RichTextEditor from '@/components/ui/RichTextEditor'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
+import rehypeSanitize from 'rehype-sanitize'
+import remarkGfm from 'remark-gfm'
 
 interface Props {
   gameId: string
@@ -83,7 +85,7 @@ export default function InventoryList({ gameId, heroId, items, readOnly = false 
               </div>
               {item.description && (
                 <div className="prose-hero mt-1 text-xs [&_p]:mb-0 [&_p]:leading-snug text-ink-faint">
-                  <ReactMarkdown rehypePlugins={[rehypeRaw]}>{item.description}</ReactMarkdown>
+                  <ReactMarkdown rehypePlugins={[rehypeRaw, rehypeSanitize]} remarkPlugins={[remarkGfm]}>{item.description}</ReactMarkdown>
                 </div>
               )}
             </div>
@@ -131,12 +133,11 @@ export default function InventoryList({ gameId, heroId, items, readOnly = false 
                 />
               </div>
             </div>
-            <Textarea
-              label={t('inventory.description')}
+            <RichTextEditor
               placeholder={t('inventory.descriptionPlaceholder')}
               rows={2}
               value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              onChange={(v) => setForm((f) => ({ ...f, description: v }))}
             />
             <div className="flex gap-2 justify-end">
               <Button variant="ghost" onClick={() => { setShowForm(false); setForm(EMPTY_FORM) }}>
@@ -201,11 +202,10 @@ function EditableRow({
           />
         </div>
       </div>
-      <Textarea
-        label={t('inventory.description')}
+      <RichTextEditor
         rows={2}
         value={draft.description}
-        onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
+        onChange={(v) => setDraft((d) => ({ ...d, description: v }))}
       />
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onClick={onCancel}>{t('common.cancel')}</Button>
