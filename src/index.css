@@ -51,7 +51,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background-image: url('./assets/cracked-texture.jpg');
+    background-image: var(--cracked-texture-url, none);
     background-size: cover;
     background-position: center;
     background-attachment: fixed;

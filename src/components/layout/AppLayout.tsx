@@ -1,5 +1,5 @@
-import { ReactNode, useContext } from 'react'
-import logoUrl from '/logo.png'
+import React, { ReactNode, useContext } from 'react'
+import crackedTextureUrl from '@/assets/cracked-texture.jpg'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/contexts/AuthContext'
@@ -16,6 +16,7 @@ export default function AppLayout({ children }: Props) {
   const navigate = useNavigate()
   const ctx = useContext(LayoutContext)
   const { backTo, backLabel, title, actions } = ctx?.header ?? {}
+  const logoUrl = `${import.meta.env.BASE_URL}logo.png`
 
   async function handleSignOut() {
     await signOut()
@@ -23,7 +24,10 @@ export default function AppLayout({ children }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-dark bg-cracked text-ink font-body">
+    <div
+      className="min-h-screen bg-dark bg-cracked text-ink font-body"
+      style={{ '--cracked-texture-url': `url(${crackedTextureUrl})` } as React.CSSProperties}
+    >
       <header className="border-b border-border bg-void sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-4">
           <Link to="/dashboard" className="flex items-center gap-1 group/logo">
