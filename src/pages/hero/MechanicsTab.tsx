@@ -87,7 +87,7 @@ export default function MechanicsTab() {
             className={`flex items-center gap-2 text-xs font-mono px-3 py-1.5 rounded border transition-colors ${
               editing
                 ? 'border-blood/50 text-blood bg-blood/10 hover:bg-blood/20'
-                : 'border-border text-ink-faint hover:text-ink hover:border-border-light'
+                : 'border-blood/40 text-blood hover:bg-blood/10 hover:border-blood/70'
             }`}
           >
             <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
