@@ -68,7 +68,7 @@ export default function GameLobby() {
   }, [gameId])
 
   function getInviteUrl() {
-    return `${window.location.origin}/game/${gameId}/invite/${game?.inviteToken}`
+    return `${window.location.origin}${import.meta.env.BASE_URL}game/${gameId}/invite/${game?.inviteToken}`
   }
 
   async function copyLink() {
