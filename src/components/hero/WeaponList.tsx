@@ -268,12 +268,14 @@ export default function WeaponList({ gameId, heroId, items, readOnly = false }: 
             saving={saving}
           />
         ) : (
-          <button
-            onClick={() => setShowForm(true)}
-            className="w-full py-2 border border-dashed border-border rounded-lg text-ink-faint hover:text-ink hover:border-blood/50 text-sm transition-colors"
-          >
-            + {t('inventory.weapons.addItem')}
-          </button>
+          <div className="flex justify-center">
+            <button
+              onClick={() => setShowForm(true)}
+              className="w-fit px-4 py-2 border border-dashed border-border rounded-lg text-ink-faint hover:text-ink hover:border-blood/50 text-sm transition-colors"
+            >
+              + {t('inventory.weapons.addItem')}
+            </button>
+          </div>
         )
       )}
 
