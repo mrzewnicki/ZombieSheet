@@ -34,11 +34,16 @@ export default function SkillCategory({ category, values, onChange, readOnly = f
 
   return (
     <div className={`bg-surface border border-border rounded-lg transition-opacity duration-150 ${!hasMatch ? 'opacity-30' : ''}`}>
-      <div className="w-full flex items-center justify-between px-4 py-3 bg-elevated">
+      <div className="w-full flex items-center justify-between px-4 py-3 bg-elevated cursor-grab active:cursor-grabbing select-none">
         <span className="font-heading text-sm text-ink tracking-wide">
           {t(category.labelKey)}
         </span>
-        <span className="font-mono text-xs text-ink-faint">{total > 0 ? `Σ ${total}` : ''}</span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs text-ink-faint">{total > 0 ? `Σ ${total}` : ''}</span>
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor" className="text-ink-faint opacity-40">
+            <path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+          </svg>
+        </div>
       </div>
 
       <div className="divide-y divide-border">

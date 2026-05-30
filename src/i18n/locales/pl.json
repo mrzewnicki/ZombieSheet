@@ -149,6 +149,7 @@
   "skills": {
     "title": "Umiejętności",
     "search": "Szukaj umiejętności…",
+    "resetOrder": "Resetuj kolejność umiejętności",
     "categories": {
       "eksploracja": "Eksploracja",
       "walka": "Walka",
