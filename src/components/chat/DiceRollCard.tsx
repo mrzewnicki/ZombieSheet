@@ -51,38 +51,47 @@ function GroupedRollList({ rolls }: { rolls: number[] }) {
   )
 }
 
-function PoolFormula({
+function RollPoolLine({
+  attributeKey,
   attributeLabel,
   attributeValue,
+  skillKey,
   skillLabel,
   skillValue,
   modifier,
+  poolTotal,
 }: {
+  attributeKey?: string
   attributeLabel?: string
   attributeValue?: number
+  skillKey?: string
   skillLabel?: string
   skillValue?: number
   modifier?: number
+  poolTotal?: number
 }) {
   const { t } = useTranslation()
-  const parts: string[] = []
+  const mod = modifier ?? 0
+  const terms: string[] = []
 
-  if (attributeLabel) {
-    parts.push(`${attributeLabel} ${attributeValue ?? 0}`)
+  if (attributeKey || attributeLabel) {
+    terms.push(`${attributeLabel || t('mechanics.attributeValue')} ${attributeValue ?? 0}`)
   }
-  if (skillLabel && skillLabel !== attributeLabel) {
-    parts.push(`${skillLabel} ${skillValue ?? 0}`)
+  if (skillKey || skillLabel) {
+    terms.push(`${skillLabel || t('mechanics.skillValue')} ${skillValue ?? 0}`)
   }
-  if (modifier && modifier !== 0) {
-    const modStr = modifier > 0 ? `+${modifier}` : String(modifier)
-    parts.push(`${t('mechanics.modifier')} ${modStr}`)
-  }
+  const modStr = mod > 0 ? `+${mod}` : String(mod)
+  terms.push(`${t('mechanics.modifier')} ${modStr}`)
 
-  if (parts.length === 0) return null
+  if (terms.length === 0 || poolTotal == null) return null
 
   return (
-    <p className="text-[10px] font-mono text-ink-faint/80 leading-snug">
-      {parts.join(' + ')}
+    <p className="mt-1.5 text-[11px] font-mono text-ink-muted leading-snug">
+      {terms.join(' + ')}
+      <span className="text-ink-faint">
+        {' '}= {poolTotal}{' '}
+        <span className="text-ink-faint/70">({t('mechanics.diceCount', { count: poolTotal })})</span>
+      </span>
     </p>
   )
 }
@@ -97,19 +106,16 @@ interface Props {
 export default function DiceRollCard({ data, heroName, canReroll, onReroll }: Props) {
   const { t } = useTranslation()
   const label = data.label as string
+  const skillKey = data.skillKey as string | undefined
   const skillLabel = data.skillLabel as string | undefined
   const skillValue = data.skillValue as number | undefined
+  const attributeKey = data.attributeKey as string | undefined
   const attributeLabel = data.attributeLabel as string | undefined
   const attributeValue = data.attributeValue as number | undefined
   const modifier = data.modifier as number | undefined
+  const poolTotal = data.total as number | undefined
   const storedResult = data.result as number | undefined
   const rolls = (data.rolls as number[] | undefined) ?? (storedResult != null ? [storedResult] : [])
-
-  const hasBothStats = Boolean(
-    attributeLabel && skillLabel && attributeLabel !== skillLabel,
-  )
-  const hasModifier = Boolean(modifier && modifier !== 0)
-  const showFormula = hasBothStats || hasModifier
 
   return (
     <div className="group/dice relative mt-1 w-full max-w-full rounded-lg border border-border border-l-2 border-l-blood/40 bg-elevated px-3 py-2.5">
@@ -136,23 +142,23 @@ export default function DiceRollCard({ data, heroName, canReroll, onReroll }: Pr
         <span className="shrink-0 text-[10px] font-mono text-ink-faint truncate max-w-[45%]">{heroName}</span>
       </div>
 
+      <RollPoolLine
+        attributeKey={attributeKey}
+        attributeLabel={attributeLabel}
+        attributeValue={attributeValue}
+        skillKey={skillKey}
+        skillLabel={skillLabel}
+        skillValue={skillValue}
+        modifier={modifier}
+        poolTotal={poolTotal}
+      />
+
       {rolls.length === 0 ? (
         <p className="mt-2 font-mono text-sm text-ink-faint">—</p>
       ) : (
         <GroupedRollList rolls={rolls} />
       )}
 
-      {showFormula && (
-        <div className="mt-2 pt-2 border-t border-border/50">
-          <PoolFormula
-            attributeLabel={attributeLabel}
-            attributeValue={attributeValue}
-            skillLabel={skillLabel}
-            skillValue={skillValue}
-            modifier={modifier}
-          />
-        </div>
-      )}
     </div>
   )
 }
