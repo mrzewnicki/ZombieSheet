@@ -110,7 +110,20 @@
   },
   "mechanics": {
     "unlockEditing": "Odblokuj edycję",
-    "lockEditing": "Zablokuj edycję"
+    "lockEditing": "Zablokuj edycję",
+    "chooseAttribute": "Cecha",
+    "chooseSkill": "Umiejętność",
+    "skillValue": "Umiejętność",
+    "attributeValue": "Cecha",
+    "none": "—",
+    "modifier": "Modyfikator",
+    "total": "Suma",
+    "diceCount": "{{count}} kości",
+    "throw": "Rzuć",
+    "rollTitle": "Rzut",
+    "decrease": "Zmniejsz",
+    "increase": "Zwiększ",
+    "noResults": "Brak wyników"
   },
   "attributes": {
     "title": "Cechy",
@@ -289,6 +302,21 @@
     "4-5": "Porażka",
     "6-9": "Sukces",
     "10": "Krytyczny sukces"
+  },
+  "chat": {
+    "title": "Czat",
+    "placeholder": "Wpisz wiadomość…",
+    "send": "Wyślij",
+    "gmOnly": "Tylko MG",
+    "gmOnlyHint": "Wiadomość widoczna tylko dla Mistrza Gry",
+    "emoji": "Emoji",
+    "searchEmoji": "Szukaj emoji…",
+    "command": "Komenda",
+    "empty": "Brak wiadomości. Napisz coś!",
+    "collapse": "Zwiń czat",
+    "expand": "Rozwiń czat",
+    "rollDice": "Rzuć kością i wyślij do czatu",
+    "showToEveryone": "Pokaż wszystkim"
   },
   "errors": {
     "notFound": "Nie znaleziono",

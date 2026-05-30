@@ -13,14 +13,18 @@ export interface HeaderState {
 interface LayoutContextValue {
   header: HeaderState
   setHeader: (h: HeaderState) => void
+  /** When true, the main content container expands beyond the default max-w-5xl constraint. */
+  fullWidth: boolean
+  setFullWidth: (v: boolean) => void
 }
 
 export const LayoutContext = createContext<LayoutContextValue | null>(null)
 
 export function LayoutProvider({ children }: { children: ReactNode }) {
   const [header, setHeader] = useState<HeaderState>({})
+  const [fullWidth, setFullWidth] = useState(false)
   return (
-    <LayoutContext.Provider value={{ header, setHeader }}>
+    <LayoutContext.Provider value={{ header, setHeader, fullWidth, setFullWidth }}>
       {children}
     </LayoutContext.Provider>
   )

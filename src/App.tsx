@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
 import AppShell from '@/components/layout/AppShell'
+import GameShell from '@/components/layout/GameShell'
 import ProtectedRoute from '@/components/layout/ProtectedRoute'
 import SignIn from '@/pages/SignIn'
 import Dashboard from '@/pages/Dashboard'
@@ -30,16 +31,20 @@ export default function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/game/new" element={<CreateGame />} />
-              <Route path="/game/:gameId" element={<GameLobby />} />
-              <Route path="/game/:gameId/hero/new" element={<CreateHero />} />
-              <Route path="/game/:gameId/hero/:heroId" element={<HeroSheet />}>
-                <Route index element={<Navigate to="personal" replace />} />
-                <Route path="personal"  element={<PersonalTab />} />
-                <Route path="mechanics" element={<MechanicsTab />} />
-                <Route path="inventory" element={<InventoryTab />} />
-                <Route path="images"    element={<ImagesTab />} />
-                <Route path="history"   element={<HistoryTab />} />
-                <Route path="settings" element={<SettingsTab />} />
+
+              {/* Game-scoped routes — GameShell provides chat sidebar when feature is enabled */}
+              <Route path="/game/:gameId" element={<GameShell />}>
+                <Route index element={<GameLobby />} />
+                <Route path="hero/new" element={<CreateHero />} />
+                <Route path="hero/:heroId" element={<HeroSheet />}>
+                  <Route index element={<Navigate to="personal" replace />} />
+                  <Route path="personal"  element={<PersonalTab />} />
+                  <Route path="mechanics" element={<MechanicsTab />} />
+                  <Route path="inventory" element={<InventoryTab />} />
+                  <Route path="images"    element={<ImagesTab />} />
+                  <Route path="history"   element={<HistoryTab />} />
+                  <Route path="settings"  element={<SettingsTab />} />
+                </Route>
               </Route>
             </Route>
           </Route>

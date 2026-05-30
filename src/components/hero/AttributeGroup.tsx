@@ -5,11 +5,11 @@ interface Props {
   group: AttributeGroupDef
   values: Record<string, number>
   onChange?: (key: string, value: number) => void
+  onAttributeClick?: (key: string, label: string, value: number) => void
   readOnly?: boolean
 }
 
-export default function AttributeGroup({ group, values, onChange, readOnly = false }: Props) {
-  const { t } = useTranslation()
+export default function AttributeGroup({ group, values, onChange, onAttributeClick, readOnly = false }: Props) {  const { t } = useTranslation()
 
   return (
     <div className="bg-surface border border-border rounded-lg">
@@ -28,8 +28,18 @@ export default function AttributeGroup({ group, values, onChange, readOnly = fal
           const tooltip = t(`attributes.tooltips.${attr.key}`, { defaultValue: '' })
           return (
             <div key={attr.key} className="flex items-center justify-between px-4 py-3">
-              <div className="relative group/attr">
-                <span className="text-sm text-ink-muted cursor-default">{t(attr.labelKey)}</span>
+              <div className="relative group/attr flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onAttributeClick?.(attr.key, t(attr.labelKey), value)}
+                  className={`text-sm text-left transition-colors ${
+                    onAttributeClick
+                      ? 'text-ink-muted hover:text-ink cursor-pointer'
+                      : 'text-ink-muted cursor-default'
+                  }`}
+                >
+                  {t(attr.labelKey)}
+                </button>
                 {tooltip && (
                   <div className="
                     absolute left-0 bottom-full z-50 pb-2
@@ -53,7 +63,6 @@ export default function AttributeGroup({ group, values, onChange, readOnly = fal
                   </div>
                 )}
               </div>
-
               {readOnly ? (
                 <span className="font-mono text-lg text-ink w-10 text-right">{value}</span>
               ) : (

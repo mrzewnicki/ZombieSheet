@@ -1,10 +1,15 @@
 import { useTranslation } from 'react-i18next'
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { ATTRIBUTE_GROUPS, SKILL_CATEGORIES } from '@/config/rpg-system'
 import { useHeroField } from '@/hooks/useHeroField'
 import { useHeroOutletContext } from '@/hooks/useHeroOutletContext'
+import { heroFullName } from '@/types'
+import { useChatContext } from '@/contexts/ChatContext'
 import AttributeGroup from '@/components/hero/AttributeGroup'
 import SkillCategory from '@/components/hero/SkillCategory'
+import SkillThrowDialog, { type SkillThrowParams } from '@/components/hero/SkillThrowDialog'
+import AttributeThrowDialog, { type AttributeThrowParams } from '@/components/hero/AttributeThrowDialog'
+import { rollDicePool } from '@/utils/diceRoll'
 
 const DEFAULT_ORDER = SKILL_CATEGORIES.map((c) => c.key)
 
@@ -34,8 +39,59 @@ export default function MechanicsTab() {
   const [order, setOrder] = useState<string[]>(() => loadOrder(heroId))
   const dragIdx = useRef<number | null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
+  const [throwTarget, setThrowTarget] = useState<{ key: string; label: string; value: number } | null>(null)
+  const [attrThrowTarget, setAttrThrowTarget] = useState<{ key: string; label: string; value: number } | null>(null)
 
   const isEditable = canEdit && editing
+  const { pushContextMessage } = useChatContext()
+
+  const handleSkillThrow = useCallback((params: SkillThrowParams) => {
+    if (!throwTarget) return
+    const { rolls, result, diceCount } = rollDicePool(params.total)
+    void pushContextMessage({
+      type: 'dice_roll',
+      heroId,
+      heroName: heroFullName(hero),
+      data: {
+        key: throwTarget.key,
+        label: throwTarget.label,
+        skillValue: throwTarget.value,
+        attributeKey: params.attributeKey,
+        attributeLabel: params.attributeLabel,
+        attributeValue: params.attributeValue,
+        modifier: params.modifier,
+        total: params.total,
+        rolls,
+        result,
+        diceCount,
+      },
+    })
+    setThrowTarget(null)
+  }, [pushContextMessage, heroId, hero, throwTarget])
+
+  const handleAttributeThrow = useCallback((params: AttributeThrowParams) => {
+    if (!attrThrowTarget) return
+    const { rolls, result, diceCount } = rollDicePool(params.total)
+    void pushContextMessage({
+      type: 'dice_roll',
+      heroId,
+      heroName: heroFullName(hero),
+      data: {
+        key: attrThrowTarget.key,
+        label: attrThrowTarget.label,
+        attributeValue: attrThrowTarget.value,
+        skillKey: params.skillKey,
+        skillLabel: params.skillLabel,
+        skillValue: params.skillValue,
+        modifier: params.modifier,
+        total: params.total,
+        rolls,
+        result,
+        diceCount,
+      },
+    })
+    setAttrThrowTarget(null)
+  }, [pushContextMessage, heroId, hero, attrThrowTarget])
 
   const orderedCategories = order
     .map((key) => SKILL_CATEGORIES.find((c) => c.key === key)!)
@@ -114,6 +170,7 @@ export default function MechanicsTab() {
               group={group}
               values={hero.attributes}
               onChange={isEditable ? handleAttrChange : undefined}
+              onAttributeClick={(key, label, value) => setAttrThrowTarget({ key, label, value })}
               readOnly={!isEditable}
             />
           ))}
@@ -185,6 +242,7 @@ export default function MechanicsTab() {
                 category={cat}
                 values={hero.skills}
                 onChange={isEditable ? handleSkillChange : undefined}
+                onSkillClick={(key, label, value) => setThrowTarget({ key, label, value })}
                 readOnly={!isEditable}
                 search={skillSearch}
               />
@@ -192,6 +250,24 @@ export default function MechanicsTab() {
           ))}
         </div>
       </section>
+
+      <SkillThrowDialog
+        open={throwTarget !== null}
+        skillLabel={throwTarget?.label ?? ''}
+        skillValue={throwTarget?.value ?? 0}
+        attributes={hero.attributes}
+        onClose={() => setThrowTarget(null)}
+        onThrow={handleSkillThrow}
+      />
+
+      <AttributeThrowDialog
+        open={attrThrowTarget !== null}
+        attributeLabel={attrThrowTarget?.label ?? ''}
+        attributeValue={attrThrowTarget?.value ?? 0}
+        skills={hero.skills}
+        onClose={() => setAttrThrowTarget(null)}
+        onThrow={handleAttributeThrow}
+      />
     </div>
   )
 }

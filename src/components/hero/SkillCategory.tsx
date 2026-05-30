@@ -5,10 +5,10 @@ interface Props {
   category: SkillCategoryDef
   values: Record<string, number>
   onChange?: (key: string, value: number) => void
+  onSkillClick?: (key: string, label: string, value: number) => void
   readOnly?: boolean
   search?: string
 }
-
 function Highlight({ text, query }: { text: string; query: string }) {
   if (!query) return <>{text}</>
   const idx = text.toLowerCase().indexOf(query.toLowerCase())
@@ -22,15 +22,13 @@ function Highlight({ text, query }: { text: string; query: string }) {
   )
 }
 
-export default function SkillCategory({ category, values, onChange, readOnly = false, search = '' }: Props) {
-  const { t } = useTranslation()
+export default function SkillCategory({ category, values, onChange, onSkillClick, readOnly = false, search = '' }: Props) {  const { t } = useTranslation()
 
   const visibleSkills = category.skills.filter((skill) =>
     !search || t(skill.labelKey).toLowerCase().includes(search.toLowerCase())
   )
 
   const hasMatch = !search || visibleSkills.length > 0
-  const total = category.skills.reduce((sum, s) => sum + (values[s.key] ?? 0), 0)
 
   return (
     <div className={`bg-surface border border-border rounded-lg transition-opacity duration-150 ${!hasMatch ? 'opacity-30' : ''}`}>
@@ -39,7 +37,6 @@ export default function SkillCategory({ category, values, onChange, readOnly = f
           {t(category.labelKey)}
         </span>
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-ink-faint">{total > 0 ? `Σ ${total}` : ''}</span>
           <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor" className="text-ink-faint opacity-40">
             <path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
           </svg>
@@ -53,10 +50,18 @@ export default function SkillCategory({ category, values, onChange, readOnly = f
           const tooltip = t(`skillTooltips.${skill.key}`, { defaultValue: '' })
           return (
             <div key={skill.key} className="flex items-center justify-between px-4 py-2.5">
-              <div className="relative group/skill">
-                <span className="text-sm text-ink-muted cursor-default">
+              <div className="relative group/skill flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onSkillClick?.(skill.key, label, value)}
+                  className={`text-sm text-left transition-colors ${
+                    onSkillClick
+                      ? 'text-ink-muted hover:text-ink cursor-pointer'
+                      : 'text-ink-muted cursor-default'
+                  }`}
+                >
                   <Highlight text={label} query={search} />
-                </span>
+                </button>
                 {tooltip && (
                   <div className="
                     absolute left-0 bottom-full z-50 pb-2
@@ -80,7 +85,6 @@ export default function SkillCategory({ category, values, onChange, readOnly = f
                   </div>
                 )}
               </div>
-
               {readOnly ? (
                 <span className="font-mono text-base text-ink w-8 text-right">{value}</span>
               ) : (

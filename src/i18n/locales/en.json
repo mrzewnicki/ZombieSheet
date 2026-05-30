@@ -110,7 +110,20 @@
   },
   "mechanics": {
     "unlockEditing": "Unlock editing",
-    "lockEditing": "Lock editing"
+    "lockEditing": "Lock editing",
+    "chooseAttribute": "Attribute",
+    "chooseSkill": "Skill",
+    "skillValue": "Skill",
+    "attributeValue": "Attribute",
+    "none": "—",
+    "modifier": "Modifier",
+    "total": "Total",
+    "diceCount": "{{count}} dice",
+    "throw": "Roll",
+    "rollTitle": "Roll",
+    "decrease": "Decrease",
+    "increase": "Increase",
+    "noResults": "No results"
   },
   "attributes": {
     "title": "Attributes",
@@ -289,6 +302,21 @@
     "4-5": "Failure",
     "6-9": "Success",
     "10": "Critical Success"
+  },
+  "chat": {
+    "title": "Chat",
+    "placeholder": "Write message…",
+    "send": "Send",
+    "gmOnly": "GM only",
+    "gmOnlyHint": "Message visible only to the Game Master",
+    "emoji": "Emoji",
+    "searchEmoji": "Search emoji…",
+    "command": "Command",
+    "empty": "No messages yet. Say something!",
+    "collapse": "Collapse chat",
+    "expand": "Expand chat",
+    "rollDice": "Roll dice and send to chat",
+    "showToEveryone": "Show to everyone"
   },
   "errors": {
     "notFound": "Not found",

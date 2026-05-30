@@ -37,6 +37,8 @@ jobs:
           VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_CHAT_ENABLED: ${{ secrets.VITE_CHAT_ENABLED }}
+          VITE_CHAT_INPUT_ENABLED: ${{ secrets.VITE_CHAT_INPUT_ENABLED }}
         run: npm run build
 
       - uses: actions/upload-pages-artifact@v3

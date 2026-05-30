@@ -50,7 +50,11 @@ service cloud.firestore {
 
       // Members
       match /members/{memberId} {
-        allow read: if isMember(gameId) || isGameMaster(gameId);
+        // Any authenticated user can read their own member record by document ID —
+        // this avoids exists()/get() calls that race with auth-token propagation on
+        // initial connection (especially visible under React StrictMode).
+        allow read: if isMember(gameId) || isGameMaster(gameId)
+                    || (isAuthed() && memberId == uid());
         // GM can write any member; a user can write their own join record
         allow write: if isGameMaster(gameId) || (isAuthed() && uid() == memberId);
       }
@@ -89,6 +93,25 @@ service cloud.firestore {
             get(/databases/$(database)/documents/games/$(gameId)/heroes/$(heroId)).data.ownerId == uid();
           allow update, delete: if false;
         }
+      }
+
+      // ── Chat messages ──────────────────────────────────────────────────────
+      match /messages/{messageId} {
+        // GM sees all messages; members only see non-GM-only messages
+        allow read: if isGameMaster(gameId)
+                    || (isMember(gameId) && resource.data.gmOnly == false);
+
+        // Any game member can post a message attributed to themselves
+        allow create: if isMember(gameId)
+                      && request.auth.uid == request.resource.data.authorId;
+
+        // GM can update gmOnly flag (to reveal messages); author cannot re-attribute
+        allow update: if isGameMaster(gameId)
+                      || (isAuthed() && resource.data.authorId == uid()
+                          && request.resource.data.authorId == uid());
+
+        // GM or original author can delete
+        allow delete: if isGameMaster(gameId) || resource.data.authorId == uid();
       }
     }
   }

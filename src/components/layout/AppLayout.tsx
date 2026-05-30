@@ -16,6 +16,7 @@ export default function AppLayout({ children }: Props) {
   const navigate = useNavigate()
   const ctx = useContext(LayoutContext)
   const { backTo, backLabel, title, actions } = ctx?.header ?? {}
+  const fullWidth = ctx?.fullWidth ?? false
   const logoUrl = `${import.meta.env.BASE_URL}logo.png`
 
   async function handleSignOut() {
@@ -77,7 +78,9 @@ export default function AppLayout({ children }: Props) {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-6">
+      <main className={`py-6 transition-all duration-200 ${
+        fullWidth ? 'w-full' : 'max-w-5xl mx-auto px-4'
+      }`}>
         {children}
       </main>
     </div>

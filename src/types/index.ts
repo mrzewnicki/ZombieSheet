@@ -1,5 +1,7 @@
 import { Timestamp } from 'firebase/firestore'
 
+export type { ChatMessage, ContextRef, ContextRefType } from './chat'
+
 export type GameRole = 'gm' | 'player'
 
 export interface UserProfile {
