@@ -29,7 +29,7 @@ export default function AttributeGroup({ group, values, onChange, readOnly = fal
           return (
             <div key={attr.key} className="flex items-center justify-between px-4 py-3">
               <div className="relative group/attr">
-                <span className="text-sm text-ink cursor-default">{t(attr.labelKey)}</span>
+                <span className="text-sm text-ink-muted cursor-default">{t(attr.labelKey)}</span>
                 {tooltip && (
                   <div className="
                     pointer-events-none absolute left-0 bottom-full mb-2 z-50
