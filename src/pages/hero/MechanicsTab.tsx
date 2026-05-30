@@ -11,6 +11,7 @@ export default function MechanicsTab() {
   const { t } = useTranslation()
   const { updateField } = useHeroField(gameId, heroId)
   const [editing, setEditing] = useState(false)
+  const [skillSearch, setSkillSearch] = useState('')
 
   const isEditable = canEdit && editing
 
@@ -28,7 +29,7 @@ export default function MechanicsTab() {
     <div className="space-y-8">
       {/* Edit lock toggle — only for users with edit rights */}
       {canEdit && (
-        <div className="flex justify-end">
+        <div className="flex justify-end -mb-2">
           <button
             onClick={() => setEditing((e) => !e)}
             className={`flex items-center gap-2 text-xs font-mono px-3 py-1.5 rounded border transition-colors ${
@@ -53,7 +54,7 @@ export default function MechanicsTab() {
 
       {/* Attributes */}
       <section>
-        <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-4">
+        <h2 className="font-heading text-base text-blood-light tracking-widest uppercase mb-4">
           {t('attributes.title')}
         </h2>
         <div className="grid sm:grid-cols-3 gap-4">
@@ -71,9 +72,35 @@ export default function MechanicsTab() {
 
       {/* Skills */}
       <section>
-        <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-4">
-          {t('skills.title')}
-        </h2>
+        <div className="flex items-center gap-4 mb-4">
+          <h2 className="font-heading text-base text-blood-light tracking-widest uppercase">
+            {t('skills.title')}
+          </h2>
+          <div className="ml-auto flex items-center gap-1.5 bg-void border border-border rounded px-2.5 py-1 w-44 focus-within:border-blood/60 transition-colors">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" className="text-ink-faint shrink-0">
+              <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z"/>
+            </svg>
+            <input
+              type="text"
+              value={skillSearch}
+              onChange={(e) => setSkillSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Escape') setSkillSearch('') }}
+              placeholder={t('skills.search')}
+              className="bg-transparent text-xs text-ink placeholder-ink-faint focus:outline-none w-full"
+            />
+            {skillSearch && (
+              <button
+                onClick={() => setSkillSearch('')}
+                className="shrink-0 text-blood hover:text-blood-light transition-colors leading-none"
+                title={t('common.clear')}
+              >
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854z"/>
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {SKILL_CATEGORIES.map((cat) => (
             <SkillCategory
@@ -82,6 +109,7 @@ export default function MechanicsTab() {
               values={hero.skills}
               onChange={isEditable ? handleSkillChange : undefined}
               readOnly={!isEditable}
+              search={skillSearch}
             />
           ))}
         </div>

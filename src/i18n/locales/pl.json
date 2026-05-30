@@ -148,6 +148,7 @@
   },
   "skills": {
     "title": "Umiejętności",
+    "search": "Szukaj umiejętności…",
     "categories": {
       "eksploracja": "Eksploracja",
       "walka": "Walka",

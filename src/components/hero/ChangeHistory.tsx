@@ -67,25 +67,23 @@ export default function ChangeHistory({ changes }: Props) {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-px">
       {changes.map((change) => (
         <div
           key={change.id}
-          className="bg-surface border border-border rounded-lg px-4 py-3 flex flex-col gap-1"
+          className="flex items-center gap-3 px-3 py-1.5 rounded hover:bg-surface transition-colors"
         >
-          <div className="flex items-center justify-between gap-4">
-            <span className="text-xs text-blood font-mono uppercase tracking-wider">
-              {change.label}
-            </span>
-            <span className="text-xs text-ink-faint font-mono shrink-0">
-              {formatDate(change.changedAt as Timestamp)}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 text-xs">
+          <span className="text-[11px] text-blood font-mono uppercase tracking-wider w-40 shrink-0 truncate">
+            {change.label}
+          </span>
+          <div className="flex items-center gap-1.5 text-xs flex-1">
             <FormatValue value={change.oldValue} strikethrough />
             <span className="text-ink-faint">→</span>
             <FormatValue value={change.newValue} />
           </div>
+          <span className="text-[11px] text-ink-faint font-mono shrink-0">
+            {formatDate(change.changedAt as Timestamp)}
+          </span>
         </div>
       ))}
     </div>

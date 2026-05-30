@@ -148,6 +148,7 @@
   },
   "skills": {
     "title": "Skills",
+    "search": "Search skills…",
     "categories": {
       "eksploracja": "Exploration",
       "walka": "Combat",
