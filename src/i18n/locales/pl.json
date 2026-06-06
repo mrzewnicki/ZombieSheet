@@ -84,6 +84,7 @@
       "versionTitle": "Wersja karty",
       "currentVersion": "Aktualna wersja:",
       "latestVersion": "Najnowsza wersja systemu:",
+      "migrateBackupHint": "Przed migracją zapisywana jest kopia atrybutów i umiejętności.",
       "dangerZone": "Strefa zagrożenia",
       "deleteHint": "Trwale usuwa tę postać. Tej operacji nie można cofnąć."
     },
@@ -106,7 +107,8 @@
     "versionCurrentTitle": "Wersja karty v{{version}} — aktualna",
     "versionOutdatedTitle": "Wersja karty v{{current}} — najnowsza to v{{latest}}",
     "versionOutdated": "Ta karta (v{{current}}) jest nieaktualna — aktualna wersja systemu to v{{latest}}. Niektóre pola mogą być niekompletne.",
-    "migrateSheet": "Migruj do v{{latest}}"
+    "migrateSheet": "Migruj do v{{latest}}",
+    "migrateConfirm": "Zmigrować kartę z v{{current}} do v{{latest}}? Najpierw zostanie zapisana kopia bieżących atrybutów i umiejętności."
   },
   "mechanics": {
     "unlockEditing": "Odblokuj edycję",
@@ -211,6 +213,7 @@
     "dowodzenie": "Dowodzenie",
     "handel": "Handel",
     "wyczucie": "Wyczucie",
+    "sztuka_przetrwania": "Sztuka Przetrwania",
     "zielarstwo": "Zielarstwo",
     "tresura": "Tresura",
     "hodowla": "Hodowla",

@@ -115,6 +115,14 @@ service cloud.firestore {
             get(/databases/$(database)/documents/games/$(gameId)/heroes/$(heroId)).data.ownerId == uid();
           allow update, delete: if false;
         }
+
+        // Pre-migration sheet backups — immutable once written
+        match /sheetBackups/{backupId} {
+          allow read: if isMember(gameId) || isGameMaster(gameId);
+          allow create: if isGameMaster(gameId) ||
+            get(/databases/$(database)/documents/games/$(gameId)/heroes/$(heroId)).data.ownerId == uid();
+          allow update, delete: if false;
+        }
       }
 
       // Shared gear trait catalog (reusable across all item types in this game).

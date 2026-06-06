@@ -10,6 +10,12 @@ export function gearTraitPolarityClasses(polarity: GearTraitPolarity): string {
     : 'bg-red-950/50 text-red-400/90 border-red-800/40'
 }
 
+export function gearTraitTooltipClasses(polarity: GearTraitPolarity): string {
+  return polarity === 'positive'
+    ? 'bg-emerald-950/95 text-emerald-400/90 border-emerald-800/40'
+    : 'bg-red-950/95 text-red-400/90 border-red-800/40'
+}
+
 export function resolveGearTraits(
   traitIds: string[] | undefined,
   catalog: GearTraitDefinition[],

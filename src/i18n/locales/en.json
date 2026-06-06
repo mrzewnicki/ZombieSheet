@@ -84,6 +84,7 @@
       "versionTitle": "Sheet version",
       "currentVersion": "Current version:",
       "latestVersion": "Latest system version:",
+      "migrateBackupHint": "Migration saves a backup of attributes and skills before applying changes.",
       "dangerZone": "Danger zone",
       "deleteHint": "Permanently delete this character. This action cannot be undone."
     },
@@ -106,7 +107,8 @@
     "versionCurrentTitle": "Sheet version v{{version}} — up to date",
     "versionOutdatedTitle": "Sheet version v{{current}} — latest is v{{latest}}",
     "versionOutdated": "This sheet (v{{current}}) is outdated — current system version is v{{latest}}. Some fields may be missing.",
-    "migrateSheet": "Migrate to v{{latest}}"
+    "migrateSheet": "Migrate to v{{latest}}",
+    "migrateConfirm": "Migrate sheet from v{{current}} to v{{latest}}? A backup of your current attributes and skills will be saved first."
   },
   "mechanics": {
     "unlockEditing": "Unlock editing",
@@ -211,6 +213,7 @@
     "dowodzenie": "Leadership",
     "handel": "Trade",
     "wyczucie": "Read People",
+    "sztuka_przetrwania": "Art of Survival",
     "zielarstwo": "Herbalism",
     "tresura": "Animal Training",
     "hodowla": "Animal Husbandry",

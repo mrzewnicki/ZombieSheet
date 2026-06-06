@@ -1,5 +1,5 @@
 import type { GearTraitPolarity } from '@/types'
-import { gearTraitPolarityClasses } from '@/utils/gearTraits'
+import { gearTraitPolarityClasses, gearTraitTooltipClasses } from '@/utils/gearTraits'
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
@@ -38,7 +38,7 @@ export default function GearTraitChip({ name, polarity, description }: Props) {
           role="tooltip"
         >
           <div
-            className={`max-w-xs min-w-[10rem] px-3 py-2 rounded border shadow-lg shadow-black/40 ${gearTraitPolarityClasses(polarity)}`}
+            className={`max-w-xs min-w-[10rem] px-3 py-2 rounded border shadow-lg shadow-black/40 ${gearTraitTooltipClasses(polarity)}`}
           >
             <p className="text-[10px] font-mono uppercase tracking-wider mb-1.5 opacity-80">
               {name}

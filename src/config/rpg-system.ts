@@ -136,6 +136,7 @@ export const SKILL_CATEGORIES: SkillCategoryDef[] = [
       { key: 'jezdziectwo',        labelKey: 'skills.jezdziectwo',        category: 'natura', docUrl: `${UMIEJETNOSCI}?s=je%C5%BAdzie` },
       { key: 'pulapki',            labelKey: 'skills.pulapki',            category: 'natura', docUrl: `${UMIEJETNOSCI}?s=pu%C5%82apki` },
       { key: 'tropienie',          labelKey: 'skills.tropienie',          category: 'natura', docUrl: `${UMIEJETNOSCI}?s=tropienie` },
+      { key: 'sztuka_przetrwania', labelKey: 'skills.sztuka_przetrwania', category: 'natura', docUrl: `${UMIEJETNOSCI}?s=sztuka+przetrwania` },
     ],
   },
   {
@@ -157,7 +158,7 @@ export const SKILL_CATEGORIES: SkillCategoryDef[] = [
  * or skills). Existing hero documents whose sheetVersion differs will show an
  * upgrade banner in HeroSheet.
  */
-export const SHEET_VERSION = 1
+export const SHEET_VERSION = 2
 
 /** All attribute keys pre-initialised to 0. Used when creating a new hero. */
 export const DEFAULT_ATTRIBUTES: Record<string, number> = Object.fromEntries(

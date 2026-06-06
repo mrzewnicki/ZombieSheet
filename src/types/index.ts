@@ -121,6 +121,16 @@ export interface HeroChange {
   changedAt: Timestamp
 }
 
+/** Snapshot saved before a sheet version migration. Immutable once written. */
+export interface HeroSheetBackup {
+  id: string
+  fromVersion: number
+  toVersion: number
+  attributes: Record<string, number>
+  skills: Record<string, number>
+  createdAt: Timestamp
+}
+
 export interface HeroSheetOutletContext {
   hero: Hero
   gameId: string
