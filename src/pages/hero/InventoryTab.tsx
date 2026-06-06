@@ -6,6 +6,7 @@ import type { InventoryItem, WeaponItem, ArmorItem } from '@/types'
 import { normalizeGearVisual } from '@/utils/gearVisual'
 import { sortGearListItems } from '@/utils/gearListOrder'
 import { useHeroOutletContext } from '@/hooks/useHeroOutletContext'
+import { useGearTraitCatalog } from '@/hooks/useGearTraitCatalog'
 import WeaponList from '@/components/hero/WeaponList'
 import ArmorList from '@/components/hero/ArmorList'
 import InventoryList from '@/components/hero/InventoryList'
@@ -18,6 +19,7 @@ export default function InventoryTab() {
   const [armor, setArmor] = useState<ArmorItem[]>([])
   const [equipment, setEquipment] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState({ weapons: true, armor: true, equipment: true })
+  const { traits: traitCatalog, loading: traitsLoading } = useGearTraitCatalog(gameId)
 
   useEffect(() => {
     const unsubWeapons = onSnapshot(
@@ -55,7 +57,7 @@ export default function InventoryTab() {
     return unsubEquipment
   }, [gameId, heroId])
 
-  const isLoading = loading.weapons || loading.armor || loading.equipment
+  const isLoading = loading.weapons || loading.armor || loading.equipment || traitsLoading
 
   if (isLoading) return <div className="flex justify-center py-8"><Spinner /></div>
 
@@ -69,6 +71,7 @@ export default function InventoryTab() {
           gameId={gameId}
           heroId={heroId}
           items={weapons}
+          traitCatalog={traitCatalog}
           readOnly={!canEdit}
         />
       </section>
@@ -81,6 +84,7 @@ export default function InventoryTab() {
           gameId={gameId}
           heroId={heroId}
           items={armor}
+          traitCatalog={traitCatalog}
           readOnly={!canEdit}
         />
       </section>
@@ -93,6 +97,7 @@ export default function InventoryTab() {
           gameId={gameId}
           heroId={heroId}
           items={equipment}
+          traitCatalog={traitCatalog}
           readOnly={!canEdit}
         />
       </section>

@@ -4,7 +4,7 @@ import {
   collection, addDoc, deleteDoc, updateDoc, doc,
 } from 'firebase/firestore'
 import { db } from '@/config/firebase'
-import type { InventoryItem } from '@/types'
+import type { InventoryItem, GearTraitDefinition } from '@/types'
 import { EMPTY_GEAR_VISUAL, gearVisualPayload } from '@/utils/gearVisual'
 import { nextGearSortOrder } from '@/utils/gearListOrder'
 import Button from '@/components/ui/Button'
@@ -16,15 +16,18 @@ import GearSortableList from '@/components/hero/GearSortableList'
 import GearStatChip from '@/components/hero/GearStatChip'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { persistGearListOrder } from '@/utils/persistGearListOrder'
+import GearTraitsEditor from '@/components/hero/GearTraitsEditor'
+import GearTraitChips from '@/components/hero/GearTraitChips'
 
 interface Props {
   gameId: string
   heroId: string
   items: InventoryItem[]
+  traitCatalog: GearTraitDefinition[]
   readOnly?: boolean
 }
 
-const EMPTY_FORM = { name: '', qty: 1, description: '', ...EMPTY_GEAR_VISUAL }
+const EMPTY_FORM: EquipmentFormData = { name: '', qty: 1, description: '', traitIds: [], ...EMPTY_GEAR_VISUAL }
 
 type EquipmentFormData = Omit<InventoryItem, 'id'>
 
@@ -36,6 +39,9 @@ function EquipmentForm({
   submitLabel,
   saving = false,
   mode,
+  gameId,
+  heroId,
+  traitCatalog,
 }: {
   data: EquipmentFormData
   onChange: (data: EquipmentFormData) => void
@@ -44,6 +50,9 @@ function EquipmentForm({
   submitLabel: string
   saving?: boolean
   mode: 'add' | 'edit'
+  gameId: string
+  heroId: string
+  traitCatalog: GearTraitDefinition[]
 }) {
   const { t } = useTranslation()
 
@@ -76,6 +85,14 @@ function EquipmentForm({
                 onChange={(e) => onChange({ ...data, qty: Math.max(1, Number(e.target.value) || 1) })}
               />
             </div>
+
+            <GearTraitsEditor
+              gameId={gameId}
+              heroId={heroId}
+              traitIds={data.traitIds ?? []}
+              catalog={traitCatalog}
+              onChange={(traitIds) => onChange({ ...data, traitIds })}
+            />
           </div>
         </div>
 
@@ -112,7 +129,7 @@ function EquipmentForm({
   )
 }
 
-export default function InventoryList({ gameId, heroId, items, readOnly = false }: Props) {
+export default function InventoryList({ gameId, heroId, items, traitCatalog, readOnly = false }: Props) {
   const { t } = useTranslation()
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
@@ -129,6 +146,7 @@ export default function InventoryList({ gameId, heroId, items, readOnly = false 
       await addDoc(inventoryRef, {
         ...form,
         qty: Number(form.qty) || 1,
+        traitIds: form.traitIds ?? [],
         ...gearVisualPayload(form),
         sortOrder: nextGearSortOrder(items),
       })
@@ -144,6 +162,7 @@ export default function InventoryList({ gameId, heroId, items, readOnly = false 
       name: item.name,
       qty: item.qty,
       description: item.description,
+      traitIds: item.traitIds ?? [],
       ...gearVisualPayload(item),
     })
     setEditingId(null)
@@ -172,6 +191,9 @@ export default function InventoryList({ gameId, heroId, items, readOnly = false 
         renderEditRow={(item) => (
           <EditableRow
             item={item}
+            gameId={gameId}
+            heroId={heroId}
+            traitCatalog={traitCatalog}
             onSave={handleUpdate}
             onCancel={() => setEditingId(null)}
           />
@@ -187,7 +209,12 @@ export default function InventoryList({ gameId, heroId, items, readOnly = false 
             onDelete={() => setDeleteTarget(item)}
             editLabel={t('common.edit')}
             deleteLabel={t('common.delete')}
-            chips={<GearStatChip>×{item.qty}</GearStatChip>}
+            chips={(
+              <>
+                <GearStatChip>×{item.qty}</GearStatChip>
+                <GearTraitChips traitIds={item.traitIds} catalog={traitCatalog} />
+              </>
+            )}
           />
         )}
       />
@@ -203,6 +230,9 @@ export default function InventoryList({ gameId, heroId, items, readOnly = false 
             onCancel={() => { setShowForm(false); setForm(EMPTY_FORM) }}
             submitLabel={t('common.add')}
             saving={saving}
+            gameId={gameId}
+            heroId={heroId}
+            traitCatalog={traitCatalog}
           />
         ) : (
           <div className="flex justify-center">
@@ -230,10 +260,16 @@ export default function InventoryList({ gameId, heroId, items, readOnly = false 
 
 function EditableRow({
   item,
+  gameId,
+  heroId,
+  traitCatalog,
   onSave,
   onCancel,
 }: {
   item: InventoryItem
+  gameId: string
+  heroId: string
+  traitCatalog: GearTraitDefinition[]
   onSave: (item: InventoryItem) => void
   onCancel: () => void
 }) {
@@ -248,6 +284,9 @@ function EditableRow({
       onSubmit={() => onSave(draft)}
       onCancel={onCancel}
       submitLabel={t('common.save')}
+      gameId={gameId}
+      heroId={heroId}
+      traitCatalog={traitCatalog}
     />
   )
 }

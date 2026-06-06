@@ -294,6 +294,25 @@
     "deleteItem": "Delete item",
     "deleteConfirm": "Delete \"{{name}}\"?",
     "data": "Data",
+    "traits": {
+      "title": "Special traits",
+      "add": "Add trait",
+      "empty": "No special traits.",
+      "nameLabel": "Trait name",
+      "namePlaceholder": "Search or type a new trait…",
+      "polarityLabel": "Effect",
+      "polarity": {
+        "positive": "Positive",
+        "negative": "Negative"
+      },
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "What this trait does…",
+      "confirmAdd": "Add trait",
+      "remove": "Remove trait {{name}}",
+      "createHint": "Press Enter to create \"{{name}}\"",
+      "noCatalog": "Type a name to create the first trait",
+      "saveError": "Could not save trait. Check your connection and try again."
+    },
     "list": {
       "armorChip": "Armor {{value}}",
       "dragHandle": "Drag to reorder",

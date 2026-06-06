@@ -294,6 +294,25 @@
     "deleteItem": "Usuń przedmiot",
     "deleteConfirm": "Usunąć \"{{name}}\"?",
     "data": "Dane",
+    "traits": {
+      "title": "Cechy specjalne",
+      "add": "Dodaj cechę",
+      "empty": "Brak cech specjalnych.",
+      "nameLabel": "Nazwa cechy",
+      "namePlaceholder": "Szukaj lub wpisz nową cechę…",
+      "polarityLabel": "Efekt",
+      "polarity": {
+        "positive": "Pozytywny",
+        "negative": "Negatywny"
+      },
+      "descriptionLabel": "Opis",
+      "descriptionPlaceholder": "Co robi ta cecha…",
+      "confirmAdd": "Dodaj cechę",
+      "remove": "Usuń cechę {{name}}",
+      "createHint": "Enter — utwórz \"{{name}}\"",
+      "noCatalog": "Wpisz nazwę, aby utworzyć pierwszą cechę",
+      "saveError": "Nie udało się zapisać cechy. Sprawdź połączenie i spróbuj ponownie."
+    },
     "list": {
       "armorChip": "Pancerz {{value}}",
       "dragHandle": "Przeciągnij, aby zmienić kolejność",

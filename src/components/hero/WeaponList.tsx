@@ -4,7 +4,7 @@ import {
   collection, addDoc, deleteDoc, updateDoc, doc,
 } from 'firebase/firestore'
 import { db } from '@/config/firebase'
-import type { WeaponItem, WeaponType } from '@/types'
+import type { WeaponItem, WeaponType, GearTraitDefinition } from '@/types'
 import { EMPTY_GEAR_VISUAL, gearVisualPayload } from '@/utils/gearVisual'
 import { nextGearSortOrder } from '@/utils/gearListOrder'
 import Button from '@/components/ui/Button'
@@ -16,11 +16,14 @@ import GearSortableList from '@/components/hero/GearSortableList'
 import GearStatChip from '@/components/hero/GearStatChip'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { persistGearListOrder } from '@/utils/persistGearListOrder'
+import GearTraitsEditor from '@/components/hero/GearTraitsEditor'
+import GearTraitChips from '@/components/hero/GearTraitChips'
 
 interface Props {
   gameId: string
   heroId: string
   items: WeaponItem[]
+  traitCatalog: GearTraitDefinition[]
   readOnly?: boolean
 }
 
@@ -32,6 +35,7 @@ const EMPTY_FORM: WeaponFormData = {
   description: '',
   type: 'melee',
   damageExpression: '',
+  traitIds: [],
   ...EMPTY_GEAR_VISUAL,
 }
 
@@ -82,6 +86,9 @@ function WeaponForm({
   onCancel,
   submitLabel,
   saving = false,
+  gameId,
+  heroId,
+  traitCatalog,
 }: {
   data: WeaponFormData
   onChange: (data: WeaponFormData) => void
@@ -89,6 +96,9 @@ function WeaponForm({
   onCancel: () => void
   submitLabel: string
   saving?: boolean
+  gameId: string
+  heroId: string
+  traitCatalog: GearTraitDefinition[]
 }) {
   const { t } = useTranslation()
 
@@ -131,6 +141,15 @@ function WeaponForm({
               onChange={(e) => onChange({ ...data, damageExpression: e.target.value })}
               className="font-mono"
             />
+
+            <GearTraitsEditor
+              gameId={gameId}
+              heroId={heroId}
+              traitIds={data.traitIds ?? []}
+              catalog={traitCatalog}
+              onChange={(traitIds) => onChange({ ...data, traitIds })}
+              className="sm:col-span-3"
+            />
           </div>
         </div>
 
@@ -167,7 +186,7 @@ function WeaponForm({
   )
 }
 
-export default function WeaponList({ gameId, heroId, items, readOnly = false }: Props) {
+export default function WeaponList({ gameId, heroId, items, traitCatalog, readOnly = false }: Props) {
   const { t } = useTranslation()
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
@@ -184,6 +203,7 @@ export default function WeaponList({ gameId, heroId, items, readOnly = false }: 
       await addDoc(weaponsRef, {
         ...form,
         qty: Number(form.qty) || 1,
+        traitIds: form.traitIds ?? [],
         ...gearVisualPayload(form),
         sortOrder: nextGearSortOrder(items),
       })
@@ -201,6 +221,7 @@ export default function WeaponList({ gameId, heroId, items, readOnly = false }: 
       description: item.description,
       type: item.type,
       damageExpression: item.damageExpression,
+      traitIds: item.traitIds ?? [],
       ...gearVisualPayload(item),
     })
     setEditingId(null)
@@ -229,6 +250,9 @@ export default function WeaponList({ gameId, heroId, items, readOnly = false }: 
         renderEditRow={(item) => (
           <EditableRow
             item={item}
+            gameId={gameId}
+            heroId={heroId}
+            traitCatalog={traitCatalog}
             onSave={handleUpdate}
             onCancel={() => setEditingId(null)}
           />
@@ -251,6 +275,7 @@ export default function WeaponList({ gameId, heroId, items, readOnly = false }: 
                 {item.damageExpression && (
                   <GearStatChip accent>{item.damageExpression}</GearStatChip>
                 )}
+                <GearTraitChips traitIds={item.traitIds} catalog={traitCatalog} />
               </>
             )}
           />
@@ -266,6 +291,9 @@ export default function WeaponList({ gameId, heroId, items, readOnly = false }: 
             onCancel={() => { setShowForm(false); setForm(EMPTY_FORM) }}
             submitLabel={t('common.add')}
             saving={saving}
+            gameId={gameId}
+            heroId={heroId}
+            traitCatalog={traitCatalog}
           />
         ) : (
           <div className="flex justify-center">
@@ -293,10 +321,16 @@ export default function WeaponList({ gameId, heroId, items, readOnly = false }: 
 
 function EditableRow({
   item,
+  gameId,
+  heroId,
+  traitCatalog,
   onSave,
   onCancel,
 }: {
   item: WeaponItem
+  gameId: string
+  heroId: string
+  traitCatalog: GearTraitDefinition[]
   onSave: (item: WeaponItem) => void
   onCancel: () => void
 }) {
@@ -310,6 +344,9 @@ function EditableRow({
       onSubmit={() => onSave(draft)}
       onCancel={onCancel}
       submitLabel={t('common.save')}
+      gameId={gameId}
+      heroId={heroId}
+      traitCatalog={traitCatalog}
     />
   )
 }

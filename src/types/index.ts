@@ -69,10 +69,20 @@ export interface InventoryItem extends GearVisualFields {
   name: string
   qty: number
   description: string
+  traitIds?: string[]
   sortOrder?: number
 }
 
 export type WeaponType = 'range' | 'melee'
+
+export type GearTraitPolarity = 'positive' | 'negative'
+
+export interface GearTraitDefinition {
+  id: string
+  name: string
+  polarity: GearTraitPolarity
+  description: string
+}
 
 export interface WeaponItem extends GearVisualFields {
   id: string
@@ -81,6 +91,7 @@ export interface WeaponItem extends GearVisualFields {
   qty: number
   type: WeaponType
   damageExpression: string
+  traitIds?: string[]
   sortOrder?: number
 }
 
@@ -89,6 +100,7 @@ export interface ArmorItem extends GearVisualFields {
   name: string
   description: string
   armorValue: number
+  traitIds?: string[]
   sortOrder?: number
 }
 
