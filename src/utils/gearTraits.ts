@@ -11,6 +11,7 @@ import type {
 export const GEAR_TRAITS_COLLECTION = 'gearTraits'
 
 export const DEFAULT_GEAR_TRAIT_CATEGORY: GearTraitCategory = 'common'
+export const DEFAULT_GEAR_TRAIT_VALUE = 1
 
 /** Categories visible when picking traits for each editor scope. */
 const SCOPE_TRAIT_CATEGORIES: Record<GearTraitScopeCategory, GearTraitCategory[]> = {
@@ -65,9 +66,14 @@ export function gearTraitTooltipClasses(polarity: GearTraitPolarity): string {
 }
 
 export function normalizeTraitValue(value: unknown): number | undefined {
+  if (value === '' || value == null) return undefined
   const n = typeof value === 'number' ? value : Number(value)
   if (Number.isInteger(n) && n >= 1 && n <= 10) return n
   return undefined
+}
+
+export function resolveTraitValueFromInput(value: unknown): number {
+  return normalizeTraitValue(value) ?? DEFAULT_GEAR_TRAIT_VALUE
 }
 
 export function pruneTraitValues(
@@ -78,7 +84,7 @@ export function pruneTraitValues(
   const next: GearTraitValues = {}
   for (const id of traitIds) {
     const value = normalizeTraitValue(traitValues[id])
-    if (value != null) next[id] = value
+    if (value != null && value > DEFAULT_GEAR_TRAIT_VALUE) next[id] = value
   }
   return Object.keys(next).length > 0 ? next : undefined
 }
@@ -86,8 +92,13 @@ export function pruneTraitValues(
 export function resolveGearTraitValue(
   traitId: string,
   traitValues: GearTraitValues | undefined,
-): number | undefined {
-  return normalizeTraitValue(traitValues?.[traitId])
+): number {
+  return normalizeTraitValue(traitValues?.[traitId]) ?? DEFAULT_GEAR_TRAIT_VALUE
+}
+
+/** Trait values of 1 are the default — only show numbers above 1 on chips. */
+export function displayTraitValue(value: number | undefined): number | undefined {
+  return value != null && value > DEFAULT_GEAR_TRAIT_VALUE ? value : undefined
 }
 
 export function resolveGearTraits(

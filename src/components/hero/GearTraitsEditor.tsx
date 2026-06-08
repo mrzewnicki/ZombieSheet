@@ -2,9 +2,11 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { GearTraitCategory, GearTraitDefinition, GearTraitPolarity, GearTraitScopeCategory, GearTraitValues } from '@/types'
 import {
+  DEFAULT_GEAR_TRAIT_VALUE,
+  displayTraitValue,
   filterTraitsForScope,
   findGearTraitByNameInScope,
-  normalizeTraitValue,
+  resolveTraitValueFromInput,
   pruneTraitValues,
   resolveGearTraits,
   resolveGearTraitValue,
@@ -278,12 +280,13 @@ function TraitNamePicker({
 }
 
 function draftFromTrait(trait: GearTraitDefinition, value?: number): Draft {
+  const resolved = value ?? DEFAULT_GEAR_TRAIT_VALUE
   return {
     name: trait.name,
     polarity: trait.polarity,
     description: trait.description,
     selectedId: trait.id,
-    value: value != null ? String(value) : '',
+    value: resolved > DEFAULT_GEAR_TRAIT_VALUE ? String(resolved) : '',
   }
 }
 
@@ -391,6 +394,7 @@ function AssignedTrait({
   onRemove: () => void
 }) {
   const { t } = useTranslation()
+  const displayValue = displayTraitValue(value)
 
   if (editing) return null
 
@@ -402,8 +406,10 @@ function AssignedTrait({
         <div className="min-w-0">
           <span className="text-sm font-medium leading-snug">
             {trait.name}
-            {value != null && (
-              <span className="ml-1.5 font-mono tabular-nums text-xs opacity-90">{value}</span>
+            {displayValue != null && (
+              <span className="ml-1.5 font-mono tabular-nums text-xs opacity-90">
+                {displayValue}
+              </span>
             )}
           </span>
           {trait.category !== scopeCategory && (
@@ -487,10 +493,10 @@ export default function GearTraitsEditor({
   }
 
   function applyTraitValues(traitId: string, previousId?: string) {
-    const value = normalizeTraitValue(draft.value)
+    const value = resolveTraitValueFromInput(draft.value)
     const nextValues = { ...traitValues }
     if (previousId && previousId !== traitId) delete nextValues[previousId]
-    if (value != null) nextValues[traitId] = value
+    if (value > DEFAULT_GEAR_TRAIT_VALUE) nextValues[traitId] = value
     else delete nextValues[traitId]
     return nextValues
   }

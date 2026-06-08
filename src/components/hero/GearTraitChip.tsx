@@ -1,5 +1,9 @@
 import type { GearTraitPolarity } from '@/types'
-import { gearTraitPolarityClasses, gearTraitTooltipClasses } from '@/utils/gearTraits'
+import {
+  displayTraitValue,
+  gearTraitPolarityClasses,
+  gearTraitTooltipClasses,
+} from '@/utils/gearTraits'
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
@@ -14,7 +18,8 @@ interface Props {
 
 export default function GearTraitChip({ name, polarity, description, value }: Props) {
   const hasDescription = Boolean(description?.trim())
-  const hasValue = value != null
+  const displayValue = displayTraitValue(value)
+  const hasValue = displayValue != null
 
   return (
     <span
@@ -27,7 +32,7 @@ export default function GearTraitChip({ name, polarity, description, value }: Pr
       >
         {name}
         {hasValue && (
-          <span className="ml-1 tabular-nums opacity-90">{value}</span>
+          <span className="ml-1 tabular-nums opacity-90">{displayValue}</span>
         )}
       </span>
 
@@ -47,7 +52,7 @@ export default function GearTraitChip({ name, polarity, description, value }: Pr
           >
             <p className="text-[10px] font-mono uppercase tracking-wider mb-1.5 opacity-80">
               {name}
-              {hasValue && <span className="ml-1 tabular-nums">{value}</span>}
+              {hasValue && <span className="ml-1 tabular-nums">{displayValue}</span>}
             </p>
             <div className="prose-hero text-xs normal-case tracking-normal font-body [&_p]:mb-1 [&_p:last-child]:mb-0">
               <ReactMarkdown
