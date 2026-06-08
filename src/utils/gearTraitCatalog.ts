@@ -17,6 +17,7 @@ import {
   findGearTraitByName,
   GEAR_TRAITS_COLLECTION,
 } from '@/utils/gearTraits'
+import { unassignTraitFromAllItems } from '@/utils/traitAssignments'
 
 export const GEAR_TRAIT_CHANGES_COLLECTION = 'gearTraitChanges'
 
@@ -45,7 +46,7 @@ export function traitDescriptionPreview(description: string): string {
     .replace(/\s+/g, ' ')
     .trim()
   if (!plain) return ''
-  return plain.length > 120 ? `${plain.slice(0, 117)}…` : plain
+  return plain.length > 80 ? `${plain.slice(0, 77)}…` : plain
 }
 
 export function groupTraitsForTable(catalog: GearTraitDefinition[]): TraitTableRow[] {
@@ -125,6 +126,7 @@ async function removeTraitCatalogEntry(
   author: ChangeAuthor,
   descriptionLabel: string,
 ) {
+  await unassignTraitFromAllItems(gameId, existing.id)
   await deleteDoc(doc(db, 'games', gameId, GEAR_TRAITS_COLLECTION, existing.id))
   await logGearTraitChange({
     gameId,

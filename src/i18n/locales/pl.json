@@ -434,7 +434,21 @@
     "missingDescription": "Brak opisu — kliknij, aby dodać",
     "addDescription": "Dodaj opis…",
     "removeDescription": "Usuń opis",
+    "removeConfirmInUse": "„{{traitName}}” ({{category}}) jest przypisana do {{count}} przedmiotów. Usunięcie skasuje wpis w katalogu i odłączy ją wszędzie.",
+    "removeConfirmItem": "• {{hero}} — {{type}}: {{item}}",
+    "removeConfirmMore": "…i jeszcze {{count}}.",
     "saveError": "Nie udało się zapisać. Sprawdź połączenie i spróbuj ponownie.",
+    "categoryScope": {
+      "common": "Dostępna wszędzie.",
+      "gear": "Dostępna na broni, pancerzu i przedmiotach ekwipunku.",
+      "weapon": "Dostępna tylko przy edycji broni.",
+      "armor": "Dostępna tylko przy edycji pancerza."
+    },
+    "itemType": {
+      "weapon": "Broń",
+      "armor": "Pancerz",
+      "inventory": "Przedmiot"
+    },
     "changeLog": "Historia zmian",
     "noChanges": "Brak zapisanych zmian.",
     "unknownUser": "Nieznany użytkownik",

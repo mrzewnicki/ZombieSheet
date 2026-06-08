@@ -24,7 +24,7 @@ export default function ConfirmDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-void/80 backdrop-blur-sm">
       <div className="bg-surface border border-border rounded-lg p-6 max-w-sm w-full mx-4 shadow-xl">
-        <p className="text-ink text-sm leading-relaxed mb-6">{message}</p>
+        <p className="text-ink text-sm leading-relaxed mb-6 whitespace-pre-line">{message}</p>
         <div className="flex justify-end gap-3">
           <Button variant="ghost" onClick={onCancel} disabled={confirmLoading}>{t('common.cancel')}</Button>
           <Button

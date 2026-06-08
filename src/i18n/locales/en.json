@@ -434,7 +434,21 @@
     "missingDescription": "Missing description — click to add",
     "addDescription": "Add description…",
     "removeDescription": "Remove description",
+    "removeConfirmInUse": "\"{{traitName}}\" ({{category}}) is assigned to {{count}} item(s). Removing it will delete this catalog entry and unassign it everywhere.",
+    "removeConfirmItem": "• {{hero}} — {{type}}: {{item}}",
+    "removeConfirmMore": "…and {{count}} more.",
     "saveError": "Could not save. Check your connection and try again.",
+    "categoryScope": {
+      "common": "Available everywhere.",
+      "gear": "Available on weapons, armor, and general inventory items.",
+      "weapon": "Available when editing weapons only.",
+      "armor": "Available when editing armor only."
+    },
+    "itemType": {
+      "weapon": "Weapon",
+      "armor": "Armor",
+      "inventory": "Item"
+    },
     "changeLog": "Change log",
     "noChanges": "No changes recorded yet.",
     "unknownUser": "Unknown user",

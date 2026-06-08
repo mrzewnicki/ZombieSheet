@@ -17,6 +17,8 @@ import { gearTraitPolarityClasses } from '@/utils/gearTraits'
 import RichTextEditor from '@/components/ui/RichTextEditor'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { findTraitAssignments, type TraitAssignment } from '@/utils/traitAssignments'
 
 interface Props {
   gameId: string
@@ -30,6 +32,55 @@ type EditTarget = {
   category: GearTraitCategory
 }
 
+type PendingRemove = {
+  message: string
+}
+
+function TraitPolarityIcon({ polarity }: { polarity: GearTraitPolarity }) {
+  if (polarity === 'positive') {
+    return (
+      <svg viewBox="0 0 12 12" className="w-3 h-3 shrink-0" aria-hidden>
+        <path d="M6 2.5v7M2.5 6h7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    )
+  }
+
+  return (
+    <svg viewBox="0 0 12 12" className="w-3 h-3 shrink-0" aria-hidden>
+      <path d="M2.5 6h7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function CategoryHeader({ category }: { category: GearTraitCategory }) {
+  const { t } = useTranslation()
+  const label = t(`inventory.traits.category.${category}`)
+  const scope = t(`traitsCatalog.categoryScope.${category}`)
+
+  return (
+    <th className="text-left px-2 py-1.5 font-heading text-[10px] text-blood-light tracking-wider uppercase min-w-[96px]">
+      <span className="inline-flex items-center gap-0.5 group/cat relative cursor-help">
+        {label}
+        <span className="text-ink-faint/80 normal-case tracking-normal text-[9px]" aria-hidden>ⓘ</span>
+        <span
+          className="
+            absolute left-0 top-full z-50 pt-2
+            pointer-events-none group-hover/cat:pointer-events-auto
+            opacity-0 group-hover/cat:opacity-100
+            translate-y-1 group-hover/cat:translate-y-0
+            transition-all duration-150
+          "
+          role="tooltip"
+        >
+          <span className="block w-52 px-3 py-2 rounded border border-border bg-void text-[11px] normal-case tracking-normal text-ink-muted leading-snug shadow-lg font-body font-normal">
+            {scope}
+          </span>
+        </span>
+      </span>
+    </th>
+  )
+}
+
 export default function TraitsTable({ gameId, catalog, authorUid, authorName }: Props) {
   const { t } = useTranslation()
   const [search, setSearch] = useState('')
@@ -40,6 +91,8 @@ export default function TraitsTable({ gameId, catalog, authorUid, authorName }: 
   const [error, setError] = useState('')
   const [newTraitName, setNewTraitName] = useState('')
   const [creating, setCreating] = useState(false)
+  const [pendingRemove, setPendingRemove] = useState<PendingRemove | null>(null)
+  const [checkingAssignments, setCheckingAssignments] = useState(false)
 
   const rows = useMemo(() => groupTraitsForTable(catalog), [catalog])
 
@@ -64,8 +117,97 @@ export default function TraitsTable({ gameId, catalog, authorUid, authorName }: 
     setError('')
   }
 
+  function buildRemoveConfirmMessage(
+    traitName: string,
+    category: GearTraitCategory,
+    assignments: TraitAssignment[],
+  ) {
+    const lines = assignments.slice(0, 5).map((assignment) =>
+      t('traitsCatalog.removeConfirmItem', {
+        hero: assignment.heroName,
+        item: assignment.itemName,
+        type: t(`traitsCatalog.itemType.${assignment.itemType}`),
+      }),
+    )
+
+    const parts = [
+      t('traitsCatalog.removeConfirmInUse', {
+        traitName,
+        category: t(`inventory.traits.category.${category}`),
+        count: assignments.length,
+      }),
+      ...lines,
+    ]
+
+    if (assignments.length > 5) {
+      parts.push(t('traitsCatalog.removeConfirmMore', { count: assignments.length - 5 }))
+    }
+
+    return parts.join('\n')
+  }
+
+  async function executeClearDescription() {
+    if (!editTarget) return
+    setSaving(true)
+    setError('')
+    try {
+      await saveTraitCatalogDescription(gameId, catalog, {
+        traitName: editTarget.row.displayName,
+        category: editTarget.category,
+        polarity: resolveRowPolarity(editTarget.row),
+        description: '',
+        author,
+        descriptionLabel: t('traitsCatalog.fields.description'),
+      })
+      closeEditor()
+      setPendingRemove(null)
+    } catch {
+      setError(t('traitsCatalog.saveError'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function beginClearDescription() {
+    if (!editTarget) return
+    const trait = editTarget.row.byCategory[editTarget.category]
+    if (!trait) {
+      closeEditor()
+      return
+    }
+
+    setCheckingAssignments(true)
+    setError('')
+    try {
+      const assignments = await findTraitAssignments(gameId, trait.id)
+      if (assignments.length === 0) {
+        await executeClearDescription()
+        return
+      }
+
+      setPendingRemove({
+        message: buildRemoveConfirmMessage(
+          editTarget.row.displayName,
+          editTarget.category,
+          assignments,
+        ),
+      })
+    } catch {
+      setError(t('traitsCatalog.saveError'))
+    } finally {
+      setCheckingAssignments(false)
+    }
+  }
+
   async function handleSaveDescription() {
     if (!editTarget) return
+
+    const existing = editTarget.row.byCategory[editTarget.category]
+    if (existing && isTraitDescriptionEmpty(editDescription)) {
+      await beginClearDescription()
+      return
+    }
+
     setSaving(true)
     setError('')
     try {
@@ -126,29 +268,12 @@ export default function TraitsTable({ gameId, catalog, authorUid, authorName }: 
   }
 
   async function handleRemoveDescription() {
-    if (!editTarget) return
-    setSaving(true)
-    setError('')
-    try {
-      await saveTraitCatalogDescription(gameId, catalog, {
-        traitName: editTarget.row.displayName,
-        category: editTarget.category,
-        polarity: resolveRowPolarity(editTarget.row),
-        description: '',
-        author,
-        descriptionLabel: t('traitsCatalog.fields.description'),
-      })
-      closeEditor()
-    } catch {
-      setError(t('traitsCatalog.saveError'))
-    } finally {
-      setSaving(false)
-    }
+    await beginClearDescription()
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-end sm:justify-between">
+    <div className="space-y-3">
+      <div className="flex flex-col sm:flex-row gap-2 sm:items-end sm:justify-between">
         <div className="flex-1 max-w-md">
           <Input
             value={search}
@@ -186,23 +311,18 @@ export default function TraitsTable({ gameId, catalog, authorUid, authorName }: 
           {search.trim() ? t('traitsCatalog.noSearchResults') : t('traitsCatalog.empty')}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-full min-w-[720px] text-sm border-collapse">
+        <div className="overflow-x-auto rounded border border-border">
+          <table className="w-full min-w-[640px] text-xs border-collapse">
             <thead>
               <tr className="bg-surface border-b border-border">
-                <th className="text-left px-3 py-2.5 font-heading text-xs text-blood-light tracking-widest uppercase">
+                <th className="text-left px-2 py-1.5 font-heading text-[10px] text-blood-light tracking-wider uppercase w-[7.5rem]">
                   {t('traitsCatalog.columns.name')}
                 </th>
-                <th className="text-left px-3 py-2.5 font-heading text-xs text-blood-light tracking-widest uppercase w-36">
+                <th className="text-left px-2 py-1.5 font-heading text-[10px] text-blood-light tracking-wider uppercase w-14">
                   {t('traitsCatalog.columns.polarity')}
                 </th>
                 {TRAIT_TABLE_CATEGORIES.map((category) => (
-                  <th
-                    key={category}
-                    className="text-left px-3 py-2.5 font-heading text-xs text-blood-light tracking-widest uppercase min-w-[140px]"
-                  >
-                    {t(`inventory.traits.category.${category}`)}
-                  </th>
+                  <CategoryHeader key={category} category={category} />
                 ))}
               </tr>
             </thead>
@@ -213,10 +333,10 @@ export default function TraitsTable({ gameId, catalog, authorUid, authorName }: 
 
                 return (
                   <tr key={row.nameKey} className="border-b border-border/60 last:border-b-0 hover:bg-surface/40">
-                    <td className="px-3 py-2.5 font-medium text-ink align-top">
+                    <td className="px-2 py-1 font-medium text-ink align-middle">
                       {row.displayName}
                     </td>
-                    <td className="px-3 py-2.5 align-top">
+                    <td className="px-2 py-1 align-middle">
                       <div
                         className="inline-flex rounded border border-border overflow-hidden"
                         role="group"
@@ -228,14 +348,16 @@ export default function TraitsTable({ gameId, catalog, authorUid, authorName }: 
                             type="button"
                             disabled={polarityBusy}
                             aria-pressed={polarity === opt}
+                            aria-label={t(`inventory.traits.polarity.${opt}`)}
+                            title={t(`inventory.traits.polarity.${opt}`)}
                             onClick={() => handlePolarityChange(row, opt)}
-                            className={`px-2 py-1 text-xs whitespace-nowrap transition-colors border-r border-border last:border-r-0 disabled:opacity-50 ${
+                            className={`flex items-center justify-center w-6 h-5 transition-colors border-r border-border last:border-r-0 disabled:opacity-50 ${
                               polarity === opt
                                 ? gearTraitPolarityClasses(opt)
                                 : 'bg-surface text-ink-faint hover:text-ink hover:bg-elevated'
                             }`}
                           >
-                            {t(`inventory.traits.polarity.${opt}`)}
+                            <TraitPolarityIcon polarity={opt} />
                           </button>
                         ))}
                       </div>
@@ -246,11 +368,11 @@ export default function TraitsTable({ gameId, catalog, authorUid, authorName }: 
                       const preview = trait ? traitDescriptionPreview(trait.description) : ''
 
                       return (
-                        <td key={category} className="px-3 py-2 align-top">
+                        <td key={category} className="px-1.5 py-1 align-middle">
                           <button
                             type="button"
                             onClick={() => openEditor(row, category)}
-                            className={`w-full text-left rounded border px-2.5 py-2 min-h-[2.75rem] transition-colors ${
+                            className={`w-full text-left rounded border px-1.5 py-1 min-h-[1.625rem] transition-colors ${
                               missing
                                 ? 'border-amber-700/50 bg-amber-950/25 hover:bg-amber-950/40 text-amber-200/70'
                                 : 'border-border/60 bg-void/40 hover:bg-elevated/50 text-ink-muted'
@@ -258,11 +380,11 @@ export default function TraitsTable({ gameId, catalog, authorUid, authorName }: 
                             title={missing ? t('traitsCatalog.missingDescription') : preview}
                           >
                             {missing ? (
-                              <span className="text-xs italic">
+                              <span className="text-[10px] italic leading-tight">
                                 {t('traitsCatalog.addDescription')}
                               </span>
                             ) : (
-                              <span className="text-xs leading-relaxed line-clamp-3">
+                              <span className="text-[10px] leading-tight line-clamp-2">
                                 {preview}
                               </span>
                             )}
@@ -310,7 +432,7 @@ export default function TraitsTable({ gameId, catalog, authorUid, authorName }: 
                 <Button
                   variant="ghost"
                   onClick={handleRemoveDescription}
-                  loading={saving}
+                  loading={saving || checkingAssignments}
                   className="text-blood hover:text-blood-light"
                 >
                   {t('traitsCatalog.removeDescription')}
@@ -322,7 +444,7 @@ export default function TraitsTable({ gameId, catalog, authorUid, authorName }: 
                 <Button variant="ghost" onClick={closeEditor} disabled={saving}>
                   {t('common.cancel')}
                 </Button>
-                <Button onClick={handleSaveDescription} loading={saving}>
+                <Button onClick={handleSaveDescription} loading={saving || checkingAssignments}>
                   {t('common.save')}
                 </Button>
               </div>
@@ -330,6 +452,15 @@ export default function TraitsTable({ gameId, catalog, authorUid, authorName }: 
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingRemove !== null}
+        message={pendingRemove?.message ?? ''}
+        onConfirm={executeClearDescription}
+        onCancel={() => setPendingRemove(null)}
+        dangerous
+        confirmLoading={saving}
+      />
     </div>
   )
 }
