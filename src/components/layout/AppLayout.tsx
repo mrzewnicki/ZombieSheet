@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/contexts/AuthContext'
 import { LayoutContext } from '@/contexts/LayoutContext'
 import Avatar from '@/components/ui/Avatar'
+import AppFooter from './AppFooter'
 
 interface Props {
   children: ReactNode
@@ -26,7 +27,7 @@ export default function AppLayout({ children }: Props) {
 
   return (
     <div
-      className="min-h-screen bg-dark bg-cracked text-ink font-body"
+      className="min-h-screen flex flex-col bg-dark bg-cracked text-ink font-body"
       style={{ '--cracked-texture-url': `url(${crackedTextureUrl})` } as React.CSSProperties}
     >
       <header className="border-b border-border bg-void sticky top-0 z-40">
@@ -78,11 +79,13 @@ export default function AppLayout({ children }: Props) {
         </div>
       </header>
 
-      <main className={`py-6 transition-all duration-200 ${
+      <main className={`flex-1 py-6 transition-all duration-200 ${
         fullWidth ? 'w-full' : 'max-w-5xl mx-auto px-4'
       }`}>
         {children}
       </main>
+
+      <AppFooter />
     </div>
   )
 }

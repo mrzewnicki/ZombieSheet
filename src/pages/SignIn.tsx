@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/contexts/AuthContext'
+import { Link } from 'react-router-dom'
 import Button from '@/components/ui/Button'
 
 export default function SignIn() {
@@ -91,9 +92,17 @@ export default function SignIn() {
           </div>
         )}
 
-        <p className="text-ink-faint text-xs text-center font-mono">
-          © ZombieSheet · Post-apo RPG
-        </p>
+        <footer className="text-center space-y-2">
+          <Link
+            to="/about"
+            className="text-xs text-ink-faint hover:text-ink-muted transition-colors"
+          >
+            {t('footer.about')}
+          </Link>
+          <p className="text-ink-faint text-xs font-mono">
+            © ZombieSheet · Post-apo RPG
+          </p>
+        </footer>
       </div>
     </div>
   )

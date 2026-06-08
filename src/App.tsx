@@ -16,6 +16,7 @@ import InventoryTab from '@/pages/hero/InventoryTab'
 import HistoryTab from '@/pages/hero/HistoryTab'
 import ImagesTab from '@/pages/hero/ImagesTab'
 import SettingsTab from '@/pages/hero/SettingsTab'
+import About from '@/pages/About'
 
 export default function App() {
   return (
@@ -26,8 +27,9 @@ export default function App() {
           <Route path="/" element={<SignIn />} />
           <Route path="/game/:gameId/invite/:token" element={<JoinGame />} />
 
-          {/* Protected — AppShell persists across all protected navigations */}
+          {/* App shell — public About + protected routes */}
           <Route element={<AppShell />}>
+            <Route path="/about" element={<About />} />
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/game/new" element={<CreateGame />} />

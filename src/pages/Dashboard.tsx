@@ -130,8 +130,8 @@ export default function Dashboard() {
                 </p>
               )}
 
-              <div className="flex items-center justify-between text-xs text-ink-faint font-mono">
-                <div className="flex gap-4">
+              <div className="flex items-center justify-between gap-4 text-xs text-ink-faint font-mono">
+                <div className="flex gap-4 min-w-0">
                   <span>{t('dashboard.members', { count: game.memberCount })}</span>
                   <span>{t('dashboard.heroes', { count: game.heroCount })}</span>
                 </div>
@@ -143,7 +143,7 @@ export default function Dashboard() {
                       e.stopPropagation()
                       setPendingDelete(game)
                     }}
-                    className="text-ink-faint hover:text-blood transition-colors"
+                    className="shrink-0 text-ink-faint hover:text-blood transition-colors"
                     title={t('game.deleteGame')}
                   >
                     {t('game.deleteGame')}
