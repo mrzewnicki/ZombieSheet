@@ -18,7 +18,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { persistGearListOrder } from '@/utils/persistGearListOrder'
 import GearTraitsEditor from '@/components/hero/GearTraitsEditor'
 import GearTraitChips from '@/components/hero/GearTraitChips'
-import { pruneTraitValues } from '@/utils/gearTraits'
+import { pruneTraitValues, traitFieldsForCreate, traitFieldsForUpdate } from '@/utils/gearTraits'
 
 interface Props {
   gameId: string
@@ -150,11 +150,11 @@ export default function InventoryList({ gameId, heroId, items, traitCatalog, rea
     if (!form.name.trim()) return
     setSaving(true)
     try {
+      const { traitIds, traitValues, ...formRest } = form
       await addDoc(inventoryRef, {
-        ...form,
+        ...formRest,
         qty: Number(form.qty) || 1,
-        traitIds: form.traitIds ?? [],
-        traitValues: pruneTraitValues(form.traitIds ?? [], form.traitValues),
+        ...traitFieldsForCreate(traitIds, traitValues),
         ...gearVisualPayload(form),
         sortOrder: nextGearSortOrder(items),
       })
@@ -170,8 +170,7 @@ export default function InventoryList({ gameId, heroId, items, traitCatalog, rea
       name: item.name,
       qty: item.qty,
       description: item.description,
-      traitIds: item.traitIds ?? [],
-      traitValues: pruneTraitValues(item.traitIds ?? [], item.traitValues),
+      ...traitFieldsForUpdate(item.traitIds, item.traitValues),
       ...gearVisualPayload(item),
     })
     setEditingId(null)

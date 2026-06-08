@@ -1,4 +1,4 @@
-import { addDoc, collection, doc, updateDoc } from 'firebase/firestore'
+import { addDoc, collection, deleteField, doc, updateDoc, type FieldValue } from 'firebase/firestore'
 import { db } from '@/config/firebase'
 import type {
   GearTraitCategory,
@@ -87,6 +87,29 @@ export function pruneTraitValues(
     if (value != null && value > DEFAULT_GEAR_TRAIT_VALUE) next[id] = value
   }
   return Object.keys(next).length > 0 ? next : undefined
+}
+
+/** Firestore create payload — omit traitValues when empty. */
+export function traitFieldsForCreate(
+  traitIds: string[] | undefined,
+  traitValues: GearTraitValues | undefined,
+): { traitIds: string[]; traitValues?: GearTraitValues } {
+  const ids = traitIds ?? []
+  const pruned = pruneTraitValues(ids, traitValues)
+  return pruned ? { traitIds: ids, traitValues: pruned } : { traitIds: ids }
+}
+
+/** Firestore update payload — delete traitValues when empty. */
+export function traitFieldsForUpdate(
+  traitIds: string[] | undefined,
+  traitValues: GearTraitValues | undefined,
+): { traitIds: string[]; traitValues: GearTraitValues | FieldValue } {
+  const ids = traitIds ?? []
+  const pruned = pruneTraitValues(ids, traitValues)
+  return {
+    traitIds: ids,
+    traitValues: pruned ?? deleteField(),
+  }
 }
 
 export function resolveGearTraitValue(
