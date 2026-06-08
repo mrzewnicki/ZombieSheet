@@ -426,7 +426,8 @@
     "hint": "Shared trait definitions for this game. Anyone in the game can edit; every change is logged below.",
     "dashboardHint": "Pick a game to browse and edit its trait catalog.",
     "lobbyHint": "Browse all traits by category, fill in missing descriptions, and review who changed what.",
-    "searchPlaceholder": "Search traits…",
+    "searchPlaceholder": "Search all traits…",
+    "categorySearchPlaceholder": "Search in this section…",
     "newTraitPlaceholder": "New trait name…",
     "addTrait": "Add trait",
     "empty": "No traits yet. Add one above or create traits from character inventory.",
@@ -450,12 +451,16 @@
       "inventory": "Item"
     },
     "changeLog": "Change log",
+    "loadHistory": "Load history",
     "noChanges": "No changes recorded yet.",
     "unknownUser": "Unknown user",
     "columns": {
       "name": "Trait name",
-      "polarity": "Polarity"
+      "polarity": "Polarity",
+      "description": "Description"
     },
+    "noCategorySearchResults": "No traits match your search in this section.",
+    "emptyCategory": "No traits in this category.",
     "fields": {
       "description": "Description",
       "polarity": "Polarity"

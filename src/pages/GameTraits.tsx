@@ -17,6 +17,7 @@ import type { Game, GearTraitChange } from '@/types'
 import { GEAR_TRAIT_CHANGES_COLLECTION } from '@/utils/gearTraitCatalog'
 import TraitsTable from '@/components/traits/TraitsTable'
 import TraitChangeHistory from '@/components/traits/TraitChangeHistory'
+import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
 
 export default function GameTraits() {
@@ -25,6 +26,8 @@ export default function GameTraits() {
   const { t } = useTranslation()
   const [game, setGame] = useState<Game | null>(null)
   const [changes, setChanges] = useState<GearTraitChange[]>([])
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [loadingHistory, setLoadingHistory] = useState(false)
   const [loadingGame, setLoadingGame] = useState(true)
   const { traits, loading: traitsLoading, error: traitsError } = useGearTraitCatalog(gameId)
 
@@ -43,16 +46,24 @@ export default function GameTraits() {
   }, [gameId])
 
   useEffect(() => {
+    if (!historyOpen) return
+
+    setLoadingHistory(true)
     const q = query(
       collection(db, 'games', gameId, GEAR_TRAIT_CHANGES_COLLECTION),
       orderBy('changedAt', 'desc'),
       limit(50),
     )
-    const unsub = onSnapshot(q, (snap) => {
-      setChanges(snap.docs.map((d) => ({ id: d.id, ...d.data() } as GearTraitChange)))
-    })
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setChanges(snap.docs.map((d) => ({ id: d.id, ...d.data() } as GearTraitChange)))
+        setLoadingHistory(false)
+      },
+      () => setLoadingHistory(false),
+    )
     return unsub
-  }, [gameId])
+  }, [gameId, historyOpen])
 
   if (loadingGame || traitsLoading) {
     return (
@@ -88,10 +99,25 @@ export default function GameTraits() {
       />
 
       <section>
-        <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-3">
-          {t('traitsCatalog.changeLog')}
-        </h2>
-        <TraitChangeHistory changes={changes} />
+        <div className="flex flex-wrap items-center gap-3 mb-3">
+          <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase">
+            {t('traitsCatalog.changeLog')}
+          </h2>
+          {!historyOpen && (
+            <Button variant="ghost" onClick={() => setHistoryOpen(true)}>
+              {t('traitsCatalog.loadHistory')}
+            </Button>
+          )}
+        </div>
+        {historyOpen && (
+          loadingHistory ? (
+            <div className="flex justify-center py-6">
+              <Spinner />
+            </div>
+          ) : (
+            <TraitChangeHistory changes={changes} />
+          )
+        )}
       </section>
     </div>
   )

@@ -59,6 +59,22 @@ function TraitCategoryBadge({ category }: { category: GearTraitCategory }) {
   )
 }
 
+function PolarityIcon({ polarity }: { polarity: GearTraitPolarity }) {
+  if (polarity === 'positive') {
+    return (
+      <svg viewBox="0 0 12 12" className="w-3.5 h-3.5 shrink-0" aria-hidden>
+        <path d="M6 2.5v7M2.5 6h7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    )
+  }
+
+  return (
+    <svg viewBox="0 0 12 12" className="w-3.5 h-3.5 shrink-0" aria-hidden>
+      <path d="M2.5 6h7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 function PolarityToggle({
   value,
   onChange,
@@ -84,14 +100,16 @@ function PolarityToggle({
             key={opt}
             type="button"
             aria-pressed={value === opt}
+            aria-label={t(`inventory.traits.polarity.${opt}`)}
+            title={t(`inventory.traits.polarity.${opt}`)}
             onClick={() => onChange(opt)}
-            className={`px-3 py-2 text-sm whitespace-nowrap flex items-center justify-center transition-colors border-r border-border last:border-r-0 ${
+            className={`flex items-center justify-center w-9 h-9 transition-colors border-r border-border last:border-r-0 ${
               value === opt
                 ? gearTraitPolarityClasses(opt)
                 : 'bg-surface text-ink-faint hover:text-ink hover:bg-elevated'
             }`}
           >
-            {t(`inventory.traits.polarity.${opt}`)}
+            <PolarityIcon polarity={opt} />
           </button>
         ))}
       </div>

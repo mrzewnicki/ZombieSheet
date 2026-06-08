@@ -426,7 +426,8 @@
     "hint": "Wspólny katalog właściwości dla tej gry. Każdy uczestnik może edytować — każda zmiana jest zapisywana poniżej.",
     "dashboardHint": "Wybierz grę, aby przeglądać i edytować jej katalog właściwości.",
     "lobbyHint": "Przeglądaj właściwości według kategorii, uzupełniaj brakujące opisy i sprawdzaj kto co zmienił.",
-    "searchPlaceholder": "Szukaj właściwości…",
+    "searchPlaceholder": "Szukaj we wszystkich właściwościach…",
+    "categorySearchPlaceholder": "Szukaj w tej sekcji…",
     "newTraitPlaceholder": "Nazwa nowej właściwości…",
     "addTrait": "Dodaj właściwość",
     "empty": "Brak właściwości. Dodaj powyżej lub twórz je z ekwipunku postaci.",
@@ -450,12 +451,16 @@
       "inventory": "Przedmiot"
     },
     "changeLog": "Historia zmian",
+    "loadHistory": "Załaduj historię",
     "noChanges": "Brak zapisanych zmian.",
     "unknownUser": "Nieznany użytkownik",
     "columns": {
       "name": "Nazwa",
-      "polarity": "Efekt"
+      "polarity": "Efekt",
+      "description": "Opis"
     },
+    "noCategorySearchResults": "Brak właściwości pasujących do wyszukiwania w tej sekcji.",
+    "emptyCategory": "Brak właściwości w tej kategorii.",
     "fields": {
       "description": "Opis",
       "polarity": "Efekt"
