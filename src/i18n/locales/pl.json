@@ -305,6 +305,14 @@
       "nameLabel": "Nazwa cechy",
       "namePlaceholder": "Szukaj lub wpisz nową cechę…",
       "polarityLabel": "Efekt",
+      "valueLabel": "Wartość",
+      "valuePlaceholder": "1–10",
+      "category": {
+        "common": "Wspólna",
+        "weapon": "Broń",
+        "armor": "Pancerz",
+        "gear": "Ekwipunek"
+      },
       "polarity": {
         "positive": "Pozytywny",
         "negative": "Negatywny"
@@ -312,6 +320,7 @@
       "descriptionLabel": "Opis",
       "descriptionPlaceholder": "Co robi ta cecha…",
       "confirmAdd": "Dodaj cechę",
+      "edit": "Edytuj cechę {{name}}",
       "remove": "Usuń cechę {{name}}",
       "createHint": "Enter — utwórz \"{{name}}\"",
       "noCatalog": "Wpisz nazwę, aby utworzyć pierwszą cechę",

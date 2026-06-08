@@ -2,16 +2,15 @@ import { useEffect, useState } from 'react'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from '@/config/firebase'
 import type { GearTraitDefinition } from '@/types'
-import { GEAR_TRAITS_COLLECTION } from '@/utils/gearTraits'
+import {
+  GEAR_TRAITS_COLLECTION,
+  normalizeGearTraitDefinition,
+} from '@/utils/gearTraits'
 
 const LEGACY_WEAPON_TRAITS_COLLECTION = 'weaponTraits'
 
 function sortTraits(traits: GearTraitDefinition[]): GearTraitDefinition[] {
   return [...traits].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
-}
-
-function mapSnapshot(snap: import('firebase/firestore').QuerySnapshot): GearTraitDefinition[] {
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as GearTraitDefinition))
 }
 
 export function useGearTraitCatalog(gameId: string) {
@@ -38,7 +37,7 @@ export function useGearTraitCatalog(gameId: string) {
     const unsubGear = onSnapshot(
       collection(db, 'games', gameId, GEAR_TRAITS_COLLECTION),
       (snap) => {
-        gearTraits = mapSnapshot(snap)
+        gearTraits = snap.docs.map((d) => normalizeGearTraitDefinition(d.id, d.data()))
         gearReady = true
         setError(null)
         mergeAndPublish()
@@ -53,7 +52,7 @@ export function useGearTraitCatalog(gameId: string) {
     const unsubLegacy = onSnapshot(
       collection(db, 'games', gameId, LEGACY_WEAPON_TRAITS_COLLECTION),
       (snap) => {
-        legacyTraits = mapSnapshot(snap)
+        legacyTraits = snap.docs.map((d) => normalizeGearTraitDefinition(d.id, d.data(), 'weapon'))
         legacyReady = true
         mergeAndPublish()
       },

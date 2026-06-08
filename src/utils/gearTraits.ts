@@ -1,8 +1,56 @@
 import { addDoc, collection, doc, updateDoc } from 'firebase/firestore'
 import { db } from '@/config/firebase'
-import type { GearTraitDefinition, GearTraitPolarity } from '@/types'
+import type {
+  GearTraitCategory,
+  GearTraitDefinition,
+  GearTraitPolarity,
+  GearTraitScopeCategory,
+  GearTraitValues,
+} from '@/types'
 
 export const GEAR_TRAITS_COLLECTION = 'gearTraits'
+
+export const DEFAULT_GEAR_TRAIT_CATEGORY: GearTraitCategory = 'common'
+
+/** Categories visible when picking traits for each editor scope. */
+const SCOPE_TRAIT_CATEGORIES: Record<GearTraitScopeCategory, GearTraitCategory[]> = {
+  weapon: ['weapon', 'gear', 'common'],
+  armor: ['armor', 'gear', 'common'],
+  gear: ['gear', 'common'],
+}
+
+function categoryPickerRank(
+  category: GearTraitCategory,
+  scopeCategory: GearTraitScopeCategory,
+): number {
+  if (category === scopeCategory) return 0
+  if (category === 'gear' && scopeCategory !== 'gear') return 1
+  if (category === 'common') return 2
+  return 3
+}
+
+export function normalizeGearTraitCategory(value: unknown): GearTraitCategory {
+  if (value === 'weapon' || value === 'armor' || value === 'gear' || value === 'common') {
+    return value
+  }
+  return DEFAULT_GEAR_TRAIT_CATEGORY
+}
+
+export function normalizeGearTraitDefinition(
+  id: string,
+  data: Record<string, unknown>,
+  fallbackCategory: GearTraitCategory = DEFAULT_GEAR_TRAIT_CATEGORY,
+): GearTraitDefinition {
+  return {
+    id,
+    name: String(data.name ?? ''),
+    polarity: data.polarity === 'negative' ? 'negative' : 'positive',
+    description: String(data.description ?? ''),
+    category: data.category != null
+      ? normalizeGearTraitCategory(data.category)
+      : fallbackCategory,
+  }
+}
 
 export function gearTraitPolarityClasses(polarity: GearTraitPolarity): string {
   return polarity === 'positive'
@@ -16,6 +64,32 @@ export function gearTraitTooltipClasses(polarity: GearTraitPolarity): string {
     : 'bg-red-950/95 text-red-400/90 border-red-800/40'
 }
 
+export function normalizeTraitValue(value: unknown): number | undefined {
+  const n = typeof value === 'number' ? value : Number(value)
+  if (Number.isInteger(n) && n >= 1 && n <= 10) return n
+  return undefined
+}
+
+export function pruneTraitValues(
+  traitIds: string[],
+  traitValues: GearTraitValues | undefined,
+): GearTraitValues | undefined {
+  if (!traitValues) return undefined
+  const next: GearTraitValues = {}
+  for (const id of traitIds) {
+    const value = normalizeTraitValue(traitValues[id])
+    if (value != null) next[id] = value
+  }
+  return Object.keys(next).length > 0 ? next : undefined
+}
+
+export function resolveGearTraitValue(
+  traitId: string,
+  traitValues: GearTraitValues | undefined,
+): number | undefined {
+  return normalizeTraitValue(traitValues?.[traitId])
+}
+
 export function resolveGearTraits(
   traitIds: string[] | undefined,
   catalog: GearTraitDefinition[],
@@ -25,30 +99,84 @@ export function resolveGearTraits(
   return traitIds.map((id) => byId.get(id)).filter(Boolean) as GearTraitDefinition[]
 }
 
+export function filterTraitsForScope(
+  catalog: GearTraitDefinition[],
+  scopeCategory: GearTraitScopeCategory,
+): GearTraitDefinition[] {
+  const allowed = new Set(SCOPE_TRAIT_CATEGORIES[scopeCategory])
+  return catalog.filter((t) => allowed.has(t.category))
+}
+
+export function sortTraitsForPicker(
+  traits: GearTraitDefinition[],
+  scopeCategory: GearTraitScopeCategory,
+): GearTraitDefinition[] {
+  return [...traits].sort((a, b) => {
+    const rankDiff = categoryPickerRank(a.category, scopeCategory)
+      - categoryPickerRank(b.category, scopeCategory)
+    if (rankDiff !== 0) return rankDiff
+    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+  })
+}
+
 export function findGearTraitByName(
   catalog: GearTraitDefinition[],
   name: string,
+  category: GearTraitCategory,
 ): GearTraitDefinition | undefined {
   const normalized = name.trim().toLowerCase()
   if (!normalized) return undefined
-  return catalog.find((t) => t.name.trim().toLowerCase() === normalized)
+  return catalog.find(
+    (t) => t.name.trim().toLowerCase() === normalized && t.category === category,
+  )
+}
+
+export function findGearTraitByNameInScope(
+  catalog: GearTraitDefinition[],
+  name: string,
+  scopeCategory: GearTraitScopeCategory,
+): GearTraitDefinition | undefined {
+  const normalized = name.trim().toLowerCase()
+  if (!normalized) return undefined
+
+  const inScope = filterTraitsForScope(catalog, scopeCategory)
+  for (const category of SCOPE_TRAIT_CATEGORIES[scopeCategory]) {
+    const match = inScope.find(
+      (t) => t.name.trim().toLowerCase() === normalized && t.category === category,
+    )
+    if (match) return match
+  }
+  return undefined
+}
+
+type TraitWriteInput = {
+  name: string
+  polarity: GearTraitPolarity
+  description: string
+  category: GearTraitCategory
 }
 
 export async function upsertGearTrait(
   gameId: string,
   heroId: string,
   catalog: GearTraitDefinition[],
-  input: { name: string; polarity: GearTraitPolarity; description: string },
+  input: TraitWriteInput,
 ): Promise<string> {
   const name = input.name.trim()
   if (!name) throw new Error('Trait name is required')
 
-  const existing = findGearTraitByName(catalog, name)
+  const existing = findGearTraitByName(catalog, name, input.category)
   if (existing) {
-    if (existing.polarity !== input.polarity || existing.description !== input.description) {
+    if (
+      existing.polarity !== input.polarity
+      || existing.description !== input.description
+      || existing.name !== name
+    ) {
       await updateDoc(doc(db, 'games', gameId, GEAR_TRAITS_COLLECTION, existing.id), {
+        name,
         polarity: input.polarity,
         description: input.description,
+        category: input.category,
       })
     }
     return existing.id
@@ -58,7 +186,40 @@ export async function upsertGearTrait(
     name,
     polarity: input.polarity,
     description: input.description,
+    category: input.category,
     authHeroId: heroId,
   })
   return ref.id
+}
+
+export async function updateGearTrait(
+  gameId: string,
+  traitId: string,
+  catalog: GearTraitDefinition[],
+  input: Omit<TraitWriteInput, 'category'>,
+): Promise<string> {
+  const name = input.name.trim()
+  if (!name) throw new Error('Trait name is required')
+
+  const current = catalog.find((t) => t.id === traitId)
+  const category = current?.category ?? DEFAULT_GEAR_TRAIT_CATEGORY
+
+  const conflict = findGearTraitByName(catalog, name, category)
+  if (conflict && conflict.id !== traitId) {
+    await updateDoc(doc(db, 'games', gameId, GEAR_TRAITS_COLLECTION, conflict.id), {
+      name,
+      polarity: input.polarity,
+      description: input.description,
+      category,
+    })
+    return conflict.id
+  }
+
+  await updateDoc(doc(db, 'games', gameId, GEAR_TRAITS_COLLECTION, traitId), {
+    name,
+    polarity: input.polarity,
+    description: input.description,
+    category,
+  })
+  return traitId
 }

@@ -18,6 +18,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { persistGearListOrder } from '@/utils/persistGearListOrder'
 import GearTraitsEditor from '@/components/hero/GearTraitsEditor'
 import GearTraitChips from '@/components/hero/GearTraitChips'
+import { pruneTraitValues } from '@/utils/gearTraits'
 
 interface Props {
   gameId: string
@@ -145,9 +146,15 @@ function WeaponForm({
             <GearTraitsEditor
               gameId={gameId}
               heroId={heroId}
+              scopeCategory="weapon"
               traitIds={data.traitIds ?? []}
+              traitValues={data.traitValues}
               catalog={traitCatalog}
-              onChange={(traitIds) => onChange({ ...data, traitIds })}
+              onChange={(traitIds, traitValues) => onChange({
+                ...data,
+                traitIds,
+                traitValues: pruneTraitValues(traitIds, traitValues),
+              })}
               className="sm:col-span-3"
             />
           </div>
@@ -204,6 +211,7 @@ export default function WeaponList({ gameId, heroId, items, traitCatalog, readOn
         ...form,
         qty: Number(form.qty) || 1,
         traitIds: form.traitIds ?? [],
+        traitValues: pruneTraitValues(form.traitIds ?? [], form.traitValues),
         ...gearVisualPayload(form),
         sortOrder: nextGearSortOrder(items),
       })
@@ -222,6 +230,7 @@ export default function WeaponList({ gameId, heroId, items, traitCatalog, readOn
       type: item.type,
       damageExpression: item.damageExpression,
       traitIds: item.traitIds ?? [],
+      traitValues: pruneTraitValues(item.traitIds ?? [], item.traitValues),
       ...gearVisualPayload(item),
     })
     setEditingId(null)
@@ -275,7 +284,11 @@ export default function WeaponList({ gameId, heroId, items, traitCatalog, readOn
                 {item.damageExpression && (
                   <GearStatChip accent>{item.damageExpression}</GearStatChip>
                 )}
-                <GearTraitChips traitIds={item.traitIds} catalog={traitCatalog} />
+                <GearTraitChips
+                  traitIds={item.traitIds}
+                  traitValues={item.traitValues}
+                  catalog={traitCatalog}
+                />
               </>
             )}
           />

@@ -28,6 +28,22 @@ service cloud.firestore {
       return isAuthed() && exists(memberRef(gameId));
     }
 
+    function isGearTraitCategory(c) {
+      return c == 'common' || c == 'weapon' || c == 'armor' || c == 'gear';
+    }
+
+    function validGearTraitCreate() {
+      let d = request.resource.data;
+      return d.keys().hasAll(['name', 'polarity', 'description', 'category'])
+        && isGearTraitCategory(d.category);
+    }
+
+    function validGearTraitUpdate() {
+      let d = request.resource.data;
+      return isGearTraitCategory(d.category)
+        && (!('category' in resource.data) || resource.data.category == d.category);
+    }
+
     function isHeroOwner(gameId, heroId) {
       return get(/databases/$(database)/documents/games/$(gameId)/heroes/$(heroId)).data.ownerId == uid();
     }
@@ -128,12 +144,14 @@ service cloud.firestore {
       // Shared gear trait catalog (reusable across all item types in this game).
       match /gearTraits/{traitId} {
         allow read: if isAuthed();
-        allow create: if isGameMaster(gameId) || isMember(gameId)
-          || (request.resource.data.authHeroId is string
-              && canEditHeroGear(gameId, request.resource.data.authHeroId));
-        allow update: if isGameMaster(gameId) || isMember(gameId)
-          || (resource.data.authHeroId is string
-              && canEditHeroGear(gameId, resource.data.authHeroId));
+        allow create: if validGearTraitCreate()
+          && (isGameMaster(gameId) || isMember(gameId)
+              || (request.resource.data.authHeroId is string
+                  && canEditHeroGear(gameId, request.resource.data.authHeroId)));
+        allow update: if validGearTraitUpdate()
+          && (isGameMaster(gameId) || isMember(gameId)
+              || (resource.data.authHeroId is string
+                  && canEditHeroGear(gameId, resource.data.authHeroId)));
         allow delete: if isGameMaster(gameId) || isMember(gameId);
       }
 

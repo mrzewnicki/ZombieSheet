@@ -9,10 +9,12 @@ interface Props {
   name: string
   polarity: GearTraitPolarity
   description?: string
+  value?: number
 }
 
-export default function GearTraitChip({ name, polarity, description }: Props) {
+export default function GearTraitChip({ name, polarity, description, value }: Props) {
   const hasDescription = Boolean(description?.trim())
+  const hasValue = value != null
 
   return (
     <span
@@ -24,6 +26,9 @@ export default function GearTraitChip({ name, polarity, description }: Props) {
         className={`text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded border ${gearTraitPolarityClasses(polarity)}${hasDescription ? ' cursor-help' : ''}`}
       >
         {name}
+        {hasValue && (
+          <span className="ml-1 tabular-nums opacity-90">{value}</span>
+        )}
       </span>
 
       {hasDescription && (
@@ -42,6 +47,7 @@ export default function GearTraitChip({ name, polarity, description }: Props) {
           >
             <p className="text-[10px] font-mono uppercase tracking-wider mb-1.5 opacity-80">
               {name}
+              {hasValue && <span className="ml-1 tabular-nums">{value}</span>}
             </p>
             <div className="prose-hero text-xs normal-case tracking-normal font-body [&_p]:mb-1 [&_p:last-child]:mb-0">
               <ReactMarkdown

@@ -70,6 +70,7 @@ export interface InventoryItem extends GearVisualFields {
   qty: number
   description: string
   traitIds?: string[]
+  traitValues?: GearTraitValues
   sortOrder?: number
 }
 
@@ -77,12 +78,20 @@ export type WeaponType = 'range' | 'melee'
 
 export type GearTraitPolarity = 'positive' | 'negative'
 
+export type GearTraitScopeCategory = 'weapon' | 'armor' | 'gear'
+
+export type GearTraitCategory = GearTraitScopeCategory | 'common'
+
 export interface GearTraitDefinition {
   id: string
   name: string
   polarity: GearTraitPolarity
   description: string
+  category: GearTraitCategory
 }
+
+/** Per-item trait values keyed by catalog trait id (1–10). */
+export type GearTraitValues = Record<string, number>
 
 export interface WeaponItem extends GearVisualFields {
   id: string
@@ -92,6 +101,7 @@ export interface WeaponItem extends GearVisualFields {
   type: WeaponType
   damageExpression: string
   traitIds?: string[]
+  traitValues?: GearTraitValues
   sortOrder?: number
 }
 
@@ -101,6 +111,7 @@ export interface ArmorItem extends GearVisualFields {
   description: string
   armorValue: number
   traitIds?: string[]
+  traitValues?: GearTraitValues
   sortOrder?: number
 }
 

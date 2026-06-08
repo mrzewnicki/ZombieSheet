@@ -305,6 +305,14 @@
       "nameLabel": "Trait name",
       "namePlaceholder": "Search or type a new trait…",
       "polarityLabel": "Effect",
+      "valueLabel": "Value",
+      "valuePlaceholder": "1–10",
+      "category": {
+        "common": "Common",
+        "weapon": "Weapon",
+        "armor": "Armor",
+        "gear": "Gear"
+      },
       "polarity": {
         "positive": "Positive",
         "negative": "Negative"
@@ -312,6 +320,7 @@
       "descriptionLabel": "Description",
       "descriptionPlaceholder": "What this trait does…",
       "confirmAdd": "Add trait",
+      "edit": "Edit trait {{name}}",
       "remove": "Remove trait {{name}}",
       "createHint": "Press Enter to create \"{{name}}\"",
       "noCatalog": "Type a name to create the first trait",

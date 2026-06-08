@@ -1,13 +1,20 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { GearTraitDefinition, GearTraitPolarity } from '@/types'
+import type { GearTraitCategory, GearTraitDefinition, GearTraitPolarity, GearTraitScopeCategory, GearTraitValues } from '@/types'
 import {
-  findGearTraitByName,
+  filterTraitsForScope,
+  findGearTraitByNameInScope,
+  normalizeTraitValue,
+  pruneTraitValues,
   resolveGearTraits,
+  resolveGearTraitValue,
+  sortTraitsForPicker,
   upsertGearTrait,
+  updateGearTrait,
   gearTraitPolarityClasses,
 } from '@/utils/gearTraits'
 import RichTextEditor from '@/components/ui/RichTextEditor'
+import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
@@ -17,9 +24,11 @@ import remarkGfm from 'remark-gfm'
 interface Props {
   gameId: string
   heroId: string
+  scopeCategory: GearTraitScopeCategory
   traitIds: string[]
+  traitValues?: GearTraitValues
   catalog: GearTraitDefinition[]
-  onChange: (traitIds: string[]) => void
+  onChange: (traitIds: string[], traitValues?: GearTraitValues) => void
   className?: string
 }
 
@@ -28,6 +37,7 @@ type Draft = {
   polarity: GearTraitPolarity
   description: string
   selectedId: string | null
+  value: string
 }
 
 const EMPTY_DRAFT: Draft = {
@@ -35,6 +45,16 @@ const EMPTY_DRAFT: Draft = {
   polarity: 'positive',
   description: '',
   selectedId: null,
+  value: '',
+}
+
+function TraitCategoryBadge({ category }: { category: GearTraitCategory }) {
+  const { t } = useTranslation()
+  return (
+    <span className="shrink-0 text-[9px] font-mono uppercase tracking-wider text-ink-faint/80">
+      {t(`inventory.traits.category.${category}`)}
+    </span>
+  )
 }
 
 function PolarityToggle({
@@ -63,7 +83,7 @@ function PolarityToggle({
             type="button"
             aria-pressed={value === opt}
             onClick={() => onChange(opt)}
-            className={`px-3 py-1.5 text-xs whitespace-nowrap transition-colors border-r border-border last:border-r-0 ${
+            className={`px-3 py-2 text-sm whitespace-nowrap flex items-center justify-center transition-colors border-r border-border last:border-r-0 ${
               value === opt
                 ? gearTraitPolarityClasses(opt)
                 : 'bg-surface text-ink-faint hover:text-ink hover:bg-elevated'
@@ -79,11 +99,15 @@ function PolarityToggle({
 
 function TraitNamePicker({
   catalog,
+  lookupCatalog,
+  scopeCategory,
   value,
   selectedId,
   onChange,
 }: {
   catalog: GearTraitDefinition[]
+  lookupCatalog: GearTraitDefinition[]
+  scopeCategory: GearTraitScopeCategory
   value: string
   selectedId: string | null
   onChange: (name: string, selectedId: string | null) => void
@@ -99,9 +123,11 @@ function TraitNamePicker({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return catalog
-    return catalog.filter((trait) => trait.name.toLowerCase().includes(q))
-  }, [catalog, query])
+    const list = q
+      ? catalog.filter((trait) => trait.name.toLowerCase().includes(q))
+      : catalog
+    return sortTraitsForPicker(list, scopeCategory)
+  }, [catalog, query, scopeCategory])
 
   const displayValue = open ? query : value
 
@@ -135,7 +161,7 @@ function TraitNamePicker({
 
   function applyFreeText(name: string) {
     const trimmed = name.trim()
-    const match = findGearTraitByName(catalog, trimmed)
+    const match = findGearTraitByNameInScope(lookupCatalog, trimmed, scopeCategory)
     onChange(trimmed, match?.id ?? null)
     setOpen(false)
     setQuery('')
@@ -233,12 +259,15 @@ function TraitNamePicker({
                     : 'border-l-2 border-l-transparent text-ink-muted hover:bg-elevated/60 hover:text-ink'
                 }`}
               >
-                <span className="text-sm truncate">{trait.name}</span>
-                <span
-                  className={`shrink-0 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border ${gearTraitPolarityClasses(trait.polarity)}`}
-                >
-                  {t(`inventory.traits.polarity.${trait.polarity}`)}
-                </span>
+                <span className="text-sm truncate min-w-0">{trait.name}</span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <TraitCategoryBadge category={trait.category} />
+                  <span
+                    className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border ${gearTraitPolarityClasses(trait.polarity)}`}
+                  >
+                    {t(`inventory.traits.polarity.${trait.polarity}`)}
+                  </span>
+                </div>
               </li>
             ))
           )}
@@ -248,29 +277,159 @@ function TraitNamePicker({
   )
 }
 
+function draftFromTrait(trait: GearTraitDefinition, value?: number): Draft {
+  return {
+    name: trait.name,
+    polarity: trait.polarity,
+    description: trait.description,
+    selectedId: trait.id,
+    value: value != null ? String(value) : '',
+  }
+}
+
+function TraitEditorPanel({
+  mode,
+  draft,
+  catalog,
+  lookupCatalog,
+  scopeCategory,
+  saving,
+  error,
+  onNameChange,
+  onDraftChange,
+  onSave,
+  onCancel,
+}: {
+  mode: 'add' | 'edit'
+  draft: Draft
+  catalog: GearTraitDefinition[]
+  lookupCatalog: GearTraitDefinition[]
+  scopeCategory: GearTraitScopeCategory
+  saving: boolean
+  error: string
+  onNameChange: (name: string, selectedId: string | null) => void
+  onDraftChange: (patch: Partial<Draft>) => void
+  onSave: () => void
+  onCancel: () => void
+}) {
+  const { t } = useTranslation()
+
+  return (
+    <div className="rounded border border-border bg-void/40 p-3 space-y-3">
+      <TraitNamePicker
+        catalog={catalog}
+        lookupCatalog={lookupCatalog}
+        scopeCategory={scopeCategory}
+        value={draft.name}
+        selectedId={draft.selectedId}
+        onChange={onNameChange}
+      />
+
+      <div className="flex flex-wrap items-end gap-4">
+        <PolarityToggle
+          value={draft.polarity}
+          onChange={(polarity) => onDraftChange({ polarity })}
+        />
+
+        <div className="w-20">
+          <Input
+            label={t('inventory.traits.valueLabel')}
+            type="number"
+            min={1}
+            max={10}
+            placeholder={t('inventory.traits.valuePlaceholder')}
+            value={draft.value}
+            onChange={(e) => onDraftChange({ value: e.target.value })}
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <span className="text-xs text-ink-muted uppercase tracking-widest">
+          {t('inventory.traits.descriptionLabel')}
+        </span>
+        <RichTextEditor
+          placeholder={t('inventory.traits.descriptionPlaceholder')}
+          rows={2}
+          value={draft.description}
+          onChange={(description) => onDraftChange({ description })}
+        />
+      </div>
+
+      <div className="flex gap-2 justify-end">
+        {error && (
+          <p className="text-blood text-xs self-center mr-auto">{error}</p>
+        )}
+        <Button variant="ghost" onClick={onCancel}>
+          {t('common.cancel')}
+        </Button>
+        <Button
+          onClick={onSave}
+          loading={saving}
+          disabled={!draft.name.trim()}
+        >
+          {mode === 'add' ? t('inventory.traits.confirmAdd') : t('common.save')}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 function AssignedTrait({
   trait,
+  value,
+  scopeCategory,
+  editing,
+  onEdit,
   onRemove,
 }: {
   trait: GearTraitDefinition
+  value?: number
+  scopeCategory: GearTraitScopeCategory
+  editing: boolean
+  onEdit: () => void
   onRemove: () => void
 }) {
   const { t } = useTranslation()
+
+  if (editing) return null
 
   return (
     <div
       className={`rounded border px-3 py-2 space-y-1.5 ${gearTraitPolarityClasses(trait.polarity)}`}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="text-sm font-medium leading-snug">{trait.name}</span>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="shrink-0 text-xs opacity-70 hover:opacity-100 transition-opacity"
-          aria-label={t('inventory.traits.remove', { name: trait.name })}
-        >
-          ×
-        </button>
+        <div className="min-w-0">
+          <span className="text-sm font-medium leading-snug">
+            {trait.name}
+            {value != null && (
+              <span className="ml-1.5 font-mono tabular-nums text-xs opacity-90">{value}</span>
+            )}
+          </span>
+          {trait.category !== scopeCategory && (
+            <span className="block mt-0.5">
+              <TraitCategoryBadge category={trait.category} />
+            </span>
+          )}
+        </div>
+        <div className="flex shrink-0 gap-1">
+          <button
+            type="button"
+            onClick={onEdit}
+            className="text-xs opacity-70 hover:opacity-100 transition-opacity"
+            aria-label={t('inventory.traits.edit', { name: trait.name })}
+          >
+            ✎
+          </button>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="text-xs opacity-70 hover:opacity-100 transition-opacity"
+            aria-label={t('inventory.traits.remove', { name: trait.name })}
+          >
+            ×
+          </button>
+        </div>
       </div>
       {trait.description.trim() && (
         <div className="prose-hero text-xs opacity-90 [&_p]:mb-1 [&_p:last-child]:mb-0">
@@ -289,23 +448,34 @@ function AssignedTrait({
 export default function GearTraitsEditor({
   gameId,
   heroId,
+  scopeCategory,
   traitIds,
+  traitValues,
   catalog,
   onChange,
   className = '',
 }: Props) {
   const { t } = useTranslation()
   const [adding, setAdding] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
   const assigned = resolveGearTraits(traitIds, catalog)
+  const formOpen = adding || editingId != null
+
+  function resetForm() {
+    setAdding(false)
+    setEditingId(null)
+    setDraft(EMPTY_DRAFT)
+    setError('')
+  }
 
   function handleNameChange(name: string, selectedId: string | null) {
     setDraft((prev) => {
       const next = { ...prev, name, selectedId }
-      if (selectedId) {
+      if (selectedId && selectedId !== editingId) {
         const trait = catalog.find((t) => t.id === selectedId)
         if (trait) {
           next.polarity = trait.polarity
@@ -316,21 +486,71 @@ export default function GearTraitsEditor({
     })
   }
 
+  function applyTraitValues(traitId: string, previousId?: string) {
+    const value = normalizeTraitValue(draft.value)
+    const nextValues = { ...traitValues }
+    if (previousId && previousId !== traitId) delete nextValues[previousId]
+    if (value != null) nextValues[traitId] = value
+    else delete nextValues[traitId]
+    return nextValues
+  }
+
+  function replaceTraitId(previousId: string, nextId: string) {
+    const nextIds = traitIds.map((id) => (id === previousId ? nextId : id))
+    const deduped = nextIds.filter((id, index) => nextIds.indexOf(id) === index)
+    const nextValues = applyTraitValues(nextId, previousId)
+    onChange(deduped, pruneTraitValues(deduped, nextValues))
+  }
+
   async function handleAdd() {
     if (!draft.name.trim()) return
     setSaving(true)
     setError('')
     try {
-      const traitId = await upsertGearTrait(gameId, heroId, catalog, {
+      const input = {
+        name: draft.name,
+        polarity: draft.polarity,
+        description: draft.description,
+      }
+      let traitId: string
+
+      if (draft.selectedId) {
+        traitId = await updateGearTrait(gameId, draft.selectedId, catalog, input)
+      } else {
+        const match = findGearTraitByNameInScope(catalog, draft.name, scopeCategory)
+        if (match) {
+          traitId = await updateGearTrait(gameId, match.id, catalog, input)
+        } else {
+          traitId = await upsertGearTrait(gameId, heroId, catalog, {
+            ...input,
+            category: scopeCategory,
+          })
+        }
+      }
+
+      const nextIds = traitIds.includes(traitId) ? traitIds : [...traitIds, traitId]
+      const nextValues = applyTraitValues(traitId)
+      onChange(nextIds, pruneTraitValues(nextIds, nextValues))
+      resetForm()
+    } catch {
+      setError(t('inventory.traits.saveError'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleSaveEdit() {
+    if (!editingId || !draft.name.trim()) return
+    setSaving(true)
+    setError('')
+    try {
+      const traitId = await updateGearTrait(gameId, editingId, catalog, {
         name: draft.name,
         polarity: draft.polarity,
         description: draft.description,
       })
-      if (!traitIds.includes(traitId)) {
-        onChange([...traitIds, traitId])
-      }
-      setDraft(EMPTY_DRAFT)
-      setAdding(false)
+      replaceTraitId(editingId, traitId)
+      resetForm()
     } catch {
       setError(t('inventory.traits.saveError'))
     } finally {
@@ -339,8 +559,24 @@ export default function GearTraitsEditor({
   }
 
   function handleRemove(traitId: string) {
-    onChange(traitIds.filter((id) => id !== traitId))
+    if (editingId === traitId) resetForm()
+    const nextIds = traitIds.filter((id) => id !== traitId)
+    const nextValues = { ...traitValues }
+    delete nextValues[traitId]
+    onChange(nextIds, pruneTraitValues(nextIds, nextValues))
   }
+
+  function startEdit(trait: GearTraitDefinition) {
+    setAdding(false)
+    setEditingId(trait.id)
+    setDraft(draftFromTrait(trait, resolveGearTraitValue(trait.id, traitValues)))
+    setError('')
+  }
+
+  const scopedCatalog = filterTraitsForScope(catalog, scopeCategory)
+  const pickerCatalog = adding
+    ? scopedCatalog.filter((t) => !traitIds.includes(t.id))
+    : scopedCatalog.filter((t) => !traitIds.includes(t.id) || t.id === editingId)
 
   return (
     <div className={`space-y-2 ${className}`.trim()}>
@@ -348,10 +584,13 @@ export default function GearTraitsEditor({
         <span className="text-xs text-ink-muted uppercase tracking-widest">
           {t('inventory.traits.title')}
         </span>
-        {!adding && (
+        {!formOpen && (
           <button
             type="button"
-            onClick={() => setAdding(true)}
+            onClick={() => {
+              resetForm()
+              setAdding(true)
+            }}
             className="text-xs text-ink-faint hover:text-ink transition-colors"
           >
             + {t('inventory.traits.add')}
@@ -362,67 +601,55 @@ export default function GearTraitsEditor({
       {assigned.length > 0 && (
         <div className="space-y-2">
           {assigned.map((trait) => (
-            <AssignedTrait
-              key={trait.id}
-              trait={trait}
-              onRemove={() => handleRemove(trait.id)}
-            />
+            <div key={trait.id}>
+              <AssignedTrait
+                trait={trait}
+                value={resolveGearTraitValue(trait.id, traitValues)}
+                scopeCategory={scopeCategory}
+                editing={editingId === trait.id}
+                onEdit={() => startEdit(trait)}
+                onRemove={() => handleRemove(trait.id)}
+              />
+              {editingId === trait.id && (
+                <div className="mt-2">
+                  <TraitEditorPanel
+                    mode="edit"
+                    draft={draft}
+                    catalog={pickerCatalog}
+                    lookupCatalog={catalog}
+                    scopeCategory={scopeCategory}
+                    saving={saving}
+                    error={error}
+                    onNameChange={handleNameChange}
+                    onDraftChange={(patch) => setDraft((prev) => ({ ...prev, ...patch }))}
+                    onSave={handleSaveEdit}
+                    onCancel={resetForm}
+                  />
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}
 
-      {assigned.length === 0 && !adding && (
+      {assigned.length === 0 && !formOpen && (
         <p className="text-xs text-ink-faint italic">{t('inventory.traits.empty')}</p>
       )}
 
       {adding && (
-        <div className="rounded border border-border bg-void/40 p-3 space-y-3">
-          <TraitNamePicker
-            catalog={catalog.filter((t) => !traitIds.includes(t.id))}
-            value={draft.name}
-            selectedId={draft.selectedId}
-            onChange={handleNameChange}
-          />
-
-          <PolarityToggle
-            value={draft.polarity}
-            onChange={(polarity) => setDraft((prev) => ({ ...prev, polarity }))}
-          />
-
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-ink-muted uppercase tracking-widest">
-              {t('inventory.traits.descriptionLabel')}
-            </span>
-            <RichTextEditor
-              placeholder={t('inventory.traits.descriptionPlaceholder')}
-              rows={2}
-              value={draft.description}
-              onChange={(description) => setDraft((prev) => ({ ...prev, description }))}
-            />
-          </div>
-
-          <div className="flex gap-2 justify-end">
-            {error && (
-              <p className="text-blood text-xs self-center mr-auto">{error}</p>
-            )}
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setAdding(false)
-                setDraft(EMPTY_DRAFT)
-              }}
-            >
-              {t('common.cancel')}
-            </Button>
-            <Button
-              onClick={handleAdd}
-              loading={saving}
-              disabled={!draft.name.trim()}
-            >
-              {t('inventory.traits.confirmAdd')}
-            </Button>
-          </div>
-        </div>
+        <TraitEditorPanel
+          mode="add"
+          draft={draft}
+          catalog={pickerCatalog}
+          lookupCatalog={catalog}
+          scopeCategory={scopeCategory}
+          saving={saving}
+          error={error}
+          onNameChange={handleNameChange}
+          onDraftChange={(patch) => setDraft((prev) => ({ ...prev, ...patch }))}
+          onSave={handleAdd}
+          onCancel={resetForm}
+        />
       )}
     </div>
   )
