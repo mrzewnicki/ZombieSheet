@@ -420,6 +420,32 @@
     "unauthorized": "Access denied",
     "generic": "Something went wrong. Please try again."
   },
+  "traitsCatalog": {
+    "title": "Traits",
+    "open": "Open traits",
+    "hint": "Shared trait definitions for this game. Anyone in the game can edit; every change is logged below.",
+    "dashboardHint": "Pick a game to browse and edit its trait catalog.",
+    "lobbyHint": "Browse all traits by category, fill in missing descriptions, and review who changed what.",
+    "searchPlaceholder": "Search traits…",
+    "newTraitPlaceholder": "New trait name…",
+    "addTrait": "Add trait",
+    "empty": "No traits yet. Add one above or create traits from character inventory.",
+    "noSearchResults": "No traits match your search.",
+    "missingDescription": "Missing description — click to add",
+    "addDescription": "Add description…",
+    "saveError": "Could not save. Check your connection and try again.",
+    "changeLog": "Change log",
+    "noChanges": "No changes recorded yet.",
+    "unknownUser": "Unknown user",
+    "columns": {
+      "name": "Trait name",
+      "polarity": "Polarity"
+    },
+    "fields": {
+      "description": "Description",
+      "polarity": "Polarity"
+    }
+  },
   "footer": {
     "about": "About"
   },

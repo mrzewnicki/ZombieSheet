@@ -155,6 +155,18 @@ service cloud.firestore {
         allow delete: if isGameMaster(gameId) || isMember(gameId);
       }
 
+      // Gear trait catalog change log — immutable once written
+      match /gearTraitChanges/{changeId} {
+        allow read: if isMember(gameId) || isGameMaster(gameId);
+        allow create: if (isMember(gameId) || isGameMaster(gameId))
+          && request.resource.data.changedByUid == uid()
+          && request.resource.data.keys().hasAll([
+            'traitName', 'category', 'field', 'label',
+            'oldValue', 'newValue', 'changedByUid', 'changedByName', 'changedAt'
+          ]);
+        allow update, delete: if false;
+      }
+
       // Legacy weapon-only trait catalog (read-only)
       match /weaponTraits/{traitId} {
         allow read: if isAuthed();

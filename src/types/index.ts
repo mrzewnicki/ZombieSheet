@@ -132,6 +132,20 @@ export interface HeroChange {
   changedAt: Timestamp
 }
 
+export interface GearTraitChange {
+  id: string
+  traitId?: string
+  traitName: string
+  category: GearTraitCategory
+  field: string
+  label: string
+  oldValue: unknown
+  newValue: unknown
+  changedByUid: string
+  changedByName: string
+  changedAt: Timestamp
+}
+
 /** Snapshot saved before a sheet version migration. Immutable once written. */
 export interface HeroSheetBackup {
   id: string

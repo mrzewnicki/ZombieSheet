@@ -420,6 +420,32 @@
     "unauthorized": "Brak dostępu",
     "generic": "Coś poszło nie tak. Spróbuj ponownie."
   },
+  "traitsCatalog": {
+    "title": "Właściwości",
+    "open": "Otwórz właściwości",
+    "hint": "Wspólny katalog właściwości dla tej gry. Każdy uczestnik może edytować — każda zmiana jest zapisywana poniżej.",
+    "dashboardHint": "Wybierz grę, aby przeglądać i edytować jej katalog właściwości.",
+    "lobbyHint": "Przeglądaj właściwości według kategorii, uzupełniaj brakujące opisy i sprawdzaj kto co zmienił.",
+    "searchPlaceholder": "Szukaj właściwości…",
+    "newTraitPlaceholder": "Nazwa nowej właściwości…",
+    "addTrait": "Dodaj właściwość",
+    "empty": "Brak właściwości. Dodaj powyżej lub twórz je z ekwipunku postaci.",
+    "noSearchResults": "Brak właściwości pasujących do wyszukiwania.",
+    "missingDescription": "Brak opisu — kliknij, aby dodać",
+    "addDescription": "Dodaj opis…",
+    "saveError": "Nie udało się zapisać. Sprawdź połączenie i spróbuj ponownie.",
+    "changeLog": "Historia zmian",
+    "noChanges": "Brak zapisanych zmian.",
+    "unknownUser": "Nieznany użytkownik",
+    "columns": {
+      "name": "Nazwa",
+      "polarity": "Efekt"
+    },
+    "fields": {
+      "description": "Opis",
+      "polarity": "Efekt"
+    }
+  },
   "footer": {
     "about": "O aplikacji"
   },

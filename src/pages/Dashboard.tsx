@@ -102,6 +102,7 @@ export default function Dashboard() {
           <p className="text-ink-faint text-sm">{t('dashboard.noGamesHint')}</p>
         </div>
       ) : (
+        <>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {games.map((game) => (
             <Link
@@ -153,6 +154,25 @@ export default function Dashboard() {
             </Link>
           ))}
         </div>
+
+        <section className="mt-10">
+          <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-3">
+            {t('traitsCatalog.title')}
+          </h2>
+          <p className="text-xs text-ink-faint mb-3">{t('traitsCatalog.dashboardHint')}</p>
+          <div className="flex flex-wrap gap-2">
+            {games.map((game) => (
+              <Link
+                key={game.id}
+                to={`/game/${game.id}/traits`}
+                className="text-sm px-3 py-2 rounded-lg border border-border bg-surface text-ink-muted hover:text-ink hover:border-blood/40 transition-colors"
+              >
+                {game.title}
+              </Link>
+            ))}
+          </div>
+        </section>
+        </>
       )}
 
       <ConfirmDialog

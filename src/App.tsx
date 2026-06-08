@@ -7,6 +7,7 @@ import SignIn from '@/pages/SignIn'
 import Dashboard from '@/pages/Dashboard'
 import CreateGame from '@/pages/CreateGame'
 import GameLobby from '@/pages/GameLobby'
+import GameTraits from '@/pages/GameTraits'
 import JoinGame from '@/pages/JoinGame'
 import CreateHero from '@/pages/hero/CreateHero'
 import HeroSheet from '@/pages/hero/HeroSheet'
@@ -37,6 +38,7 @@ export default function App() {
               {/* Game-scoped routes — GameShell provides chat sidebar when feature is enabled */}
               <Route path="/game/:gameId" element={<GameShell />}>
                 <Route index element={<GameLobby />} />
+                <Route path="traits" element={<GameTraits />} />
                 <Route path="hero/new" element={<CreateHero />} />
                 <Route path="hero/:heroId" element={<HeroSheet />}>
                   <Route index element={<Navigate to="personal" replace />} />
