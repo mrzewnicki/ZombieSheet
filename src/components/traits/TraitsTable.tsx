@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { GearTraitCategory, GearTraitPolarity } from '@/types'
 import {
+  createTraitCatalogPlaceholder,
   groupTraitsForTable,
   isTraitDescriptionEmpty,
   resolveRowPolarity,
@@ -109,11 +110,10 @@ export default function TraitsTable({ gameId, catalog, authorUid, authorName }: 
     setCreating(true)
     setError('')
     try {
-      await saveTraitCatalogDescription(gameId, catalog, {
+      await createTraitCatalogPlaceholder(gameId, catalog, {
         traitName: name,
         category: 'common',
         polarity: 'positive',
-        description: '',
         author,
         descriptionLabel: t('traitsCatalog.fields.description'),
       })
@@ -122,6 +122,27 @@ export default function TraitsTable({ gameId, catalog, authorUid, authorName }: 
       setError(t('traitsCatalog.saveError'))
     } finally {
       setCreating(false)
+    }
+  }
+
+  async function handleRemoveDescription() {
+    if (!editTarget) return
+    setSaving(true)
+    setError('')
+    try {
+      await saveTraitCatalogDescription(gameId, catalog, {
+        traitName: editTarget.row.displayName,
+        category: editTarget.category,
+        polarity: resolveRowPolarity(editTarget.row),
+        description: '',
+        author,
+        descriptionLabel: t('traitsCatalog.fields.description'),
+      })
+      closeEditor()
+    } catch {
+      setError(t('traitsCatalog.saveError'))
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -284,13 +305,27 @@ export default function TraitsTable({ gameId, catalog, authorUid, authorName }: 
 
             {error && <p className="text-sm text-blood">{error}</p>}
 
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={closeEditor} disabled={saving}>
-                {t('common.cancel')}
-              </Button>
-              <Button onClick={handleSaveDescription} loading={saving}>
-                {t('common.save')}
-              </Button>
+            <div className="flex justify-between gap-2">
+              {editTarget.row.byCategory[editTarget.category] ? (
+                <Button
+                  variant="ghost"
+                  onClick={handleRemoveDescription}
+                  loading={saving}
+                  className="text-blood hover:text-blood-light"
+                >
+                  {t('traitsCatalog.removeDescription')}
+                </Button>
+              ) : (
+                <span />
+              )}
+              <div className="flex gap-2">
+                <Button variant="ghost" onClick={closeEditor} disabled={saving}>
+                  {t('common.cancel')}
+                </Button>
+                <Button onClick={handleSaveDescription} loading={saving}>
+                  {t('common.save')}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

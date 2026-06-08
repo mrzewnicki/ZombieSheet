@@ -433,6 +433,7 @@
     "noSearchResults": "Brak właściwości pasujących do wyszukiwania.",
     "missingDescription": "Brak opisu — kliknij, aby dodać",
     "addDescription": "Dodaj opis…",
+    "removeDescription": "Usuń opis",
     "saveError": "Nie udało się zapisać. Sprawdź połączenie i spróbuj ponownie.",
     "changeLog": "Historia zmian",
     "noChanges": "Brak zapisanych zmian.",

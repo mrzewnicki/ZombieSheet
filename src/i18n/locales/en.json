@@ -433,6 +433,7 @@
     "noSearchResults": "No traits match your search.",
     "missingDescription": "Missing description — click to add",
     "addDescription": "Add description…",
+    "removeDescription": "Remove description",
     "saveError": "Could not save. Check your connection and try again.",
     "changeLog": "Change log",
     "noChanges": "No changes recorded yet.",

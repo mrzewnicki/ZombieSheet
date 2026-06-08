@@ -1,6 +1,7 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   serverTimestamp,
   updateDoc,
@@ -118,6 +119,63 @@ async function logGearTraitChange(input: LogChangeInput) {
   })
 }
 
+async function removeTraitCatalogEntry(
+  gameId: string,
+  existing: GearTraitDefinition,
+  author: ChangeAuthor,
+  descriptionLabel: string,
+) {
+  await deleteDoc(doc(db, 'games', gameId, GEAR_TRAITS_COLLECTION, existing.id))
+  await logGearTraitChange({
+    gameId,
+    traitId: existing.id,
+    traitName: existing.name,
+    category: existing.category,
+    field: 'description',
+    label: descriptionLabel,
+    oldValue: existing.description,
+    newValue: null,
+    author,
+  })
+}
+
+export async function createTraitCatalogPlaceholder(
+  gameId: string,
+  catalog: GearTraitDefinition[],
+  params: {
+    traitName: string
+    category: GearTraitCategory
+    polarity: GearTraitPolarity
+    author: ChangeAuthor
+    descriptionLabel: string
+  },
+): Promise<void> {
+  const name = params.traitName.trim()
+  if (!name) throw new Error('Trait name is required')
+
+  const existing = findGearTraitByName(catalog, name, params.category)
+  if (existing) return
+
+  const ref = await addDoc(collection(db, 'games', gameId, GEAR_TRAITS_COLLECTION), {
+    name,
+    polarity: params.polarity,
+    description: '',
+    category: params.category,
+  })
+
+  await logGearTraitChange({
+    gameId,
+    traitId: ref.id,
+    traitName: name,
+    category: params.category,
+    field: 'description',
+    label: params.descriptionLabel,
+    oldValue: null,
+    newValue: '',
+    author: params.author,
+  })
+}
+
 export async function saveTraitCatalogDescription(
   gameId: string,
   catalog: GearTraitDefinition[],
@@ -135,8 +193,14 @@ export async function saveTraitCatalogDescription(
 
   const existing = findGearTraitByName(catalog, name, params.category)
   const description = params.description
+  const clearing = isTraitDescriptionEmpty(description)
 
   if (existing) {
+    if (clearing) {
+      await removeTraitCatalogEntry(gameId, existing, params.author, params.descriptionLabel)
+      return
+    }
+
     if (existing.description === description) return
 
     await updateDoc(doc(db, 'games', gameId, GEAR_TRAITS_COLLECTION, existing.id), {
@@ -155,6 +219,8 @@ export async function saveTraitCatalogDescription(
     })
     return
   }
+
+  if (clearing) return
 
   const ref = await addDoc(collection(db, 'games', gameId, GEAR_TRAITS_COLLECTION), {
     name,
