@@ -7,9 +7,17 @@ interface Props {
   onConfirm: () => void
   onCancel: () => void
   dangerous?: boolean
+  confirmLoading?: boolean
 }
 
-export default function ConfirmDialog({ open, message, onConfirm, onCancel, dangerous = false }: Props) {
+export default function ConfirmDialog({
+  open,
+  message,
+  onConfirm,
+  onCancel,
+  dangerous = false,
+  confirmLoading = false,
+}: Props) {
   const { t } = useTranslation()
   if (!open) return null
 
@@ -18,8 +26,12 @@ export default function ConfirmDialog({ open, message, onConfirm, onCancel, dang
       <div className="bg-surface border border-border rounded-lg p-6 max-w-sm w-full mx-4 shadow-xl">
         <p className="text-ink text-sm leading-relaxed mb-6">{message}</p>
         <div className="flex justify-end gap-3">
-          <Button variant="ghost" onClick={onCancel}>{t('common.cancel')}</Button>
-          <Button variant={dangerous ? 'danger' : 'primary'} onClick={onConfirm}>
+          <Button variant="ghost" onClick={onCancel} disabled={confirmLoading}>{t('common.cancel')}</Button>
+          <Button
+            variant={dangerous ? 'danger' : 'primary'}
+            onClick={onConfirm}
+            loading={confirmLoading}
+          >
             {t('common.confirm')}
           </Button>
         </div>

@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { buildMigratedHeroFields } from './migrateHeroSheet'
+import { buildMigratedHeroFields, sanitizeNumericMap } from './migrateHeroSheet'
+
+describe('sanitizeNumericMap', () => {
+  it('keeps finite numbers and drops invalid values', () => {
+    expect(sanitizeNumericMap({
+      str: 3,
+      dex: NaN,
+      con: undefined as unknown as number,
+      wis: 1,
+    })).toEqual({ str: 3, wis: 1 })
+  })
+})
 
 describe('buildMigratedHeroFields', () => {
   const defaults = {

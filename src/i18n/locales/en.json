@@ -85,6 +85,7 @@
       "currentVersion": "Current version:",
       "latestVersion": "Latest system version:",
       "migrateBackupHint": "Migration saves a backup of attributes and skills before applying changes.",
+      "migrateError": "Migration failed. Check your connection and try again.",
       "dangerZone": "Danger zone",
       "deleteHint": "Permanently delete this character. This action cannot be undone."
     },

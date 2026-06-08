@@ -7,6 +7,7 @@ import { SHEET_VERSION } from '@/config/rpg-system'
 import { useHeroOutletContext } from '@/hooks/useHeroOutletContext'
 import { heroFullName } from '@/types'
 import { migrateHeroSheet } from '@/utils/migrateHeroSheet'
+import { needsSheetMigration, resolveHeroSheetVersion } from '@/utils/sheetVersion'
 import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
@@ -19,9 +20,10 @@ export default function SettingsTab() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [migrateOpen, setMigrateOpen] = useState(false)
   const [migrating, setMigrating] = useState(false)
+  const [migrateError, setMigrateError] = useState('')
 
-  const heroVersion = hero.sheetVersion ?? 0
-  const needsMigration = heroVersion !== SHEET_VERSION
+  const heroVersion = resolveHeroSheetVersion(hero.sheetVersion)
+  const needsMigration = needsSheetMigration(hero.sheetVersion)
   const heroName = heroFullName(hero)
 
   async function handleDelete() {
@@ -31,9 +33,12 @@ export default function SettingsTab() {
 
   async function handleMigrate() {
     setMigrating(true)
+    setMigrateError('')
     try {
       await migrateHeroSheet(paramGameId, heroId, hero)
       setMigrateOpen(false)
+    } catch {
+      setMigrateError(t('hero.settings.migrateError'))
     } finally {
       setMigrating(false)
     }
@@ -74,7 +79,10 @@ export default function SettingsTab() {
             <Button
               variant="outline"
               loading={migrating}
-              onClick={() => setMigrateOpen(true)}
+              onClick={() => {
+                setMigrateError('')
+                setMigrateOpen(true)
+              }}
               className="text-xs border-amber-400/40 text-amber-300 hover:bg-amber-400/10 shrink-0"
             >
               {t('hero.migrateSheet', { latest: SHEET_VERSION })}
@@ -90,6 +98,9 @@ export default function SettingsTab() {
           <p className="text-xs text-ink-faint leading-relaxed">
             {t('hero.settings.migrateBackupHint')}
           </p>
+        )}
+        {migrateError && (
+          <p className="text-xs text-blood leading-relaxed">{migrateError}</p>
         )}
       </section>
 
@@ -118,6 +129,7 @@ export default function SettingsTab() {
         message={t('hero.migrateConfirm', { current: heroVersion, latest: SHEET_VERSION })}
         onConfirm={handleMigrate}
         onCancel={() => setMigrateOpen(false)}
+        confirmLoading={migrating}
       />
 
       <ConfirmDialog

@@ -85,6 +85,7 @@
       "currentVersion": "Aktualna wersja:",
       "latestVersion": "Najnowsza wersja systemu:",
       "migrateBackupHint": "Przed migracją zapisywana jest kopia atrybutów i umiejętności.",
+      "migrateError": "Migracja nie powiodła się. Sprawdź połączenie i spróbuj ponownie.",
       "dangerZone": "Strefa zagrożenia",
       "deleteHint": "Trwale usuwa tę postać. Tej operacji nie można cofnąć."
     },

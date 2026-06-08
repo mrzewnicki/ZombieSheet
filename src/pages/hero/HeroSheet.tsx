@@ -5,6 +5,7 @@ import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '@/config/firebase'
 import { useCanEdit } from '@/hooks/useCanEdit'
 import { SHEET_VERSION } from '@/config/rpg-system'
+import { needsSheetMigration, resolveHeroSheetVersion } from '@/utils/sheetVersion'
 import { heroFullName, type Hero } from '@/types'
 import { useLayoutHeader } from '@/contexts/LayoutContext'
 import Spinner from '@/components/ui/Spinner'
@@ -52,8 +53,8 @@ export default function HeroSheet() {
     return unsub
   }, [gameId, heroId])
 
-  const heroVersion = hero?.sheetVersion ?? 0
-  const needsMigration = heroVersion !== SHEET_VERSION
+  const heroVersion = resolveHeroSheetVersion(hero?.sheetVersion)
+  const needsMigration = needsSheetMigration(hero?.sheetVersion)
 
   const tabs = [
     { key: 'personal',  label: t('hero.tabs.personal'),  icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm5 5c0 1-1 1-1 1H4s-1 0-1-1 1-4 5-4 5 3 5 4z"/></svg> },
