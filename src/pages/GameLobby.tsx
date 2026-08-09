@@ -247,16 +247,14 @@ export default function GameLobby() {
 
         {/* Traits catalog */}
         <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase">
-              {t('traitsCatalog.title')}
-            </h2>
-            <Link to={`/game/${gameId}/traits`}>
-              <Button variant="outline" className="text-xs py-1.5">
-                {t('traitsCatalog.open')}
-              </Button>
-            </Link>
-          </div>
+          <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-3">
+            {t('traitsCatalog.title')}
+          </h2>
+          <Link to={`/game/${gameId}/traits`} className="inline-block mb-3">
+            <Button variant="outline" className="text-xs py-1.5">
+              {t('traitsCatalog.open')}
+            </Button>
+          </Link>
           <p className="text-ink-faint text-sm">{t('traitsCatalog.lobbyHint')}</p>
         </section>
       </div>

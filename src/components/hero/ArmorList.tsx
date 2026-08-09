@@ -19,6 +19,7 @@ import { persistGearListOrder } from '@/utils/persistGearListOrder'
 import GearTraitsEditor from '@/components/hero/GearTraitsEditor'
 import GearTraitChips from '@/components/hero/GearTraitChips'
 import { pruneTraitValues, traitFieldsForCreate, traitFieldsForUpdate } from '@/utils/gearTraits'
+import SaveIcon from '@/components/icons/SaveIcon'
 
 interface Props {
   gameId: string
@@ -28,7 +29,9 @@ interface Props {
   readOnly?: boolean
 }
 
-const EMPTY_FORM: ArmorFormData = { name: '', description: '', armorValue: 0, traitIds: [], ...EMPTY_GEAR_VISUAL }
+const EMPTY_FORM: ArmorFormData = {
+  name: '', description: '', armorValue: 0, traitIds: [], inUse: false, ...EMPTY_GEAR_VISUAL,
+}
 
 type ArmorFormData = Omit<ArmorItem, 'id'>
 
@@ -63,29 +66,43 @@ function ArmorForm({
         {mode === 'add' ? t('inventory.armor.addItem') : t('inventory.armor.editItem')}
       </p>
 
-      <div className="flex flex-col sm:flex-row sm:items-start sm:gap-6">
-        <div className="space-y-3 shrink-0 w-fit">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+        <div className="flex-1 min-w-0 space-y-3">
           <p className="text-xs font-mono uppercase tracking-widest text-ink-muted">
             {t('inventory.data')}
           </p>
 
-          <div className="flex flex-col gap-4 w-96 max-w-full">
-            <Input
-              label={t('inventory.itemName')}
-              placeholder={t('inventory.armor.namePlaceholder')}
-              value={data.name}
-              onChange={(e) => onChange({ ...data, name: e.target.value })}
-              autoFocus
-            />
-            <div className="w-24">
-              <Input
-                label={t('inventory.armor.armorValue')}
-                type="number"
-                min={0}
-                value={data.armorValue}
-                onChange={(e) => onChange({ ...data, armorValue: Number(e.target.value) })}
-              />
+          <div className="flex flex-col gap-4 w-full max-w-xl">
+            <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+              <div className="flex-1 min-w-0">
+                <Input
+                  label={t('inventory.itemName')}
+                  placeholder={t('inventory.armor.namePlaceholder')}
+                  value={data.name}
+                  onChange={(e) => onChange({ ...data, name: e.target.value })}
+                  autoFocus
+                />
+              </div>
+              <div className="w-24 shrink-0">
+                <Input
+                  label={t('inventory.armor.armorValue')}
+                  type="number"
+                  min={0}
+                  value={data.armorValue}
+                  onChange={(e) => onChange({ ...data, armorValue: Number(e.target.value) })}
+                />
+              </div>
             </div>
+
+            <label className="flex items-center gap-2 cursor-pointer w-fit">
+              <input
+                type="checkbox"
+                checked={Boolean(data.inUse)}
+                onChange={(e) => onChange({ ...data, inUse: e.target.checked })}
+                className="gear-checkbox"
+              />
+              <span className="text-sm text-ink">{t('inventory.inUse')}</span>
+            </label>
 
             <GearTraitsEditor
               gameId={gameId}
@@ -128,7 +145,12 @@ function ArmorForm({
         <Button variant="ghost" onClick={onCancel}>
           {t('common.cancel')}
         </Button>
-        <Button onClick={onSubmit} loading={saving} disabled={!data.name.trim()}>
+        <Button
+          onClick={onSubmit}
+          loading={saving}
+          disabled={!data.name.trim()}
+          icon={mode === 'edit' ? <SaveIcon /> : undefined}
+        >
           {submitLabel}
         </Button>
       </div>
@@ -170,10 +192,15 @@ export default function ArmorList({ gameId, heroId, items, traitCatalog, readOnl
       name: item.name,
       description: item.description,
       armorValue: item.armorValue,
+      inUse: Boolean(item.inUse),
       ...traitFieldsForUpdate(item.traitIds, item.traitValues),
       ...gearVisualPayload(item),
     })
     setEditingId(null)
+  }
+
+  async function handleInUseChange(item: ArmorItem, inUse: boolean) {
+    await updateDoc(doc(armorRef, item.id), { inUse })
   }
 
   async function handleDelete(item: ArmorItem) {
@@ -213,6 +240,9 @@ export default function ArmorList({ gameId, heroId, items, traitCatalog, readOnl
             name={item.name}
             description={item.description}
             readOnly={readOnly}
+            inUse={Boolean(item.inUse)}
+            inUseLabel={t('inventory.inUse')}
+            onInUseChange={(checked) => handleInUseChange(item, checked)}
             onEdit={() => setEditingId(item.id)}
             onDelete={() => setDeleteTarget(item)}
             editLabel={t('common.edit')}

@@ -41,6 +41,28 @@
     -moz-appearance: textfield;
     appearance: textfield;
   }
+
+  input[type='checkbox'].gear-checkbox {
+    @apply w-4 h-4 shrink-0 rounded-sm border border-border bg-surface cursor-pointer;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  input[type='checkbox'].gear-checkbox:checked {
+    @apply bg-blood border-blood;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23d4c9a8'%3E%3Cpath d='M12.207 4.793a1 1 0 0 1 0 1.414l-5 5a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L6.5 9.086l4.293-4.293a1 1 0 0 1 1.414 0z'/%3E%3C/svg%3E");
+    background-size: 100% 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  input[type='checkbox'].gear-checkbox:disabled {
+    @apply cursor-default opacity-50;
+  }
+
+  input[type='checkbox'].gear-checkbox:focus-visible {
+    @apply outline-none ring-2 ring-blood/40 ring-offset-1 ring-offset-dark;
+  }
 }
 
 @layer components {

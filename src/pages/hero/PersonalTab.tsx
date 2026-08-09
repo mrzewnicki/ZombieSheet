@@ -9,12 +9,7 @@ import { heroFullName } from '@/types'
 import Input from '@/components/ui/Input'
 import RichTextEditor from '@/components/ui/RichTextEditor'
 import Button from '@/components/ui/Button'
-
-const SaveIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
-    <path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4.414L11.586 1H2zm9 0v3H5V1h6zM4 9h8v5H4V9zm1 1v3h6v-3H5z"/>
-  </svg>
-)
+import SaveIcon from '@/components/icons/SaveIcon'
 import Spinner from '@/components/ui/Spinner'
 import ImageCropModal from '@/components/ui/ImageCropModal'
 import ReactMarkdown from 'react-markdown'

@@ -59,6 +59,49 @@ function FormatValue({ value, strikethrough }: { value: unknown; strikethrough?:
   return <span className={strikethrough ? 'text-ink-faint line-through' : 'text-ink'}>{text}</span>
 }
 
+function minuteKey(ts: Timestamp | null | undefined): string {
+  if (!ts) return `unknown-${Math.random()}`
+  const d = ts.toDate()
+  return [
+    d.getFullYear(),
+    d.getMonth(),
+    d.getDate(),
+    d.getHours(),
+    d.getMinutes(),
+  ].join('-')
+}
+
+function groupChangesByMinute(changes: HeroChange[]): HeroChange[][] {
+  const groups = new Map<string, HeroChange[]>()
+  const order: string[] = []
+
+  for (const change of changes) {
+    const key = minuteKey(change.changedAt as Timestamp)
+    if (!groups.has(key)) {
+      groups.set(key, [])
+      order.push(key)
+    }
+    groups.get(key)!.push(change)
+  }
+
+  return order.map((key) => groups.get(key)!)
+}
+
+function ChangeRow({ change }: { change: HeroChange }) {
+  return (
+    <div className="flex items-center gap-3 min-w-0">
+      <span className="text-[11px] text-blood font-mono uppercase tracking-wider w-40 shrink-0 truncate">
+        {change.label}
+      </span>
+      <div className="flex items-center gap-1.5 text-xs flex-1 min-w-0">
+        <FormatValue value={change.oldValue} strikethrough />
+        <span className="text-ink-faint">→</span>
+        <FormatValue value={change.newValue} />
+      </div>
+    </div>
+  )
+}
+
 export default function ChangeHistory({ changes }: Props) {
   const { t } = useTranslation()
 
@@ -66,23 +109,22 @@ export default function ChangeHistory({ changes }: Props) {
     return <p className="text-ink-faint text-sm text-center py-8">{t('history.noChanges')}</p>
   }
 
+  const groups = groupChangesByMinute(changes)
+
   return (
     <div className="space-y-px">
-      {changes.map((change) => (
+      {groups.map((group) => (
         <div
-          key={change.id}
-          className="flex items-center gap-3 px-3 py-1.5 rounded hover:bg-surface transition-colors"
+          key={group.map((change) => change.id).join('-')}
+          className="flex items-start gap-3 px-3 py-1.5 rounded hover:bg-surface transition-colors"
         >
-          <span className="text-[11px] text-blood font-mono uppercase tracking-wider w-40 shrink-0 truncate">
-            {change.label}
-          </span>
-          <div className="flex items-center gap-1.5 text-xs flex-1">
-            <FormatValue value={change.oldValue} strikethrough />
-            <span className="text-ink-faint">→</span>
-            <FormatValue value={change.newValue} />
+          <div className="flex-1 space-y-1 min-w-0">
+            {group.map((change) => (
+              <ChangeRow key={change.id} change={change} />
+            ))}
           </div>
-          <span className="text-[11px] text-ink-faint font-mono shrink-0">
-            {formatDate(change.changedAt as Timestamp)}
+          <span className="text-[11px] text-ink-faint font-mono shrink-0 pt-0.5">
+            {formatDate(group[0].changedAt as Timestamp)}
           </span>
         </div>
       ))}

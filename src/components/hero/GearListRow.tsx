@@ -44,6 +44,9 @@ interface Props {
   editLabel: string
   deleteLabel: string
   sortHandle?: React.ReactNode
+  inUse?: boolean
+  inUseLabel?: string
+  onInUseChange?: (checked: boolean) => void
 }
 
 function EditIcon() {
@@ -73,6 +76,9 @@ export default function GearListRow({
   editLabel,
   deleteLabel,
   sortHandle,
+  inUse = false,
+  inUseLabel,
+  onInUseChange,
 }: Props) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
@@ -203,6 +209,9 @@ export default function GearListRow({
           <span className="text-ink text-sm font-medium truncate">{name}</span>
           {chips}
         </div>
+        {inUse && inUseLabel && (
+          <span className="block mt-0.5 text-xs font-mono text-blood-light tabular-nums">{inUseLabel}</span>
+        )}
         {hasDescription && (
           <div
             className="mt-1 overflow-hidden transition-[max-height] ease-in-out"
@@ -229,30 +238,49 @@ export default function GearListRow({
         )}
       </div>
 
-      {!readOnly && (
+      {(onInUseChange || !readOnly) && (
         <div
           className="flex gap-0.5 shrink-0 self-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity"
           onClick={stopBubble}
         >
-          {sortHandle}
-          <button
-            type="button"
-            onClick={onEdit}
-            title={editLabel}
-            aria-label={editLabel}
-            className="w-7 h-7 flex items-center justify-center text-ink-faint hover:text-ink rounded hover:bg-elevated transition-colors"
-          >
-            <EditIcon />
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            title={deleteLabel}
-            aria-label={deleteLabel}
-            className="w-7 h-7 flex items-center justify-center text-ink-faint hover:text-blood rounded hover:bg-elevated transition-colors"
-          >
-            <DeleteIcon />
-          </button>
+          {!readOnly && sortHandle}
+          {onInUseChange && (
+            <label
+              className="w-7 h-7 flex items-center justify-center cursor-pointer rounded hover:bg-elevated transition-colors"
+              title={inUseLabel}
+            >
+              <input
+                type="checkbox"
+                checked={inUse}
+                disabled={readOnly}
+                onChange={(e) => onInUseChange(e.target.checked)}
+                aria-label={inUseLabel}
+                className="gear-checkbox"
+              />
+            </label>
+          )}
+          {!readOnly && (
+            <>
+              <button
+                type="button"
+                onClick={onEdit}
+                title={editLabel}
+                aria-label={editLabel}
+                className="w-7 h-7 flex items-center justify-center text-ink-faint hover:text-ink rounded hover:bg-elevated transition-colors"
+              >
+                <EditIcon />
+              </button>
+              <button
+                type="button"
+                onClick={onDelete}
+                title={deleteLabel}
+                aria-label={deleteLabel}
+                className="w-7 h-7 flex items-center justify-center text-ink-faint hover:text-blood rounded hover:bg-elevated transition-colors"
+              >
+                <DeleteIcon />
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

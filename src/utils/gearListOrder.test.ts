@@ -22,4 +22,15 @@ describe('gearListOrder', () => {
     const ordered = assignGearSortOrders([{ name: 'B' }, { name: 'A' }])
     expect(ordered.map((item) => item.sortOrder)).toEqual([1, 2])
   })
+
+  it('sorts in-use items before others', () => {
+    const sorted = sortGearListItems([
+      { name: 'Idle', sortOrder: 1 },
+      { name: 'Active B', inUse: true, sortOrder: 2 },
+      { name: 'Idle B', sortOrder: 3 },
+      { name: 'Active A', inUse: true, sortOrder: 1 },
+    ])
+
+    expect(sorted.map((item) => item.name)).toEqual(['Active A', 'Active B', 'Idle', 'Idle B'])
+  })
 })

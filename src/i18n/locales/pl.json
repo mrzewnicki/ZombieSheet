@@ -140,31 +140,25 @@
       "mentalne": "Mentalne",
       "umyslowe": "Umysłowe"
     },
-    "zdrowie": "Zdrowie",
+    "sila": "Siła",
+    "zrecznosc": "Zręczność",
     "kondycja": "Kondycja",
-    "precyzja": "Precyzja",
-    "tezyzna": "Tężyzna",
+    "charyzma": "Charyzma",
+    "manipulacja": "Manipulacja",
     "opanowanie": "Opanowanie",
-    "determinacja": "Determinacja",
-    "empatia": "Empatia",
-    "ego": "Ego",
-    "rozsadek": "Rozsądek",
-    "percepcja": "Percepcja",
     "inteligencja": "Inteligencja",
-    "kreatywnosc": "Kreatywność",
+    "spryt": "Spryt",
+    "determinacja": "Determinacja",
     "tooltips": {
-      "zdrowie": "Wrodzona witalność i odporność biologiczna organizmu.",
-      "kondycja": "Granice fizycznego wysiłku i zdolność długotrwałego działania.",
-      "precyzja": "Dokładność działania, refleks i kontrola nad własnym ciałem.",
-      "tezyzna": "Prosta i brutalna moc wpływania na otoczenie własnym ciałem.",
-      "opanowanie": "Zdolność zachowania kontroli w sytuacjach strachu i chaosu.",
-      "determinacja": "Siła woli i gotowość do poświęceń w imię realizacji celu.",
-      "empatia": "Naturalna zdolność rozumienia emocji i potrzeb innych ludzi.",
-      "ego": "Siła osobowości i zdolność narzucania własnej woli.",
-      "rozsadek": "Wiedza praktyczna i zdolność logicznego oceniania sytuacji.",
-      "percepcja": "Zdolność obserwacji świata i wychwytywania szczegółów otoczenia.",
-      "inteligencja": "Zdolność rozumienia mechanizmów świata i rozwiązywania problemów.",
-      "kreatywnosc": "Zdolność odnajdywania nowych rozwiązań w sytuacjach bez wyjścia."
+      "sila": "Prosta i brutalna moc wpływania na otoczenie przy użyciu własnego ciała.",
+      "zrecznosc": "Dokładność działania i kontrola nad własnym ciałem — zwinność, refleks i koordynacja.",
+      "kondycja": "Granice fizycznego wysiłku i zdolność organizmu do długotrwałego działania mimo zmęczenia.",
+      "charyzma": "Siła osobowości oraz zdolność narzucania swojej woli, inspirowania innych i budzenia zaufania.",
+      "manipulacja": "Zdolność rozumienia emocji i zachowań innych ludzi oraz świadomego ich wykorzystywania.",
+      "opanowanie": "Wewnętrzny spokój i zdolność zachowania kontroli nad sobą w sytuacjach strachu i chaosu.",
+      "inteligencja": "Zdolność rozumienia mechanizmów świata i wykorzystywania wiedzy w nowych sytuacjach.",
+      "spryt": "Szybkość myślenia i reagowania w sytuacjach, gdy brakuje czasu i informacji.",
+      "determinacja": "Siła woli, motywacja i gotowość do poświęceń w imię realizacji celu."
     }
   },
   "skills": {
@@ -298,6 +292,7 @@
     "deleteItem": "Usuń przedmiot",
     "deleteConfirm": "Usunąć \"{{name}}\"?",
     "data": "Dane",
+    "inUse": "W użyciu",
     "traits": {
       "title": "Cechy specjalne",
       "add": "Dodaj cechę",
@@ -376,7 +371,8 @@
       "noItems": "Brak pancerzy.",
       "namePlaceholder": "Np. Kamizelka kevlarowa",
       "armorValue": "Pancerz",
-      "editItem": "Edytuj pancerz"
+      "editItem": "Edytuj pancerz",
+      "inUseTotal": "Pancerz w użyciu: {{value}}"
     },
     "equipment": {
       "title": "Ekwipunek",

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from '@/config/firebase'
@@ -59,6 +59,11 @@ export default function InventoryTab() {
 
   const isLoading = loading.weapons || loading.armor || loading.equipment || traitsLoading
 
+  const armorInUseTotal = useMemo(
+    () => armor.filter((item) => item.inUse).reduce((sum, item) => sum + (item.armorValue ?? 0), 0),
+    [armor],
+  )
+
   if (isLoading) return <div className="flex justify-center py-8"><Spinner /></div>
 
   return (
@@ -77,9 +82,12 @@ export default function InventoryTab() {
       </section>
 
       <section>
-        <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-4">
+        <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase">
           {t('inventory.armor.title')}
         </h2>
+        <p className="mt-1 mb-4 text-xs font-mono text-ink-muted">
+          {t('inventory.armor.inUseTotal', { value: armorInUseTotal })}
+        </p>
         <ArmorList
           gameId={gameId}
           heroId={heroId}

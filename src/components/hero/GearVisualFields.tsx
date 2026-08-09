@@ -28,7 +28,7 @@ export default function GearVisualFields({
     <div
       className={
         isAside
-          ? 'space-y-3 min-w-0 sm:w-72 lg:w-80 pt-3 border-t border-border sm:border-t-0 sm:border-l sm:pl-6 sm:pt-0'
+          ? 'space-y-3 shrink-0 min-w-0 sm:ml-auto sm:w-64 lg:w-72 pt-3 border-t border-border sm:border-t-0 sm:border-l sm:pl-6 sm:pt-0'
           : 'space-y-3 pt-3 border-t border-border'
       }
     >

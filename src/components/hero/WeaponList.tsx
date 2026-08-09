@@ -19,6 +19,7 @@ import { persistGearListOrder } from '@/utils/persistGearListOrder'
 import GearTraitsEditor from '@/components/hero/GearTraitsEditor'
 import GearTraitChips from '@/components/hero/GearTraitChips'
 import { pruneTraitValues, traitFieldsForCreate, traitFieldsForUpdate } from '@/utils/gearTraits'
+import SaveIcon from '@/components/icons/SaveIcon'
 
 interface Props {
   gameId: string
@@ -37,6 +38,7 @@ const EMPTY_FORM: WeaponFormData = {
   type: 'melee',
   damageExpression: '',
   traitIds: [],
+  inUse: false,
   ...EMPTY_GEAR_VISUAL,
 }
 
@@ -86,6 +88,7 @@ function WeaponForm({
   onSubmit,
   onCancel,
   submitLabel,
+  submitIcon,
   saving = false,
   gameId,
   heroId,
@@ -96,6 +99,7 @@ function WeaponForm({
   onSubmit: () => void
   onCancel: () => void
   submitLabel: string
+  submitIcon?: React.ReactNode
   saving?: boolean
   gameId: string
   heroId: string
@@ -105,13 +109,13 @@ function WeaponForm({
 
   return (
     <div className="bg-surface border border-blood/25 rounded-lg p-4 space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:gap-6">
-        <div className="space-y-3 shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+        <div className="flex-1 min-w-0 space-y-3">
           <p className="text-xs font-mono uppercase tracking-widest text-blood-light/80">
             {t('inventory.data')}
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-[6rem_auto_11rem] gap-x-4 gap-y-3 w-fit max-w-full sm:items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-[6rem_auto_11rem] gap-x-4 gap-y-3 w-full max-w-2xl sm:items-end">
             <div className="sm:col-span-3">
               <Input
                 label={t('inventory.itemName')}
@@ -142,6 +146,16 @@ function WeaponForm({
               onChange={(e) => onChange({ ...data, damageExpression: e.target.value })}
               className="font-mono"
             />
+
+            <label className="flex items-center gap-2 cursor-pointer w-fit sm:col-span-3">
+              <input
+                type="checkbox"
+                checked={Boolean(data.inUse)}
+                onChange={(e) => onChange({ ...data, inUse: e.target.checked })}
+                className="gear-checkbox"
+              />
+              <span className="text-sm text-ink">{t('inventory.inUse')}</span>
+            </label>
 
             <GearTraitsEditor
               gameId={gameId}
@@ -185,7 +199,7 @@ function WeaponForm({
         <Button variant="ghost" onClick={onCancel}>
           {t('common.cancel')}
         </Button>
-        <Button onClick={onSubmit} loading={saving} disabled={!data.name.trim()}>
+        <Button onClick={onSubmit} loading={saving} disabled={!data.name.trim()} icon={submitIcon}>
           {submitLabel}
         </Button>
       </div>
@@ -229,10 +243,15 @@ export default function WeaponList({ gameId, heroId, items, traitCatalog, readOn
       description: item.description,
       type: item.type,
       damageExpression: item.damageExpression,
+      inUse: Boolean(item.inUse),
       ...traitFieldsForUpdate(item.traitIds, item.traitValues),
       ...gearVisualPayload(item),
     })
     setEditingId(null)
+  }
+
+  async function handleInUseChange(item: WeaponItem, inUse: boolean) {
+    await updateDoc(doc(weaponsRef, item.id), { inUse })
   }
 
   async function handleDelete(item: WeaponItem) {
@@ -272,6 +291,9 @@ export default function WeaponList({ gameId, heroId, items, traitCatalog, readOn
             name={item.name}
             description={item.description}
             readOnly={readOnly}
+            inUse={Boolean(item.inUse)}
+            inUseLabel={t('inventory.inUse')}
+            onInUseChange={(checked) => handleInUseChange(item, checked)}
             onEdit={() => setEditingId(item.id)}
             onDelete={() => setDeleteTarget(item)}
             editLabel={t('common.edit')}
@@ -356,6 +378,7 @@ function EditableRow({
       onSubmit={() => onSave(draft)}
       onCancel={onCancel}
       submitLabel={t('common.save')}
+      submitIcon={<SaveIcon />}
       gameId={gameId}
       heroId={heroId}
       traitCatalog={traitCatalog}

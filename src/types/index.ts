@@ -72,6 +72,7 @@ export interface InventoryItem extends GearVisualFields {
   traitIds?: string[]
   traitValues?: GearTraitValues
   sortOrder?: number
+  inUse?: boolean
 }
 
 export type WeaponType = 'range' | 'melee'
@@ -103,6 +104,7 @@ export interface WeaponItem extends GearVisualFields {
   traitIds?: string[]
   traitValues?: GearTraitValues
   sortOrder?: number
+  inUse?: boolean
 }
 
 export interface ArmorItem extends GearVisualFields {
@@ -113,6 +115,7 @@ export interface ArmorItem extends GearVisualFields {
   traitIds?: string[]
   traitValues?: GearTraitValues
   sortOrder?: number
+  inUse?: boolean
 }
 
 export interface HeroGalleryImage {

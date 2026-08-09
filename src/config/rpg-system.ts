@@ -33,30 +33,27 @@ export const ATTRIBUTE_GROUPS: AttributeGroupDef[] = [
     key: 'fizyczne',
     labelKey: 'attributes.groups.fizyczne',
     attributes: [
-      { key: 'zdrowie',     labelKey: 'attributes.zdrowie',     group: 'fizyczne', docUrl: `${CECHY}?s=zdrowie` },
+      { key: 'sila',        labelKey: 'attributes.sila',        group: 'fizyczne', docUrl: `${CECHY}?s=si%C5%82a` },
+      { key: 'zrecznosc',   labelKey: 'attributes.zrecznosc',   group: 'fizyczne', docUrl: `${CECHY}?s=zr%C4%99czno%C5%9B%C4%87` },
       { key: 'kondycja',    labelKey: 'attributes.kondycja',    group: 'fizyczne', docUrl: `${CECHY}?s=kondycja` },
-      { key: 'precyzja',    labelKey: 'attributes.precyzja',    group: 'fizyczne', docUrl: `${CECHY}?s=precyzja` },
-      { key: 'tezyzna',     labelKey: 'attributes.tezyzna',     group: 'fizyczne', docUrl: `${CECHY}?s=t%C4%99%C5%BCyzna` },
     ],
   },
   {
     key: 'mentalne',
     labelKey: 'attributes.groups.mentalne',
     attributes: [
+      { key: 'charyzma',     labelKey: 'attributes.charyzma',     group: 'mentalne', docUrl: `${CECHY}?s=charyzma` },
+      { key: 'manipulacja',  labelKey: 'attributes.manipulacja',  group: 'mentalne', docUrl: `${CECHY}?s=manipulacja` },
       { key: 'opanowanie',   labelKey: 'attributes.opanowanie',   group: 'mentalne', docUrl: `${CECHY}?s=opanowanie` },
-      { key: 'determinacja', labelKey: 'attributes.determinacja', group: 'mentalne', docUrl: `${CECHY}?s=determinacja` },
-      { key: 'empatia',      labelKey: 'attributes.empatia',      group: 'mentalne', docUrl: `${CECHY}?s=empatia` },
-      { key: 'ego',          labelKey: 'attributes.ego',          group: 'mentalne', docUrl: `${CECHY}?s=ego` },
     ],
   },
   {
     key: 'umyslowe',
     labelKey: 'attributes.groups.umyslowe',
     attributes: [
-      { key: 'rozsadek',     labelKey: 'attributes.rozsadek',     group: 'umyslowe', docUrl: `${CECHY}?s=rozs%C4%85dek` },
-      { key: 'percepcja',    labelKey: 'attributes.percepcja',    group: 'umyslowe', docUrl: `${CECHY}?s=percepcja` },
       { key: 'inteligencja', labelKey: 'attributes.inteligencja', group: 'umyslowe', docUrl: `${CECHY}?s=inteligencja` },
-      { key: 'kreatywnosc',  labelKey: 'attributes.kreatywnosc',  group: 'umyslowe', docUrl: `${CECHY}?s=kreatywno%C5%9B%C4%87` },
+      { key: 'spryt',        labelKey: 'attributes.spryt',        group: 'umyslowe', docUrl: `${CECHY}?s=spryt` },
+      { key: 'determinacja', labelKey: 'attributes.determinacja', group: 'umyslowe', docUrl: `${CECHY}?s=determinacja` },
     ],
   },
 ]
@@ -158,7 +155,7 @@ export const SKILL_CATEGORIES: SkillCategoryDef[] = [
  * or skills). Existing hero documents whose sheetVersion differs will show an
  * upgrade banner in HeroSheet.
  */
-export const SHEET_VERSION = 2
+export const SHEET_VERSION = 3
 
 /** All attribute keys pre-initialised to 0. Used when creating a new hero. */
 export const DEFAULT_ATTRIBUTES: Record<string, number> = Object.fromEntries(

@@ -99,7 +99,7 @@ export default function GameTraits() {
       />
 
       <section>
-        <div className="flex flex-wrap items-center gap-3 mb-3">
+        <div className="mb-3 space-y-2">
           <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase">
             {t('traitsCatalog.changeLog')}
           </h2>

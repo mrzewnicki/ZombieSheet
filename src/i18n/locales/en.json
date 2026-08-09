@@ -140,31 +140,25 @@
       "mentalne": "Mental",
       "umyslowe": "Cognitive"
     },
-    "zdrowie": "Health",
+    "sila": "Strength",
+    "zrecznosc": "Dexterity",
     "kondycja": "Stamina",
-    "precyzja": "Precision",
-    "tezyzna": "Brawn",
+    "charyzma": "Charisma",
+    "manipulacja": "Manipulation",
     "opanowanie": "Composure",
-    "determinacja": "Determination",
-    "empatia": "Empathy",
-    "ego": "Ego",
-    "rozsadek": "Common Sense",
-    "percepcja": "Perception",
     "inteligencja": "Intelligence",
-    "kreatywnosc": "Creativity",
+    "spryt": "Wits",
+    "determinacja": "Determination",
     "tooltips": {
-      "zdrowie": "Innate vitality and biological resilience of the organism.",
-      "kondycja": "Limits of physical effort and ability to act under prolonged strain.",
-      "precyzja": "Accuracy, reflex and control over one's own body.",
-      "tezyzna": "Raw, brutal power to affect the environment using one's body.",
-      "opanowanie": "Ability to keep control in situations of fear and chaos.",
-      "determinacja": "Strength of will and willingness to sacrifice for a goal.",
-      "empatia": "Natural ability to understand the emotions and needs of others.",
-      "ego": "Force of personality and ability to impose one's will.",
-      "rozsadek": "Practical knowledge and ability to logically assess situations.",
-      "percepcja": "Ability to observe the world and pick up on environmental details.",
-      "inteligencja": "Ability to understand the world's mechanisms and solve problems.",
-      "kreatywnosc": "Ability to find new solutions in seemingly hopeless situations."
+      "sila": "Raw, brutal power to affect the environment using one's own body.",
+      "zrecznosc": "Accuracy and control over one's own body — agility, reflex and coordination.",
+      "kondycja": "Limits of physical effort and the body's ability to keep acting despite fatigue.",
+      "charyzma": "Force of personality and the ability to impose one's will, inspire others and earn trust.",
+      "manipulacja": "Ability to understand the emotions and behaviour of others, and to consciously exploit them.",
+      "opanowanie": "Inner calm and the ability to keep control of oneself in situations of fear and chaos.",
+      "inteligencja": "Ability to understand the world's mechanisms and apply knowledge to new situations.",
+      "spryt": "Speed of thought and reaction when time and information are lacking.",
+      "determinacja": "Strength of will, motivation and willingness to sacrifice for a goal."
     }
   },
   "skills": {
@@ -298,6 +292,7 @@
     "deleteItem": "Delete item",
     "deleteConfirm": "Delete \"{{name}}\"?",
     "data": "Data",
+    "inUse": "In use",
     "traits": {
       "title": "Special traits",
       "add": "Add trait",
@@ -376,7 +371,8 @@
       "noItems": "No armor.",
       "namePlaceholder": "E.g. Kevlar vest",
       "armorValue": "Armor",
-      "editItem": "Edit armor"
+      "editItem": "Edit armor",
+      "inUseTotal": "Armor in use: {{value}}"
     },
     "equipment": {
       "title": "Equipment",

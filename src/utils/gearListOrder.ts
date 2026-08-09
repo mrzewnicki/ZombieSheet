@@ -1,6 +1,7 @@
 export interface GearListSortable {
   name: string
   sortOrder?: number
+  inUse?: boolean
 }
 
 export function nextGearSortOrder(items: GearListSortable[]): number {
@@ -10,6 +11,9 @@ export function nextGearSortOrder(items: GearListSortable[]): number {
 
 export function sortGearListItems<T extends GearListSortable>(items: T[]): T[] {
   return [...items].sort((a, b) => {
+    const inUseDiff = Number(Boolean(b.inUse)) - Number(Boolean(a.inUse))
+    if (inUseDiff !== 0) return inUseDiff
+
     const orderDiff = (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
     if (orderDiff !== 0) return orderDiff
     return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
