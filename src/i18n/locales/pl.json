@@ -681,6 +681,10 @@
     "traitValue": "Wartość",
     "traitDescription": "Opis…",
     "unnamedTrait": "Bez nazwy",
+    "traitSuggestEmpty": "Zacznij pisać, aby szukać w katalogu atutów i wad.",
+    "traitSuggestCreate": "Użyj własnej nazwy: „{{name}}”",
+    "traitSuggestCatalog": "Katalog",
+    "traitSuggestConstruction": "Konstrukcje",
     "categories": {
       "podstawowe": "Podstawowe",
       "schronienia": "Schronienia",

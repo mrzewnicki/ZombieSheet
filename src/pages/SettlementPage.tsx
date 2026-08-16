@@ -457,10 +457,11 @@ export default function SettlementPage({
       />
 
       <SettlementTraitsPanel
-        traits={settlement.traits}
-        canEdit={canEdit}
-        onChange={(traits) => patch({ traits })}
-      />
+          gameId={gameId}
+          traits={settlement.traits}
+          canEdit={canEdit}
+          onChange={(traits) => patch({ traits })}
+        />
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] gap-4 items-start">
         <div className="space-y-3">

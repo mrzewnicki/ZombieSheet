@@ -189,15 +189,15 @@ export default function SettlementMap({
       }`}
       style={{
         background:
-          'radial-gradient(ellipse at 40% 30%, #3a3428 0%, transparent 55%), radial-gradient(ellipse at 70% 70%, #2a2218 0%, transparent 50%), linear-gradient(165deg, #1a1814 0%, #12100e 50%, #0e0c0a 100%)',
+          'radial-gradient(ellipse at 40% 30%, #1c1814 0%, transparent 50%), radial-gradient(ellipse at 70% 70%, #161210 0%, transparent 45%), linear-gradient(165deg, #100e0c 0%, #0c0a08 55%, #080706 100%)',
       }}
       onClick={clearSelection}
     >
       <div
-        className="absolute inset-0 opacity-[0.12] pointer-events-none"
+        className="absolute inset-0 opacity-[0.06] pointer-events-none"
         style={{
           backgroundImage:
-            'linear-gradient(to right, #8a7a5a 1px, transparent 1px), linear-gradient(to bottom, #8a7a5a 1px, transparent 1px)',
+            'linear-gradient(to right, #6a5a42 1px, transparent 1px), linear-gradient(to bottom, #6a5a42 1px, transparent 1px)',
           backgroundSize: '5% 5%',
         }}
       />
@@ -241,12 +241,12 @@ export default function SettlementMap({
                 y1={from.y}
                 x2={to.x}
                 y2={to.y}
-                stroke={selected || linkMode === 'disconnect' ? '#c45c4a' : '#6b5d45'}
-                strokeWidth={selected ? 1.2 : 0.7}
+                stroke={selected || linkMode === 'disconnect' ? '#c45c4a' : '#8a7a5a'}
+                strokeWidth={selected ? 1.2 : 0.75}
                 strokeLinecap="round"
                 vectorEffect="non-scaling-stroke"
                 className={interactive ? 'cursor-pointer' : 'pointer-events-none'}
-                opacity={selected ? 1 : linkMode === 'disconnect' ? 0.95 : 0.85}
+                opacity={selected ? 1 : linkMode === 'disconnect' ? 0.95 : 0.9}
                 onClick={(e) => handleConnectionClick(e, conn.id)}
               />
             </g>
@@ -311,7 +311,7 @@ export default function SettlementMap({
             >
               <Icon className="w-4 h-4" aria-hidden />
             </span>
-            <span className="text-[9px] leading-tight text-center text-ink px-1 py-0.5 rounded bg-void/80 line-clamp-2">
+            <span className="text-[9px] leading-tight text-center text-ink px-1.5 py-0.5 rounded bg-void/95 border border-border/60 shadow-sm shadow-void/60 line-clamp-2">
               {label}
             </span>
           </button>

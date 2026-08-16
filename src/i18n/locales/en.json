@@ -681,6 +681,10 @@
     "traitValue": "Value",
     "traitDescription": "Description…",
     "unnamedTrait": "Unnamed",
+    "traitSuggestEmpty": "Start typing to search the merits and flaws catalog.",
+    "traitSuggestCreate": "Use custom name: “{{name}}”",
+    "traitSuggestCatalog": "Catalog",
+    "traitSuggestConstruction": "Constructions",
     "categories": {
       "podstawowe": "Basics",
       "schronienia": "Shelter",
