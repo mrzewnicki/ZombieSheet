@@ -12,6 +12,7 @@ import type {
   SettlementConstructionInstance,
   SettlementCustomConstruction,
   SettlementMapObjectInstance,
+  SettlementMapSize,
   SettlementNpc,
   SettlementZone,
   SettlementZonePoint,
@@ -25,6 +26,11 @@ import {
   mapObjectLocalizedName,
 } from '@/config/settlementMapObjects'
 import { settlementMapObjectIcon } from '@/config/settlementMapObjectIcons'
+import {
+  clampMapGridDim,
+  mapBackgroundOpacity,
+  snapMapPoint,
+} from '@/utils/settlementMapGrid'
 import {
   constructionMapLayer,
   objectMapLayer,
@@ -105,6 +111,7 @@ interface Props {
   zoneDrawMode?: boolean
   zoneDraftPoints?: SettlementZonePoint[]
   activeLayer?: SettlementMapLayer
+  map?: SettlementMapSize
   canEdit: boolean
   onSelect: (id: string | null) => void
   onSelectObject?: (id: string | null) => void
@@ -158,6 +165,7 @@ export default function SettlementMap({
   zoneDrawMode = false,
   zoneDraftPoints = [],
   activeLayer = 'objects',
+  map = { width: 20, height: 20 },
   canEdit,
   onSelect,
   onSelectObject,
@@ -296,6 +304,12 @@ export default function SettlementMap({
     }
   }
 
+  function clientToSnappedPct(clientX: number, clientY: number): { x: number; y: number } | null {
+    const pct = clientToPct(clientX, clientY)
+    if (!pct) return null
+    return snapMapPoint(pct.x, pct.y, map)
+  }
+
   function handlePointerDown(
     e: React.PointerEvent,
     id: string,
@@ -344,7 +358,7 @@ export default function SettlementMap({
     }
 
     if (drag.kind === 'zone-vertex') {
-      const pct = clientToPct(e.clientX, e.clientY)
+      const pct = clientToSnappedPct(e.clientX, e.clientY)
       if (!pct || drag.vertexIndex == null || !drag.originPoints) return
       onMoveZone?.(drag.id, moveZoneVertex(drag.originPoints, drag.vertexIndex, pct))
       return
@@ -361,7 +375,7 @@ export default function SettlementMap({
       return
     }
 
-    const pct = clientToPct(e.clientX, e.clientY)
+    const pct = clientToSnappedPct(e.clientX, e.clientY)
     if (!pct) return
     if (drag.kind === 'object') onMoveObject?.(drag.id, pct.x, pct.y)
     else onMove(drag.id, pct.x, pct.y)
@@ -507,14 +521,14 @@ export default function SettlementMap({
     }
     const zone = zones.find((z) => z.id === zoneId)
     if (!zone || !layerActive(zoneMapLayer(zone.layer))) return
-    const pct = clientToPct(e.clientX, e.clientY)
+    const pct = clientToSnappedPct(e.clientX, e.clientY)
     if (!pct) return
     const a = zone.points[edgeIndex]
     const b = zone.points[(edgeIndex + 1) % zone.points.length]
     const { point, t } = projectPointOntoSegment(pct, a, b)
     if (t < 0.08 || t > 0.92) return
     onSelectZone?.(zoneId)
-    onMoveZone?.(zoneId, insertZonePointOnEdge(zone.points, edgeIndex, point))
+    onMoveZone?.(zoneId, insertZonePointOnEdge(zone.points, edgeIndex, snapMapPoint(point.x, point.y, map)))
   }
 
   function handleZoneClick(e: React.MouseEvent, id: string) {
@@ -558,7 +572,7 @@ export default function SettlementMap({
       return
     }
     if (drawingZone) {
-      const pct = clientToPct(e.clientX, e.clientY)
+      const pct = clientToSnappedPct(e.clientX, e.clientY)
       if (pct) onZoneDraftClick?.(pct)
       return
     }
@@ -798,7 +812,6 @@ export default function SettlementMap({
         onContextMenu={(e) => openContextMenu(e, 'construction', item.id, layer)}
         className={`
           absolute ${zClass} -translate-x-1/2 -translate-y-1/2
-          flex flex-col items-center
           ${!interactive
             ? 'cursor-default'
             : linking
@@ -811,16 +824,16 @@ export default function SettlementMap({
         style={{
           left: `${item.x}%`,
           top: `${item.y}%`,
-          maxWidth: markerMaxW,
-          gap: 2 * zoom,
+          width: markerBox,
+          height: markerBox,
           opacity: onLayer ? (drawingZone ? 0.5 : 1) : INACTIVE_LAYER_OPACITY,
         }}
         title={label}
       >
         {assigned.length > 0 && (
           <span
-            className="flex items-center pointer-events-none"
-            style={{ marginBottom: 2 * zoom, marginLeft: npcAvatar * 0.25, marginRight: npcAvatar * 0.25 }}
+            className="absolute left-1/2 -translate-x-1/2 flex items-center pointer-events-none"
+            style={{ bottom: '100%', marginBottom: 2 * zoom }}
           >
             {visibleNpcs.map((npc, i) => (
               <span
@@ -847,7 +860,7 @@ export default function SettlementMap({
         )}
         <span
           className={`
-            rounded-md border flex items-center justify-center
+            w-full h-full rounded-md border flex items-center justify-center
             shadow-md shadow-void/50
             ${linkFrom
               ? 'ring-2 ring-blood-light/50 border-blood-light'
@@ -856,8 +869,6 @@ export default function SettlementMap({
                 : 'border-border'}
           `}
           style={{
-            width: markerBox,
-            height: markerBox,
             backgroundColor: item.bgColor?.trim() || '#231c16',
             color: item.iconColor?.trim() || '#b02020',
           }}
@@ -874,8 +885,11 @@ export default function SettlementMap({
           )}
         </span>
         <span
-          className="leading-tight text-center text-ink rounded bg-void/95 border border-border/60 shadow-sm shadow-void/60 line-clamp-2"
+          className="absolute left-1/2 -translate-x-1/2 leading-tight text-center text-ink rounded bg-void/95 border border-border/60 shadow-sm shadow-void/60 line-clamp-2 pointer-events-none"
           style={{
+            top: '100%',
+            marginTop: 2 * zoom,
+            maxWidth: markerMaxW,
             fontSize: markerLabel,
             paddingLeft: labelPadX,
             paddingRight: labelPadX,
@@ -913,7 +927,6 @@ export default function SettlementMap({
         onContextMenu={(e) => openContextMenu(e, 'object', item.id, layer)}
         className={`
           absolute ${zClass} -translate-x-1/2 -translate-y-1/2
-          flex flex-col items-center
           ${interactive
             ? canEdit
               ? 'cursor-grab active:cursor-grabbing'
@@ -924,8 +937,8 @@ export default function SettlementMap({
         style={{
           left: `${item.x}%`,
           top: `${item.y}%`,
-          maxWidth: markerMaxW,
-          gap: 2 * zoom,
+          width: objectBox,
+          height: objectBox,
           opacity: onLayer ? 1 : INACTIVE_LAYER_OPACITY,
         }}
         title={label}
@@ -933,15 +946,13 @@ export default function SettlementMap({
       >
         <span
           className={`
-            rounded-full border flex items-center justify-center
+            w-full h-full rounded-full border flex items-center justify-center
             shadow-md shadow-void/50
             ${selected
               ? 'ring-2 ring-blood-light/40 border-blood-light'
               : 'border-border'}
           `}
           style={{
-            width: objectBox,
-            height: objectBox,
             backgroundColor: item.bgColor?.trim() || def?.defaultBgColor || '#1c1b19',
             color: item.iconColor?.trim() || def?.defaultIconColor || '#9a958c',
           }}
@@ -949,8 +960,11 @@ export default function SettlementMap({
           <Icon style={{ width: objectIcon, height: objectIcon }} aria-hidden />
         </span>
         <span
-          className="leading-tight text-center text-ink rounded bg-void/95 border border-border/60 shadow-sm shadow-void/60 line-clamp-2"
+          className="absolute left-1/2 -translate-x-1/2 leading-tight text-center text-ink rounded bg-void/95 border border-border/60 shadow-sm shadow-void/60 line-clamp-2 pointer-events-none"
           style={{
+            top: '100%',
+            marginTop: 2 * zoom,
+            maxWidth: markerMaxW,
             fontSize: markerLabel,
             paddingLeft: labelPadX,
             paddingRight: labelPadX,
@@ -963,6 +977,13 @@ export default function SettlementMap({
       </button>
     )
   }
+
+  const gridCols = clampMapGridDim(map.width)
+  const gridRows = clampMapGridDim(map.height)
+  const bgUrl = map.backgroundImageURL?.trim() || ''
+  const bgOpacity = mapBackgroundOpacity(map) / 100
+  const squareCellW = `${100 / gridCols}%`
+  const squareCellH = `${100 / gridRows}%`
 
   return (
     <div
@@ -977,8 +998,9 @@ export default function SettlementMap({
               : 'border-border'
       } ${!drawingZone && panning ? 'cursor-grabbing' : !drawingZone && zoom > 1 ? 'cursor-grab' : ''}`}
       style={{
-        background:
-          'radial-gradient(ellipse at 40% 30%, #1c1814 0%, transparent 50%), radial-gradient(ellipse at 70% 70%, #161210 0%, transparent 45%), linear-gradient(165deg, #100e0c 0%, #0c0a08 55%, #080706 100%)',
+        background: bgUrl
+          ? '#0c0a08'
+          : 'radial-gradient(ellipse at 40% 30%, #1c1814 0%, transparent 50%), radial-gradient(ellipse at 70% 70%, #161210 0%, transparent 45%), linear-gradient(165deg, #100e0c 0%, #0c0a08 55%, #080706 100%)',
       }}
       onPointerDown={handleSurfacePointerDown}
       onPointerMove={handleSurfacePointerMove}
@@ -1056,13 +1078,24 @@ export default function SettlementMap({
           transform: `translate(${pan.x}px, ${pan.y}px)`,
         }}
       >
+        {bgUrl ? (
+          <img
+            data-map-world="1"
+            src={bgUrl}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+            style={{ opacity: bgOpacity }}
+            draggable={false}
+          />
+        ) : null}
+
         <div
           data-map-world="1"
-          className="absolute inset-0 opacity-[0.06] pointer-events-none"
+          className="absolute inset-0 opacity-[0.08] pointer-events-none"
           style={{
             backgroundImage:
               'linear-gradient(to right, #6a5a42 1px, transparent 1px), linear-gradient(to bottom, #6a5a42 1px, transparent 1px)',
-            backgroundSize: '5% 5%',
+            backgroundSize: `${squareCellW} ${squareCellH}`,
           }}
         />
 

@@ -356,8 +356,18 @@ export interface SettlementNpc {
 }
 
 export interface SettlementMapSize {
+  /** Grid columns (density). */
   width: number
+  /** Grid rows (density). */
   height: number
+  /** Custom map background (Firebase Storage download URL). */
+  backgroundImageURL?: string
+  /** Storage path for replace/delete. */
+  backgroundStoragePath?: string
+  /** Background image opacity 0–100; default 100. */
+  backgroundOpacity?: number
+  /** Snap markers/vertices to grid cell centers. */
+  snapToGrid?: boolean
 }
 
 /** User-defined construction entry for this settlement's catalog. */

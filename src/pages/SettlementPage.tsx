@@ -8,7 +8,8 @@ import {
   setDoc,
   serverTimestamp,
 } from 'firebase/firestore'
-import { db } from '@/config/firebase'
+import { db, storage } from '@/config/firebase'
+import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import {
   constructionLocalizedDescription,
   constructionLocalizedName,
@@ -29,6 +30,7 @@ import {
 } from '@/config/settlementMapObjects'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import StepperInput from '@/components/ui/StepperInput'
 import RichTextEditor from '@/components/ui/RichTextEditor'
 import Spinner from '@/components/ui/Spinner'
 import SaveIcon from '@/components/icons/SaveIcon'
@@ -99,6 +101,16 @@ import {
   zoneMapLayer,
   type SettlementMapLayer,
 } from '@/utils/settlementMapLayers'
+import {
+  clampMapBackgroundOpacity,
+  clampMapGridDim,
+  DEFAULT_MAP_BACKGROUND_OPACITY,
+  DEFAULT_MAP_GRID_DIM,
+  MAX_MAP_GRID_DIM,
+  MIN_MAP_GRID_DIM,
+  mapBackgroundOpacity,
+  snapMapPoint,
+} from '@/utils/settlementMapGrid'
 import { gearTraitPolarityClasses } from '@/utils/gearTraits'
 import TraitValueBadge from '@/components/ui/TraitValueBadge'
 import {
@@ -200,6 +212,9 @@ export default function SettlementPage({
   const [zoneDrawMode, setZoneDrawMode] = useState(false)
   const [zoneDraftPoints, setZoneDraftPoints] = useState<SettlementZonePoint[]>([])
   const [activeLayer, setActiveLayer] = useState<SettlementMapLayer>('objects')
+  const [mapSettingsOpen, setMapSettingsOpen] = useState(false)
+  const [mapBgUploading, setMapBgUploading] = useState(false)
+  const mapBgFileRef = useRef<HTMLInputElement>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [objectPickerOpen, setObjectPickerOpen] = useState(false)
   const [buildTxn, setBuildTxn] = useState<BuildTxnEntry[] | null>(null)
@@ -383,9 +398,15 @@ export default function SettlementPage({
     setBuildTxn((prev) => applyBuildTxnChange(prev ?? [], instanceId, catalogKey, 'add'))
   }
 
+  function placeOnMap(x: number, y: number) {
+    if (!settlement) return { x, y }
+    return snapMapPoint(x, y, settlement.map)
+  }
+
   function addConstruction(catalogKey: string) {
     if (!settlement) return
-    const instance = newConstructionInstance(catalogKey, 40 + Math.random() * 20, 40 + Math.random() * 20)
+    const at = placeOnMap(40 + Math.random() * 20, 40 + Math.random() * 20)
+    const instance = newConstructionInstance(catalogKey, at.x, at.y)
     patch({ constructions: [...settlement.constructions, instance] })
     trackBuildAdd(instance.id, catalogKey)
     setSelectedId(instance.id)
@@ -405,7 +426,8 @@ export default function SettlementPage({
   }) {
     if (!settlement) return
     const entry = newCustomConstruction(input)
-    const instance = newConstructionInstance(entry.id, 40 + Math.random() * 20, 40 + Math.random() * 20)
+    const at = placeOnMap(40 + Math.random() * 20, 40 + Math.random() * 20)
+    const instance = newConstructionInstance(entry.id, at.x, at.y)
     patch({
       customConstructions: [...settlement.customConstructions, entry],
       constructions: [...settlement.constructions, instance],
@@ -447,7 +469,8 @@ export default function SettlementPage({
 
   function addObject(catalogKey: string) {
     if (!settlement) return
-    const instance = newMapObjectInstance(catalogKey, 30 + Math.random() * 40, 30 + Math.random() * 40)
+    const at = placeOnMap(30 + Math.random() * 40, 30 + Math.random() * 40)
+    const instance = newMapObjectInstance(catalogKey, at.x, at.y)
     patch({ objects: [...settlement.objects, instance] })
     setSelectedObjectId(instance.id)
     setSelectedId(null)
@@ -461,6 +484,7 @@ export default function SettlementPage({
     setZoneDraftPoints([])
     setLinkMode('off')
     setLinkFromId(null)
+    setMapSettingsOpen(false)
     setSelectedId(null)
     setSelectedObjectId(null)
     setSelectedZoneId(null)
@@ -479,6 +503,7 @@ export default function SettlementPage({
     setZoneDrawMode(false)
     setZoneDraftPoints([])
     setSelectedZoneId(zone.id)
+    setMapSettingsOpen(false)
     setSelectedId(null)
     setSelectedObjectId(null)
     setSelectedConnectionId(null)
@@ -582,6 +607,7 @@ export default function SettlementPage({
     setLinkMode((prev) => (prev === mode ? 'off' : mode))
     setLinkFromId(null)
     setSelectedConnectionId(null)
+    setMapSettingsOpen(false)
     cancelZoneDraw()
   }
 
@@ -726,6 +752,7 @@ export default function SettlementPage({
   function selectConstruction(id: string | null) {
     setSelectedId(id)
     if (id) {
+      setMapSettingsOpen(false)
       setSelectedObjectId(null)
       setSelectedZoneId(null)
       setSelectedConnectionId(null)
@@ -735,6 +762,7 @@ export default function SettlementPage({
   function selectObject(id: string | null) {
     setSelectedObjectId(id)
     if (id) {
+      setMapSettingsOpen(false)
       setSelectedId(null)
       setSelectedZoneId(null)
       setSelectedConnectionId(null)
@@ -744,6 +772,7 @@ export default function SettlementPage({
   function selectZone(id: string | null) {
     setSelectedZoneId(id)
     if (id) {
+      setMapSettingsOpen(false)
       setSelectedId(null)
       setSelectedObjectId(null)
       setSelectedConnectionId(null)
@@ -753,9 +782,78 @@ export default function SettlementPage({
   function selectConnection(id: string | null) {
     setSelectedConnectionId(id)
     if (id) {
+      setMapSettingsOpen(false)
       setSelectedId(null)
       setSelectedObjectId(null)
       setSelectedZoneId(null)
+    }
+  }
+
+  function openMapSettings() {
+    setMapSettingsOpen(true)
+    setSelectedId(null)
+    setSelectedObjectId(null)
+    setSelectedZoneId(null)
+    setSelectedConnectionId(null)
+    setLinkMode('off')
+    setLinkFromId(null)
+    cancelZoneDraw()
+  }
+
+  function updateMap(patchMap: Partial<Settlement['map']>) {
+    if (!settlement) return
+    const next = { ...settlement.map, ...patchMap }
+    if ('backgroundImageURL' in patchMap && !patchMap.backgroundImageURL) {
+      delete next.backgroundImageURL
+    }
+    if ('backgroundStoragePath' in patchMap && !patchMap.backgroundStoragePath) {
+      delete next.backgroundStoragePath
+    }
+    if ('snapToGrid' in patchMap) {
+      next.snapToGrid = patchMap.snapToGrid === true
+    }
+    patch({ map: next })
+  }
+
+  async function handleMapBackgroundFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (mapBgFileRef.current) mapBgFileRef.current.value = ''
+    if (!file || !settlement || !canEdit) return
+    setMapBgUploading(true)
+    setError(null)
+    const storagePath = `games/${gameId}/settlement/map/background`
+    try {
+      const storageRef = ref(storage, storagePath)
+      await uploadBytes(storageRef, file)
+      const url = await getDownloadURL(storageRef)
+      updateMap({ backgroundImageURL: url, backgroundStoragePath: storagePath })
+    } catch (err) {
+      const code = err && typeof err === 'object' && 'code' in err ? String((err as { code: unknown }).code) : ''
+      const message = err instanceof Error ? err.message : ''
+      console.error('[map background upload]', code, message, err)
+      const billingRelated =
+        code === 'storage/quota-exceeded'
+        || /402|pricing plan|billing|spark|blaze|quota/i.test(`${code} ${message}`)
+      setError(
+        billingRelated
+          ? t('settlement.mapBackgroundBillingError')
+          : t('settlement.mapBackgroundUploadError'),
+      )
+    } finally {
+      setMapBgUploading(false)
+    }
+  }
+
+  async function clearMapBackground() {
+    if (!settlement || !canEdit) return
+    const path = settlement.map.backgroundStoragePath?.trim()
+    updateMap({ backgroundImageURL: undefined, backgroundStoragePath: undefined })
+    if (path) {
+      try {
+        await deleteObject(ref(storage, path))
+      } catch {
+        /* already gone */
+      }
     }
   }
 
@@ -942,6 +1040,13 @@ export default function SettlementPage({
             {canEdit && (
               <div className="flex flex-wrap items-center gap-2">
                 <Button
+                  variant={mapSettingsOpen ? 'primary' : 'outline'}
+                  className="text-xs"
+                  onClick={openMapSettings}
+                >
+                  {t('settlement.mapSettings')}
+                </Button>
+                <Button
                   variant={linkMode === 'connect' ? 'primary' : 'outline'}
                   className="text-xs"
                   onClick={() => setMapLinkMode('connect')}
@@ -1011,6 +1116,7 @@ export default function SettlementPage({
             zoneDrawMode={zoneDrawMode}
             zoneDraftPoints={zoneDraftPoints}
             activeLayer={activeLayer}
+            map={settlement.map}
             canEdit={canEdit}
             onSelect={selectConstruction}
             onSelectObject={selectObject}
@@ -1039,7 +1145,164 @@ export default function SettlementPage({
 
         <div className="space-y-3 min-w-0">
         <aside className="rounded-lg border border-border bg-surface/60 p-3 space-y-3 min-h-[12rem]">
-          {selectedConnection ? (
+          {mapSettingsOpen ? (
+            <>
+              <p className="text-sm text-ink font-medium">{t('settlement.mapSettings')}</p>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-ink-faint">
+                    {t('settlement.mapBackground')}
+                  </p>
+                  {settlement.map.backgroundImageURL ? (
+                    <div className="rounded border border-border overflow-hidden aspect-video bg-void relative">
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          background:
+                            'radial-gradient(ellipse at 40% 30%, #1c1814 0%, transparent 50%), linear-gradient(165deg, #100e0c 0%, #0c0a08 100%)',
+                        }}
+                      />
+                      <img
+                        src={settlement.map.backgroundImageURL}
+                        alt=""
+                        className="relative w-full h-full object-cover"
+                        style={{ opacity: mapBackgroundOpacity(settlement.map) / 100 }}
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-xs text-ink-faint">{t('settlement.mapBackgroundEmpty')}</p>
+                  )}
+                  {canEdit && settlement.map.backgroundImageURL ? (
+                    <label className="block space-y-1">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-ink-faint">
+                        {t('settlement.mapBackgroundOpacity')} ({mapBackgroundOpacity(settlement.map)}%)
+                      </span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={mapBackgroundOpacity(settlement.map)}
+                        className="w-full h-1.5 cursor-pointer accent-[#8a7d68]"
+                        onChange={(e) =>
+                          updateMap({
+                            backgroundOpacity: clampMapBackgroundOpacity(
+                              Number(e.target.value),
+                              DEFAULT_MAP_BACKGROUND_OPACITY,
+                            ),
+                          })
+                        }
+                      />
+                    </label>
+                  ) : null}
+                  {canEdit && (
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        <input
+                          ref={mapBgFileRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => void handleMapBackgroundFile(e)}
+                        />
+                        <Button
+                          variant="outline"
+                          className="text-xs"
+                          disabled={mapBgUploading}
+                          onClick={() => mapBgFileRef.current?.click()}
+                        >
+                          {mapBgUploading ? (
+                            <span className="inline-flex items-center gap-1.5">
+                              <Spinner size="sm" />
+                              {t('settlement.mapBackgroundUploading')}
+                            </span>
+                          ) : settlement.map.backgroundImageURL ? (
+                            t('settlement.mapBackgroundChange')
+                          ) : (
+                            t('settlement.mapBackgroundUpload')
+                          )}
+                        </Button>
+                        {settlement.map.backgroundImageURL ? (
+                          <Button
+                            variant="ghost"
+                            className="text-xs"
+                            disabled={mapBgUploading}
+                            onClick={() => void clearMapBackground()}
+                          >
+                            {t('settlement.mapBackgroundRemove')}
+                          </Button>
+                        ) : null}
+                      </div>
+                      <Input
+                        label={t('settlement.mapBackgroundUrl')}
+                        value={settlement.map.backgroundImageURL ?? ''}
+                        placeholder="https://"
+                        onChange={(e) => {
+                          const url = e.target.value.trim()
+                          updateMap({
+                            backgroundImageURL: url || undefined,
+                            backgroundStoragePath: undefined,
+                          })
+                        }}
+                      />
+                      <p className="text-[10px] text-ink-faint">{t('settlement.mapBackgroundUrlHint')}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-ink-faint">
+                    {t('settlement.mapGridDensity')}
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    <label className="flex items-center justify-between gap-2 text-xs text-ink-muted">
+                      <span>{t('settlement.mapGridColumns')}</span>
+                      <StepperInput
+                        value={String(clampMapGridDim(settlement.map.width, DEFAULT_MAP_GRID_DIM))}
+                        onChange={(v) => {
+                          if (!canEdit) return
+                          const n = clampMapGridDim(Number(v), settlement.map.width)
+                          updateMap({ width: n })
+                        }}
+                        decreaseLabel={t('common.decrease')}
+                        increaseLabel={t('common.increase')}
+                      />
+                    </label>
+                    <label className="flex items-center justify-between gap-2 text-xs text-ink-muted">
+                      <span>{t('settlement.mapGridRows')}</span>
+                      <StepperInput
+                        value={String(clampMapGridDim(settlement.map.height, DEFAULT_MAP_GRID_DIM))}
+                        onChange={(v) => {
+                          if (!canEdit) return
+                          const n = clampMapGridDim(Number(v), settlement.map.height)
+                          updateMap({ height: n })
+                        }}
+                        decreaseLabel={t('common.decrease')}
+                        increaseLabel={t('common.increase')}
+                      />
+                    </label>
+                    <p className="text-[10px] text-ink-faint">
+                      {t('settlement.mapGridDensityHint', {
+                        min: MIN_MAP_GRID_DIM,
+                        max: MAX_MAP_GRID_DIM,
+                      })}
+                    </p>
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 cursor-pointer w-fit">
+                  <input
+                    type="checkbox"
+                    className="gear-checkbox"
+                    checked={settlement.map.snapToGrid === true}
+                    disabled={!canEdit}
+                    onChange={(e) => updateMap({ snapToGrid: e.target.checked })}
+                  />
+                  <span className="text-sm text-ink">{t('settlement.mapSnapToGrid')}</span>
+                </label>
+              </div>
+            </>
+          ) : selectedConnection ? (
             <>
               <p className="text-sm text-ink font-medium">{t('settlement.connectionTitle')}</p>
               <p className="text-xs text-ink-muted">

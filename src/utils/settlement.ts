@@ -30,6 +30,11 @@ import {
   DEFAULT_CONSTRUCTION_LAYER,
   normalizeMapLayer,
 } from '@/utils/settlementMapLayers'
+import {
+  clampMapBackgroundOpacity,
+  clampMapGridDim,
+  DEFAULT_MAP_BACKGROUND_OPACITY,
+} from '@/utils/settlementMapGrid'
 export const SETTLEMENT_DOC_ID = 'main'
 export const SETTLEMENT_COLLECTION = 'settlement'
 
@@ -297,8 +302,19 @@ export function normalizeSettlement(id: string, raw: Record<string, unknown> | u
       ? raw.traits.map(normalizeTrait).filter((t): t is SettlementTraitLine => t != null)
       : [],
     map: {
-      width: Math.max(1, nonNegInt(mapRaw.width, empty.map.width)),
-      height: Math.max(1, nonNegInt(mapRaw.height, empty.map.height)),
+      width: clampMapGridDim(mapRaw.width, empty.map.width),
+      height: clampMapGridDim(mapRaw.height, empty.map.height),
+      ...(typeof mapRaw.backgroundImageURL === 'string' && mapRaw.backgroundImageURL.trim()
+        ? { backgroundImageURL: mapRaw.backgroundImageURL.trim() }
+        : {}),
+      ...(typeof mapRaw.backgroundStoragePath === 'string' && mapRaw.backgroundStoragePath.trim()
+        ? { backgroundStoragePath: mapRaw.backgroundStoragePath.trim() }
+        : {}),
+      backgroundOpacity: clampMapBackgroundOpacity(
+        mapRaw.backgroundOpacity,
+        DEFAULT_MAP_BACKGROUND_OPACITY,
+      ),
+      snapToGrid: mapRaw.snapToGrid === true,
     },
     updatedBy: typeof raw.updatedBy === 'string' ? raw.updatedBy : undefined,
   }
@@ -379,8 +395,18 @@ export function settlementPayload(settlement: Settlement, uid?: string) {
       value: nonNegInt(t.value, 0),
     })),
     map: {
-      width: settlement.map.width,
-      height: settlement.map.height,
+      width: clampMapGridDim(settlement.map.width, 20),
+      height: clampMapGridDim(settlement.map.height, 20),
+      // Always write nested flags — setDoc({ merge:true }) keeps omitted nested keys.
+      snapToGrid: settlement.map.snapToGrid === true,
+      // Drop legacy hex gridType if present in older docs.
+      gridType: 'square',
+      backgroundImageURL: settlement.map.backgroundImageURL?.trim() ?? '',
+      backgroundStoragePath: settlement.map.backgroundStoragePath?.trim() ?? '',
+      backgroundOpacity: clampMapBackgroundOpacity(
+        settlement.map.backgroundOpacity,
+        DEFAULT_MAP_BACKGROUND_OPACITY,
+      ),
     },
     updatedBy: uid ?? settlement.updatedBy ?? null,
   }

@@ -17,6 +17,15 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
+    // Settlement map background: games/{gameId}/settlement/map/background
+    match /games/{gameId}/settlement/map/background {
+      allow read: if request.auth != null;
+      allow delete: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
     // Campaign NPC avatars: games/{gameId}/npcs/{npcId}/avatar
     match /games/{gameId}/npcs/{npcId}/avatar {
       allow read: if request.auth != null;
