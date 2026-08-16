@@ -6,22 +6,18 @@ import { db } from '@/config/firebase'
 import { MUTATIONS_DOC_URL, RACES, SHEET_VERSION, type HeroRace } from '@/config/rpg-system'
 import { useHeroField } from '@/hooks/useHeroField'
 import { useHeroOutletContext } from '@/hooks/useHeroOutletContext'
-import { heroFullName, type HeroContamination } from '@/types'
+import { heroFullName } from '@/types'
 import { migrateHeroSheet } from '@/utils/migrateHeroSheet'
 import { needsSheetMigration, resolveHeroSheetVersion } from '@/utils/sheetVersion'
 import {
   adjustVitalsForMaxChange,
   clampVital,
   computeVitalMaxes,
-  contaminationTotal,
   resolveHeroRace,
   resolveHeroVitals,
-  type ContaminationTrack,
 } from '@/utils/vitals'
 import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
-
-const CONTAMINATION_TRACKS: ContaminationTrack[] = ['deathNet', 'liveCore', 'anomalie']
 
 export default function SettingsTab() {
   const { hero, gameId, heroId, canEdit } = useHeroOutletContext()
@@ -43,11 +39,6 @@ export default function SettingsTab() {
     () => resolveHeroVitals(hero.vitals, hero.attributes, race),
     [hero.vitals, hero.attributes, race],
   )
-  const maxContamination = computeVitalMaxes(
-    hero.attributes,
-    race,
-    vitals.mutationPointsMax,
-  ).contamination
 
   async function handleDelete() {
     await deleteDoc(doc(db, 'games', paramGameId, 'heroes', heroId))
@@ -89,15 +80,6 @@ export default function SettingsTab() {
       mutationPoints: clampVital(vitals.mutationPoints, mutationPointsMax),
     }
     await updateField('vitals', t('vitals.mutationPointsMax'), next, vitals)
-  }
-
-  async function handleContaminationTrackChange(track: ContaminationTrack, value: number) {
-    const contamination: HeroContamination = {
-      ...vitals.contamination,
-      [track]: Math.max(0, Math.trunc(value)),
-    }
-    const next = { ...vitals, contamination }
-    await updateField('vitals', t(`vitals.tracks.${track}`), next, vitals)
   }
 
   if (!canEdit) {
@@ -170,47 +152,6 @@ export default function SettingsTab() {
         >
           {t('vitals.readMore')}
         </a>
-      </section>
-
-      {/* Contamination tracks */}
-      <section className="bg-surface border border-border rounded-lg p-5 space-y-3">
-        <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase">
-          {t('vitals.contamination')}
-        </h2>
-        <p className="text-xs text-ink-faint leading-relaxed">
-          {t('hero.settings.contaminationHint', {
-            total: contaminationTotal(vitals.contamination),
-            max: maxContamination,
-          })}
-        </p>
-        <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
-          {CONTAMINATION_TRACKS.map((track) => (
-            <div key={track} className="flex items-center justify-between gap-3 px-3 py-2.5 bg-void/40">
-              <span className="text-sm text-ink-muted">{t(`vitals.tracks.${track}`)}</span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => void handleContaminationTrackChange(track, vitals.contamination[track] - 1)}
-                  className="w-6 h-6 rounded bg-elevated hover:bg-blood/20 text-ink-muted hover:text-ink transition-colors font-mono text-sm"
-                  aria-label={t('mechanics.decrease')}
-                >
-                  −
-                </button>
-                <span className="font-mono text-lg text-ink tabular-nums w-8 text-center">
-                  {vitals.contamination[track]}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => void handleContaminationTrackChange(track, vitals.contamination[track] + 1)}
-                  className="w-6 h-6 rounded bg-elevated hover:bg-blood/20 text-ink-muted hover:text-ink transition-colors font-mono text-sm"
-                  aria-label={t('mechanics.increase')}
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
       </section>
 
       {/* Sheet version */}

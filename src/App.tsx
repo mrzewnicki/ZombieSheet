@@ -14,6 +14,7 @@ import HeroSheet from '@/pages/hero/HeroSheet'
 import PersonalTab from '@/pages/hero/PersonalTab'
 import MechanicsTab from '@/pages/hero/MechanicsTab'
 import InventoryTab from '@/pages/hero/InventoryTab'
+import MutationsTab from '@/pages/hero/MutationsTab'
 import HistoryTab from '@/pages/hero/HistoryTab'
 import ImagesTab from '@/pages/hero/ImagesTab'
 import SettingsTab from '@/pages/hero/SettingsTab'
@@ -45,6 +46,7 @@ export default function App() {
                   <Route path="personal"  element={<PersonalTab />} />
                   <Route path="mechanics" element={<MechanicsTab />} />
                   <Route path="inventory" element={<InventoryTab />} />
+                  <Route path="mutations" element={<MutationsTab />} />
                   <Route path="images"    element={<ImagesTab />} />
                   <Route path="history"   element={<HistoryTab />} />
                   <Route path="settings"  element={<SettingsTab />} />

@@ -76,6 +76,7 @@
       "personal": "Personal",
       "mechanics": "Mechanics",
       "inventory": "Inventory",
+      "mutations": "Mutations & Contamination",
       "images": "Images",
       "history": "History",
       "settings": "Settings"
@@ -171,6 +172,67 @@
       "zwierze": "Animal",
       "zombie": "Zombie",
       "zmutowane_zwierze": "Mutated animal"
+    }
+  },
+  "mutations": {
+    "title": "Mutations & Contamination",
+    "subtitle": "Contamination tracks and character mutations. MP is in the sheet header; max MP is in Settings.",
+    "contaminationSection": "Contamination",
+    "contaminationHint": "Track sum is compared to the maximum (Stamina + Composure + Determination). Exceeding it starts Transformation; the dominant track decides the outcome.",
+    "contaminationTotal": "Total contamination",
+    "contaminationMax": "Maximum",
+    "contaminationOver": "Over maximum — Transformation in progress",
+    "dominantTrack": "Dominant track",
+    "dominantTrackNone": "—",
+    "mutationsSection": "Mutations",
+    "empty": "No mutations on this sheet.",
+    "add": "Add mutation",
+    "edit": "Edit mutation",
+    "deleteConfirm": "Delete mutation \"{{name}}\"?",
+    "name": "Name",
+    "namePlaceholder": "e.g. Keratin shell…",
+    "origin": "Origin",
+    "kind": "Kind",
+    "character": "Character",
+    "rank": "Rank",
+    "description": "Description",
+    "descriptionPlaceholder": "Short description of what the mutation is and how it shows…",
+    "atuty": "Merits",
+    "wady": "Flaws",
+    "addTrait": "Add",
+    "noTraitLines": "No entries.",
+    "traitName": "Name",
+    "traitValue": "Value",
+    "traitDescription": "Description",
+    "activationCost": "Activation cost",
+    "activationCostPlaceholder": "e.g. 2 MP or Contamination by rank…",
+    "activationByRank": "Activation effect by rank",
+    "currentEffect": "Current rank effect",
+    "resonance": "Resonance",
+    "resonancePlaceholder": "Narrative resonance for this mutation…",
+    "hibernating": "Hibernating (after Resonance)",
+    "hibernatingBadge": "Hibernation",
+    "setHibernation": "Mark hibernation",
+    "clearHibernation": "Clear hibernation",
+    "origins": {
+      "deathNet": "DeathNet",
+      "liveCore": "LiveCore",
+      "anomalie": "Anomalies"
+    },
+    "kinds": {
+      "fizyczna": "Physical",
+      "mentalna": "Mental",
+      "psioniczna": "Psionic"
+    },
+    "characters": {
+      "pasywna": "Passive",
+      "aktywna": "Active"
+    },
+    "ranks": {
+      "1": "Seed",
+      "2": "Adaptation",
+      "3": "Developed",
+      "4": "Dominance"
     }
   },
   "attributes": {

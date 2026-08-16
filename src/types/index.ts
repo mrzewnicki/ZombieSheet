@@ -71,6 +71,49 @@ export interface HeroVitals {
   contamination: HeroContamination
 }
 
+export type MutationOrigin = 'deathNet' | 'liveCore' | 'anomalie'
+export type MutationKind = 'fizyczna' | 'mentalna' | 'psioniczna'
+export type MutationCharacter = 'pasywna' | 'aktywna'
+export type MutationRank = 1 | 2 | 3 | 4
+
+export interface MutationTraitLine {
+  name: string
+  value: number
+  description: string
+}
+
+export interface MutationActivationByRank {
+  1: string
+  2: string
+  3: string
+  4: string
+}
+
+/** Hero mutation stored under games/{gameId}/heroes/{heroId}/mutations. */
+export interface HeroMutation {
+  id: string
+  name: string
+  origin: MutationOrigin
+  kind: MutationKind
+  character: MutationCharacter
+  rank: MutationRank
+  description: string
+  /** Passive mutations: positive traits. */
+  atuty: MutationTraitLine[]
+  /** Passive mutations: drawbacks. */
+  wady: MutationTraitLine[]
+  /** Active mutations: free-text activation cost (PM / notes). */
+  activationCost: string
+  /** Active mutations: effect text per rank. */
+  activationByRank: MutationActivationByRank
+  resonance: string
+  /** Temporary hibernation after Resonance. */
+  hibernating: boolean
+  sortOrder?: number
+  createdAt?: Timestamp
+  updatedAt?: Timestamp
+}
+
 export interface Hero {
   id: string
   ownerId: string

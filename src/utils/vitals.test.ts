@@ -90,6 +90,10 @@ describe('contamination helpers', () => {
     expect(dominantContaminationTrack(c)).toBe('liveCore')
   })
 
+  it('returns null dominant track when all tracks are zero', () => {
+    expect(dominantContaminationTrack({ deathNet: 0, liveCore: 0, anomalie: 0 })).toBeNull()
+  })
+
   it('grows LiveCore when increasing total and shrinks the highest track when decreasing', () => {
     expect(adjustContaminationTotal(
       { deathNet: 2, liveCore: 1, anomalie: 0 },

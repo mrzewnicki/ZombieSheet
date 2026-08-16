@@ -16,6 +16,7 @@ import {
 } from '@/utils/vitals'
 import { heroFullName, type Hero } from '@/types'
 import { useLayoutHeader } from '@/contexts/LayoutContext'
+import { FaDna } from 'react-icons/fa'
 import HeroHeaderVitals from '@/components/hero/HeroHeaderVitals'
 import Spinner from '@/components/ui/Spinner'
 
@@ -96,6 +97,7 @@ export default function HeroSheet() {
     { key: 'personal',  label: t('hero.tabs.personal'),  icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm5 5c0 1-1 1-1 1H4s-1 0-1-1 1-4 5-4 5 3 5 4z"/></svg> },
     { key: 'mechanics', label: t('hero.tabs.mechanics'), icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M13 1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h10zM3 0a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V3a3 3 0 0 0-3-3H3z"/><path d="M5.5 4a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm8 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0 8a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm-8 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm4-4a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/></svg> },
     { key: 'inventory', label: t('hero.tabs.inventory'), icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M6 1a2 2 0 0 0-2 2v.341C2.215 3.958 1 5.494 1 7.318V13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7.318c0-1.824-1.215-3.36-3-3.977V3a2 2 0 0 0-2-2H6zm3 3.82V3a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v1.82A4 4 0 0 1 8 4.5a4 4 0 0 1 1 .32zM5 5.62V7.5a.5.5 0 0 0 1 0v-2.1A3 3 0 0 1 8 5a3 3 0 0 1 2 .4V7.5a.5.5 0 0 0 1 0V5.62A3.001 3.001 0 0 1 13 8.318V13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8.318A3.001 3.001 0 0 1 5 5.62z"/></svg> },
+    { key: 'mutations', label: t('hero.tabs.mutations'), icon: <FaDna size={13} aria-hidden /> },
     { key: 'images',    label: t('hero.tabs.images'),    icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/><path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2h-12zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1h12z"/></svg> },
   ]
 

@@ -76,6 +76,7 @@
       "personal": "Osobiste",
       "mechanics": "Mechanika",
       "inventory": "Ekwipunek",
+      "mutations": "Mutacje i Skażenie",
       "images": "Obrazy",
       "history": "Historia",
       "settings": "Ustawienia"
@@ -171,6 +172,67 @@
       "zwierze": "Zwierzę",
       "zombie": "Zombie",
       "zmutowane_zwierze": "Zmutowane zwierzę"
+    }
+  },
+  "mutations": {
+    "title": "Mutacje i Skażenie",
+    "subtitle": "Tory skażenia i mutacje postaci. PM są w nagłówku karty; maksimum PM w Ustawieniach.",
+    "contaminationSection": "Skażenie",
+    "contaminationHint": "Suma torów porównywana z maksimum (Kondycja + Opanowanie + Determinacja). Przekroczenie uruchamia Przemianę; dominujący tor decyduje o jej wyniku.",
+    "contaminationTotal": "Skażenie całkowite",
+    "contaminationMax": "Maksimum",
+    "contaminationOver": "Powyżej maksimum — trwa Przemiana",
+    "dominantTrack": "Dominujący tor",
+    "dominantTrackNone": "—",
+    "mutationsSection": "Mutacje",
+    "empty": "Brak mutacji na tej karcie.",
+    "add": "Dodaj mutację",
+    "edit": "Edytuj mutację",
+    "deleteConfirm": "Usunąć mutację \"{{name}}\"?",
+    "name": "Nazwa",
+    "namePlaceholder": "np. Skorupa keratynowa…",
+    "origin": "Pochodzenie",
+    "kind": "Rodzaj",
+    "character": "Charakter",
+    "rank": "Ranga",
+    "description": "Opis",
+    "descriptionPlaceholder": "Krótki opis tego, czym jest mutacja i jak się objawia…",
+    "atuty": "Atuty",
+    "wady": "Wady",
+    "addTrait": "Dodaj",
+    "noTraitLines": "Brak pozycji.",
+    "traitName": "Nazwa",
+    "traitValue": "Wartość",
+    "traitDescription": "Opis",
+    "activationCost": "Koszt aktywacji",
+    "activationCostPlaceholder": "np. 2 PM lub Skażenie wg rangi…",
+    "activationByRank": "Efekt aktywacji per ranga",
+    "currentEffect": "Efekt bieżącej rangi",
+    "resonance": "Rezonans",
+    "resonancePlaceholder": "Fabularny rezonans tej mutacji…",
+    "hibernating": "W hibernacji (po Rezonansie)",
+    "hibernatingBadge": "Hibernacja",
+    "setHibernation": "Oznacz hibernację",
+    "clearHibernation": "Zdejmij hibernację",
+    "origins": {
+      "deathNet": "DeathNet",
+      "liveCore": "LiveCore",
+      "anomalie": "Anomalie"
+    },
+    "kinds": {
+      "fizyczna": "Fizyczna",
+      "mentalna": "Mentalna",
+      "psioniczna": "Psioniczna"
+    },
+    "characters": {
+      "pasywna": "Pasywna",
+      "aktywna": "Aktywna"
+    },
+    "ranks": {
+      "1": "Zalążek",
+      "2": "Adaptacja",
+      "3": "Rozwinięta",
+      "4": "Dominacja"
     }
   },
   "attributes": {

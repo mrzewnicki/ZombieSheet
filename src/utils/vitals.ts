@@ -105,10 +105,11 @@ export function contaminationTotal(contamination: HeroContamination): number {
   return contamination.deathNet + contamination.liveCore + contamination.anomalie
 }
 
-/** Dominant track (highest value); ties prefer LiveCore → DeathNet → Anomalie. */
+/** Dominant track (highest value); ties prefer LiveCore → DeathNet → Anomalie. Null when all zero. */
 export function dominantContaminationTrack(
   contamination: HeroContamination,
-): ContaminationTrack {
+): ContaminationTrack | null {
+  if (contaminationTotal(contamination) <= 0) return null
   const entries: [ContaminationTrack, number][] = [
     ['liveCore', contamination.liveCore],
     ['deathNet', contamination.deathNet],
@@ -136,7 +137,7 @@ export function adjustContaminationTotal(
   }
   while (total > target) {
     const track = dominantContaminationTrack(next)
-    if (next[track] <= 0) break
+    if (!track || next[track] <= 0) break
     next[track] -= 1
     total -= 1
   }
