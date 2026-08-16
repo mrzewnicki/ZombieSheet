@@ -706,6 +706,8 @@
     "removeConnectionShort": "Usuń",
     "removeConstructionLinks": "Usuń wszystkie tej",
     "selectConstruction": "Kliknij marker lub linię na mapie, aby zobaczyć szczegóły.",
+    "detailTabInfo": "Szczegóły",
+    "detailTabStyle": "Wygląd",
     "tabOsada": "Osada",
     "tabNpc": "Społeczność",
     "npcsSection": "Postacie neutralne",

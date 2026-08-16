@@ -988,7 +988,7 @@ export default function SettlementMap({
   return (
     <div
       ref={surfaceRef}
-      className={`relative w-full aspect-square max-h-[min(70vh,36rem)] rounded-lg border overflow-hidden select-none touch-none ${
+      className={`relative w-full aspect-square max-h-[min(80vh,48rem)] rounded-lg border overflow-hidden select-none touch-none ${
         drawingZone
           ? 'border-blood-light/60 cursor-crosshair'
           : linkMode === 'connect'

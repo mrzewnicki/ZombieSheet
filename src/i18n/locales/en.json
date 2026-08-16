@@ -706,6 +706,8 @@
     "removeConnectionShort": "Remove",
     "removeConstructionLinks": "Remove all of these",
     "selectConstruction": "Click a marker or line on the map to see details.",
+    "detailTabInfo": "Details",
+    "detailTabStyle": "Appearance",
     "tabOsada": "Settlement",
     "tabNpc": "Community",
     "npcsSection": "Neutral characters",
