@@ -7,12 +7,17 @@ import type {
   Settlement,
   SettlementConnection,
   SettlementConstructionInstance,
+  SettlementMapObjectInstance,
   SettlementNpc,
   SettlementTraitLine,
   SettlementTraitPolarity,
 } from '@/types'
-import { pruneSettlementConnections } from '@/utils/settlementConnections'
-
+import {
+  normalizeConnectionEndSymbol,
+  normalizeConnectionLineStyle,
+  pruneSettlementConnections,
+} from '@/utils/settlementConnections'
+import { isSettlementMapObjectKey } from '@/config/settlementMapObjects'
 export const SETTLEMENT_DOC_ID = 'main'
 export const SETTLEMENT_COLLECTION = 'settlement'
 
@@ -23,6 +28,7 @@ export function emptySettlement(id = SETTLEMENT_DOC_ID): Settlement {
     description: '',
     materials: emptySettlementMaterials(),
     constructions: [],
+    objects: [],
     connections: [],
     npcs: [],
     traits: [],
@@ -54,12 +60,20 @@ function normalizeMaterials(raw: unknown): Record<SettlementMaterialKey, number>
   return base
 }
 
+function parseHexColor(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined
+  const c = raw.trim()
+  return /^#[0-9A-Fa-f]{6}$/.test(c) ? c : undefined
+}
+
 function normalizeConstruction(raw: unknown): SettlementConstructionInstance | null {
   if (!raw || typeof raw !== 'object') return null
   const src = raw as Record<string, unknown>
   const id = typeof src.id === 'string' && src.id ? src.id : null
   const catalogKey = typeof src.catalogKey === 'string' ? src.catalogKey : ''
   if (!id || !catalogKey) return null
+  const iconColor = parseHexColor(src.iconColor)
+  const bgColor = parseHexColor(src.bgColor)
   return {
     id,
     catalogKey,
@@ -67,6 +81,28 @@ function normalizeConstruction(raw: unknown): SettlementConstructionInstance | n
     x: clampPct(src.x, 50),
     y: clampPct(src.y, 50),
     notes: typeof src.notes === 'string' ? src.notes : '',
+    ...(iconColor ? { iconColor } : {}),
+    ...(bgColor ? { bgColor } : {}),
+  }
+}
+
+function normalizeMapObject(raw: unknown): SettlementMapObjectInstance | null {
+  if (!raw || typeof raw !== 'object') return null
+  const src = raw as Record<string, unknown>
+  const id = typeof src.id === 'string' && src.id ? src.id : null
+  const catalogKey = typeof src.catalogKey === 'string' ? src.catalogKey : ''
+  if (!id || !catalogKey || !isSettlementMapObjectKey(catalogKey)) return null
+  const iconColor = parseHexColor(src.iconColor)
+  const bgColor = parseHexColor(src.bgColor)
+  return {
+    id,
+    catalogKey,
+    label: typeof src.label === 'string' ? src.label : '',
+    x: clampPct(src.x, 50),
+    y: clampPct(src.y, 50),
+    notes: typeof src.notes === 'string' ? src.notes : '',
+    ...(iconColor ? { iconColor } : {}),
+    ...(bgColor ? { bgColor } : {}),
   }
 }
 
@@ -77,8 +113,20 @@ function normalizeConnection(raw: unknown): SettlementConnection | null {
   const fromId = typeof src.fromId === 'string' ? src.fromId : ''
   const toId = typeof src.toId === 'string' ? src.toId : ''
   if (!id || !fromId || !toId || fromId === toId) return null
-  const ends = fromId < toId ? { fromId, toId } : { fromId: toId, toId: fromId }
-  return { id, ...ends }
+  const swapped = fromId > toId
+  const ends = swapped ? { fromId: toId, toId: fromId } : { fromId, toId }
+  const color = parseHexColor(src.color)
+  const lineStyle = normalizeConnectionLineStyle(src.lineStyle)
+  let endSymbol = normalizeConnectionEndSymbol(src.endSymbol)
+  if (swapped && endSymbol === 'arrowTo') endSymbol = 'arrowFrom'
+  else if (swapped && endSymbol === 'arrowFrom') endSymbol = 'arrowTo'
+  return {
+    id,
+    ...ends,
+    ...(color ? { color } : {}),
+    ...(lineStyle ? { lineStyle } : {}),
+    ...(endSymbol ? { endSymbol } : {}),
+  }
 }
 
 function normalizeNpc(raw: unknown): SettlementNpc | null {
@@ -138,6 +186,9 @@ export function normalizeSettlement(id: string, raw: Record<string, unknown> | u
   const constructions = Array.isArray(raw.constructions)
     ? raw.constructions.map(normalizeConstruction).filter((c): c is SettlementConstructionInstance => c != null)
     : []
+  const objects = Array.isArray(raw.objects)
+    ? raw.objects.map(normalizeMapObject).filter((o): o is SettlementMapObjectInstance => o != null)
+    : []
   const connections = pruneSettlementConnections(
     Array.isArray(raw.connections)
       ? raw.connections.map(normalizeConnection).filter((c): c is SettlementConnection => c != null)
@@ -156,6 +207,7 @@ export function normalizeSettlement(id: string, raw: Record<string, unknown> | u
     description: typeof raw.description === 'string' ? raw.description : '',
     materials: normalizeMaterials(raw.materials),
     constructions,
+    objects,
     connections,
     npcs,
     traits: Array.isArray(raw.traits)
@@ -182,11 +234,26 @@ export function settlementPayload(settlement: Settlement, uid?: string) {
       x: clampPct(c.x, 50),
       y: clampPct(c.y, 50),
       notes: c.notes.trim(),
+      ...(c.iconColor ? { iconColor: c.iconColor } : {}),
+      ...(c.bgColor ? { bgColor: c.bgColor } : {}),
+    })),
+    objects: settlement.objects.map((o) => ({
+      id: o.id,
+      catalogKey: o.catalogKey,
+      label: o.label.trim(),
+      x: clampPct(o.x, 50),
+      y: clampPct(o.y, 50),
+      notes: o.notes.trim(),
+      ...(o.iconColor ? { iconColor: o.iconColor } : {}),
+      ...(o.bgColor ? { bgColor: o.bgColor } : {}),
     })),
     connections: pruneSettlementConnections(settlement.connections, settlement.constructions).map((c) => ({
       id: c.id,
       fromId: c.fromId,
       toId: c.toId,
+      ...(c.color ? { color: c.color } : {}),
+      ...(c.lineStyle ? { lineStyle: c.lineStyle } : {}),
+      ...(c.endSymbol ? { endSymbol: c.endSymbol } : {}),
     })),
     npcs: npcs.map((n) => ({
       id: n.id,
@@ -217,6 +284,21 @@ export function newConstructionInstance(
   x = 50,
   y = 50,
 ): SettlementConstructionInstance {
+  return {
+    id: crypto.randomUUID(),
+    catalogKey,
+    label: '',
+    x: clampPct(x, 50),
+    y: clampPct(y, 50),
+    notes: '',
+  }
+}
+
+export function newMapObjectInstance(
+  catalogKey: string,
+  x = 50,
+  y = 50,
+): SettlementMapObjectInstance {
   return {
     id: crypto.randomUUID(),
     catalogKey,

@@ -35,10 +35,9 @@ export function parseSettlementProperties(raw: string): SettlementPropertyTag[] 
     .filter((tag) => tag.name.length > 0)
 }
 
-/** Label prefix only (✚/− + name). Value is rendered separately for readability. */
-export function settlementPropertyPrefix(tag: SettlementPropertyTag): string {
-  const prefix = tag.polarity === 'positive' ? '✚' : '−'
-  return `${prefix}${tag.name}`
+/** Property label without polarity glyph (color encodes +/-). */
+export function settlementPropertyLabel(tag: SettlementPropertyTag): string {
+  return tag.name
 }
 
 /** Show rank only when above the default of 1. */

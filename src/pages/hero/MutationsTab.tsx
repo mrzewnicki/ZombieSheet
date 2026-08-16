@@ -380,17 +380,16 @@ function MutationCard({
             )}
           </div>
           <div className="flex flex-wrap gap-1.5">
-            <GearStatChip>
-              <span className="inline-flex items-center gap-1">
-                <img
-                  src={contaminationIconSrc(item.origin)}
-                  alt=""
-                  className="w-3.5 h-3.5 object-contain"
-                  aria-hidden
-                />
-                {t(`mutations.origins.${item.origin}`)}
-              </span>
-            </GearStatChip>
+            <span
+              className="inline-flex items-center shrink-0"
+              title={t(`mutations.origins.${item.origin}`)}
+            >
+              <img
+                src={contaminationIconSrc(item.origin)}
+                alt={t(`mutations.origins.${item.origin}`)}
+                className="w-6 h-6 object-contain"
+              />
+            </span>
             <GearStatChip>{t(`mutations.kinds.${item.kind}`)}</GearStatChip>
             <GearStatChip>{t(`mutations.characters.${item.character}`)}</GearStatChip>
             <GearStatChip accent>

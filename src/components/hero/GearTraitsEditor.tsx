@@ -15,6 +15,7 @@ import {
   updateGearTrait,
   gearTraitPolarityClasses,
 } from '@/utils/gearTraits'
+import TraitValueBadge from '@/components/ui/TraitValueBadge'
 import RichTextEditor from '@/components/ui/RichTextEditor'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
@@ -422,12 +423,10 @@ function AssignedTrait({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <span className="text-sm font-medium leading-snug">
+          <span className="text-sm font-medium leading-none inline-flex items-center gap-1.5">
             {trait.name}
             {displayValue != null && (
-              <span className="ml-1.5 font-mono tabular-nums text-xs opacity-90">
-                {displayValue}
-              </span>
+              <TraitValueBadge polarity={trait.polarity} value={displayValue} />
             )}
           </span>
           {trait.category !== scopeCategory && (

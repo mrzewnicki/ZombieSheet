@@ -16,10 +16,16 @@ import {
 } from '@/config/settlementConstructions'
 import { SETTLEMENT_MATERIALS, type SettlementMaterialKey } from '@/config/settlementMaterials'
 import ConstructionPicker from '@/components/settlement/ConstructionPicker'
+import MapObjectPicker from '@/components/settlement/MapObjectPicker'
 import SettlementMap, { type SettlementLinkMode } from '@/components/settlement/SettlementMap'
 import SettlementMaterialsPanel from '@/components/settlement/SettlementMaterialsPanel'
 import SettlementNpcsPanel from '@/components/settlement/SettlementNpcsPanel'
 import SettlementTraitsPanel from '@/components/settlement/SettlementTraitsPanel'
+import {
+  getSettlementMapObject,
+  mapObjectLocalizedDescription,
+  mapObjectLocalizedName,
+} from '@/config/settlementMapObjects'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import RichTextEditor from '@/components/ui/RichTextEditor'
@@ -33,15 +39,6 @@ import { useAuth } from '@/contexts/AuthContext'
 import { LayoutContext } from '@/contexts/LayoutContext'
 import { useCampaignNpcs } from '@/hooks/useCampaignNpcs'
 import { useGameRole } from '@/hooks/useGameRole'
-import type { Game, Settlement, SettlementConstructionInstance } from '@/types'
-import {
-  SETTLEMENT_COLLECTION,
-  SETTLEMENT_DOC_ID,
-  newConstructionInstance,
-  normalizeSettlement,
-  pruneSettlementNpcs,
-  settlementPayload,
-} from '@/utils/settlement'
 import {
   connectionExists,
   connectToNearest,
@@ -50,13 +47,105 @@ import {
   pruneSettlementConnections,
   removeConnectionBetween,
   removeConnectionsForConstruction,
+  SETTLEMENT_CONNECTION_COLORS,
+  SETTLEMENT_CONNECTION_END_SYMBOLS,
+  SETTLEMENT_CONNECTION_LINE_STYLES,
+  SETTLEMENT_MARKER_COLORS,
+  settlementConnectionStroke,
+  settlementMarkerBgColor,
+  settlementMarkerIconColor,
+  DEFAULT_SETTLEMENT_CONNECTION_COLOR,
+  DEFAULT_SETTLEMENT_MARKER_BG_COLOR,
+  DEFAULT_SETTLEMENT_MARKER_ICON_COLOR,
 } from '@/utils/settlementConnections'
+import type {
+  Game,
+  Settlement,
+  SettlementConnection,
+  SettlementConnectionEndSymbol,
+  SettlementConnectionLineStyle,
+  SettlementConstructionInstance,
+  SettlementMapObjectInstance,
+} from '@/types'
+import {
+  SETTLEMENT_COLLECTION,
+  SETTLEMENT_DOC_ID,
+  newConstructionInstance,
+  newMapObjectInstance,
+  normalizeSettlement,
+  pruneSettlementNpcs,
+  settlementPayload,
+} from '@/utils/settlement'
 import { gearTraitPolarityClasses } from '@/utils/gearTraits'
+import TraitValueBadge from '@/components/ui/TraitValueBadge'
 import {
   parseSettlementProperties,
   settlementPropertyDisplayValue,
-  settlementPropertyPrefix,
+  settlementPropertyLabel,
 } from '@/utils/settlementProperties'
+
+function connectionLinePreviewDash(style: SettlementConnectionLineStyle): string | undefined {
+  switch (style) {
+    case 'dashed':
+      return '7 5'
+    case 'dotted':
+      return '1.8 4'
+    case 'dashDot':
+      return '7 3.5 1.8 3.5'
+    default:
+      return undefined
+  }
+}
+
+function ConnectionLineStylePreview({ style }: { style: SettlementConnectionLineStyle }) {
+  return (
+    <svg width="44" height="14" viewBox="0 0 44 14" aria-hidden className="block">
+      <line
+        x1="3"
+        y1="7"
+        x2="41"
+        y2="7"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap={style === 'dotted' ? 'round' : 'butt'}
+        strokeDasharray={connectionLinePreviewDash(style)}
+      />
+    </svg>
+  )
+}
+
+function ConnectionEndSymbolPreview({ symbol }: { symbol: SettlementConnectionEndSymbol }) {
+  if (symbol === 'none') {
+    return (
+      <svg width="24" height="10" viewBox="0 0 24 10" aria-hidden className="block">
+        <line x1="3" y1="5" x2="21" y2="5" stroke="currentColor" strokeWidth="1.25" />
+      </svg>
+    )
+  }
+  if (symbol === 'arrowTo') {
+    return (
+      <svg width="24" height="10" viewBox="0 0 24 10" aria-hidden className="block">
+        <line x1="2" y1="5" x2="16.5" y2="5" stroke="currentColor" strokeWidth="1.25" />
+        <polygon points="21.5,5 16.2,2.6 16.2,7.4" fill="currentColor" />
+      </svg>
+    )
+  }
+  if (symbol === 'arrowFrom') {
+    return (
+      <svg width="24" height="10" viewBox="0 0 24 10" aria-hidden className="block">
+        <line x1="7.5" y1="5" x2="22" y2="5" stroke="currentColor" strokeWidth="1.25" />
+        <polygon points="2.5,5 7.8,2.6 7.8,7.4" fill="currentColor" />
+      </svg>
+    )
+  }
+  return (
+    <svg width="28" height="10" viewBox="0 0 28 10" aria-hidden className="block">
+      <line x1="8" y1="5" x2="20" y2="5" stroke="currentColor" strokeWidth="1.25" />
+      <polygon points="2.5,5 7.8,2.6 7.8,7.4" fill="currentColor" />
+      <polygon points="25.5,5 20.2,2.6 20.2,7.4" fill="currentColor" />
+    </svg>
+  )
+}
 
 export default function SettlementPage({
   gameId: gameIdProp,
@@ -80,10 +169,12 @@ export default function SettlementPage({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null)
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null)
   const [linkMode, setLinkMode] = useState<SettlementLinkMode>('off')
   const [linkFromId, setLinkFromId] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [objectPickerOpen, setObjectPickerOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'osada' | 'npc'>('osada')
   const [editDesc, setEditDesc] = useState(false)
   const [descriptionDraft, setDescriptionDraft] = useState('')
@@ -201,12 +292,38 @@ export default function SettlementPage({
     })
   }
 
+  function moveObject(id: string, x: number, y: number) {
+    if (!settlement) return
+    patch({
+      objects: settlement.objects.map((o) =>
+        o.id === id ? { ...o, x, y } : o,
+      ),
+    })
+  }
+
   function updateSelected(patchItem: Partial<SettlementConstructionInstance>) {
     if (!settlement || !selectedId) return
     patch({
-      constructions: settlement.constructions.map((c) =>
-        c.id === selectedId ? { ...c, ...patchItem } : c,
-      ),
+      constructions: settlement.constructions.map((c) => {
+        if (c.id !== selectedId) return c
+        const next = { ...c, ...patchItem }
+        if ('iconColor' in patchItem && !patchItem.iconColor) delete next.iconColor
+        if ('bgColor' in patchItem && !patchItem.bgColor) delete next.bgColor
+        return next
+      }),
+    })
+  }
+
+  function updateSelectedObject(patchItem: Partial<SettlementMapObjectInstance>) {
+    if (!settlement || !selectedObjectId) return
+    patch({
+      objects: settlement.objects.map((o) => {
+        if (o.id !== selectedObjectId) return o
+        const next = { ...o, ...patchItem }
+        if ('iconColor' in patchItem && !patchItem.iconColor) delete next.iconColor
+        if ('bgColor' in patchItem && !patchItem.bgColor) delete next.bgColor
+        return next
+      }),
     })
   }
 
@@ -221,6 +338,14 @@ export default function SettlementPage({
     setSelectedId(null)
   }
 
+  function removeSelectedObject() {
+    if (!settlement || !selectedObjectId) return
+    patch({
+      objects: settlement.objects.filter((o) => o.id !== selectedObjectId),
+    })
+    setSelectedObjectId(null)
+  }
+
   function addConstruction(catalogKey: string) {
     if (!settlement) return
     const instance = newConstructionInstance(catalogKey, 40 + Math.random() * 20, 40 + Math.random() * 20)
@@ -228,8 +353,19 @@ export default function SettlementPage({
     const connections = connectToNearest(settlement.connections, constructions, instance.id)
     patch({ constructions, connections })
     setSelectedId(instance.id)
+    setSelectedObjectId(null)
     setSelectedConnectionId(null)
     setPickerOpen(false)
+  }
+
+  function addObject(catalogKey: string) {
+    if (!settlement) return
+    const instance = newMapObjectInstance(catalogKey, 30 + Math.random() * 40, 30 + Math.random() * 40)
+    patch({ objects: [...settlement.objects, instance] })
+    setSelectedObjectId(instance.id)
+    setSelectedId(null)
+    setSelectedConnectionId(null)
+    setObjectPickerOpen(false)
   }
 
   function setMapLinkMode(mode: SettlementLinkMode) {
@@ -243,6 +379,7 @@ export default function SettlementPage({
     if (!linkFromId) {
       setLinkFromId(id)
       setSelectedId(id)
+      setSelectedObjectId(null)
       return
     }
     if (linkFromId === id) {
@@ -266,14 +403,6 @@ export default function SettlementPage({
 
   function generateConnections() {
     if (!settlement || !canEdit) return
-    // With a construction selected: link only that one to its nearest neighbor.
-    if (selectedId) {
-      patch({
-        connections: connectToNearest(settlement.connections, settlement.constructions, selectedId),
-      })
-      return
-    }
-    // Otherwise: fill missing MST edges only (keeps manual links).
     patch({
       connections: fillMissingMstConnections(settlement.connections, settlement.constructions),
     })
@@ -291,6 +420,26 @@ export default function SettlementPage({
   function removeSelectedConnection() {
     if (!selectedConnectionId) return
     removeConnectionById(selectedConnectionId)
+  }
+
+  function patchSelectedConnection(partial: Partial<SettlementConnection>) {
+    if (!settlement || !canEdit || !selectedConnectionId) return
+    patch({
+      connections: settlement.connections.map((c) => {
+        if (c.id !== selectedConnectionId) return c
+        const next: SettlementConnection = { ...c, ...partial }
+        if ('color' in partial && !partial.color) delete next.color
+        if ('lineStyle' in partial && !partial.lineStyle) delete next.lineStyle
+        if ('endSymbol' in partial && !partial.endSymbol) delete next.endSymbol
+        return next
+      }),
+    })
+  }
+
+  function setSelectedConnectionColor(color: string) {
+    patchSelectedConnection({
+      color: color === DEFAULT_SETTLEMENT_CONNECTION_COLOR ? undefined : color,
+    })
   }
 
   function removeLinksOfSelected() {
@@ -314,7 +463,7 @@ export default function SettlementPage({
     function onKeyDown(e: KeyboardEvent) {
       if (e.key !== 'Delete' && e.key !== 'Backspace') return
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return
-      if (pickerOpen || isEditableTarget(e.target)) return
+      if (pickerOpen || objectPickerOpen || isEditableTarget(e.target)) return
 
       if (selectedConnectionId) {
         if (!settlement) return
@@ -323,6 +472,15 @@ export default function SettlementPage({
           connections: settlement.connections.filter((c) => c.id !== selectedConnectionId),
         })
         setSelectedConnectionId(null)
+        return
+      }
+
+      if (selectedObjectId && settlement) {
+        e.preventDefault()
+        patch({
+          objects: settlement.objects.filter((o) => o.id !== selectedObjectId),
+        })
+        setSelectedObjectId(null)
         return
       }
 
@@ -340,19 +498,35 @@ export default function SettlementPage({
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [canEdit, patch, pickerOpen, selectedConnectionId, selectedId, settlement])
+  }, [canEdit, objectPickerOpen, patch, pickerOpen, selectedConnectionId, selectedId, selectedObjectId, settlement])
 
   function selectConstruction(id: string | null) {
     setSelectedId(id)
-    if (id) setSelectedConnectionId(null)
+    if (id) {
+      setSelectedObjectId(null)
+      setSelectedConnectionId(null)
+    }
+  }
+
+  function selectObject(id: string | null) {
+    setSelectedObjectId(id)
+    if (id) {
+      setSelectedId(null)
+      setSelectedConnectionId(null)
+    }
   }
 
   function selectConnection(id: string | null) {
     setSelectedConnectionId(id)
-    if (id) setSelectedId(null)
+    if (id) {
+      setSelectedId(null)
+      setSelectedObjectId(null)
+    }
   }
 
   const selected = settlement?.constructions.find((c) => c.id === selectedId) ?? null
+  const selectedObject = settlement?.objects.find((o) => o.id === selectedObjectId) ?? null
+  const selectedObjectDef = selectedObject ? getSettlementMapObject(selectedObject.catalogKey) : undefined
   const selectedDef = selected ? getSettlementConstruction(selected.catalogKey) : undefined
   const selectedConnection = settlement?.connections.find((c) => c.id === selectedConnectionId) ?? null
   const connectionFrom = selectedConnection
@@ -546,46 +720,153 @@ export default function SettlementPage({
                   className="text-xs"
                   onClick={generateConnections}
                   disabled={settlement.constructions.length < 2}
-                  title={selectedId
-                    ? t('settlement.generateConnectionsSelectedHint')
-                    : t('settlement.generateConnectionsHint')}
+                  title={t('settlement.generateConnectionsHint')}
                 >
-                  {selectedId
-                    ? t('settlement.generateConnectionsSelected')
-                    : t('settlement.generateConnections')}
+                  {t('settlement.generateConnections')}
                 </Button>
                 <Button variant="outline" className="text-xs" onClick={() => setPickerOpen(true)}>
                   {t('settlement.addConstruction')}
+                </Button>
+                <Button variant="outline" className="text-xs" onClick={() => setObjectPickerOpen(true)}>
+                  {t('settlement.addObject')}
                 </Button>
               </div>
             )}
           </div>
           <SettlementMap
             constructions={settlement.constructions}
+            objects={settlement.objects}
             connections={settlement.connections}
             npcs={settlement.npcs}
+            settlementName={settlement.name}
             selectedId={selectedId}
+            selectedObjectId={selectedObjectId}
             selectedConnectionId={selectedConnectionId}
             linkMode={linkMode}
             linkFromId={linkFromId}
             canEdit={canEdit}
             onSelect={selectConstruction}
+            onSelectObject={selectObject}
             onSelectConnection={selectConnection}
             onLinkPick={handleLinkPick}
             onRemoveConnection={removeConnectionById}
             onMove={moveConstruction}
+            onMoveObject={moveObject}
           />
         </div>
 
+        <div className="space-y-3 min-w-0">
         <aside className="rounded-lg border border-border bg-surface/60 p-3 space-y-3 min-h-[12rem]">
           {selectedConnection ? (
             <>
               <p className="text-sm text-ink font-medium">{t('settlement.connectionTitle')}</p>
               <p className="text-xs text-ink-muted">
                 {constructionLabel(connectionFrom)}
-                {' ↔ '}
+                {selectedConnection.endSymbol === 'arrowTo'
+                  ? ' → '
+                  : selectedConnection.endSymbol === 'arrowFrom'
+                    ? ' ← '
+                    : selectedConnection.endSymbol === 'arrowBoth'
+                      ? ' ↔ '
+                      : ' — '}
                 {constructionLabel(connectionTo)}
               </p>
+              {canEdit && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-ink-faint">
+                    {t('settlement.connectionColor')}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {SETTLEMENT_CONNECTION_COLORS.map((hex) => {
+                      const active =
+                        settlementConnectionStroke(selectedConnection.color) === hex
+                      return (
+                        <button
+                          key={hex}
+                          type="button"
+                          title={hex}
+                          onClick={() => setSelectedConnectionColor(hex)}
+                          className={`w-7 h-7 rounded-full border-2 transition-transform ${
+                            active
+                              ? 'border-ink scale-110'
+                              : 'border-border hover:border-ink-muted'
+                          }`}
+                          style={{ backgroundColor: hex }}
+                          aria-label={t('settlement.connectionColorOption', { color: hex })}
+                          aria-pressed={active}
+                        />
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+              {canEdit && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-ink-faint">
+                    {t('settlement.connectionLineStyle')}
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {SETTLEMENT_CONNECTION_LINE_STYLES.map((style) => {
+                      const active = (selectedConnection.lineStyle ?? 'solid') === style
+                      return (
+                        <button
+                          key={style}
+                          type="button"
+                          onClick={() =>
+                            patchSelectedConnection({
+                              lineStyle: style === 'solid' ? undefined : style,
+                            })
+                          }
+                          className={`inline-flex items-center justify-center px-2.5 py-1.5 rounded border transition-colors ${
+                            active
+                              ? 'border-blood-light text-blood-light bg-blood/10'
+                              : 'border-border text-ink-faint hover:text-ink'
+                          }`}
+                          title={t(`settlement.connectionLineStyles.${style}`)}
+                          aria-label={t(`settlement.connectionLineStyles.${style}`)}
+                          aria-pressed={active}
+                        >
+                          <ConnectionLineStylePreview style={style} />
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+              {canEdit && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-ink-faint">
+                    {t('settlement.connectionEndSymbol')}
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {SETTLEMENT_CONNECTION_END_SYMBOLS.map((symbol) => {
+                      const active = (selectedConnection.endSymbol ?? 'none') === symbol
+                      const tip = t(`settlement.connectionEndSymbols.${symbol}`)
+                      return (
+                        <button
+                          key={symbol}
+                          type="button"
+                          onClick={() =>
+                            patchSelectedConnection({
+                              endSymbol: symbol === 'none' ? undefined : symbol,
+                            })
+                          }
+                          className={`inline-flex items-center justify-center px-2.5 py-1.5 rounded border transition-colors ${
+                            active
+                              ? 'border-blood-light text-blood-light bg-blood/10'
+                              : 'border-border text-ink-faint hover:text-ink'
+                          }`}
+                          title={tip}
+                          aria-label={tip}
+                          aria-pressed={active}
+                        >
+                          <ConnectionEndSymbolPreview symbol={symbol} />
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
               {canEdit && (
                 <Button variant="danger" className="text-xs" onClick={removeSelectedConnection}>
                   {t('settlement.removeConnection')}
@@ -613,13 +894,13 @@ export default function SettlementPage({
                     return (
                       <span
                         key={`${tag.polarity}-${tag.name}-${tag.value}`}
-                        className={`inline-flex items-baseline gap-1 text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded border ${gearTraitPolarityClasses(tag.polarity)}`}
+                        className={`inline-flex items-center gap-1 leading-none text-[12px] font-mono pl-1.5 ${rank != null ? 'pr-1' : 'pr-1.5'} py-0.5 rounded-full border ${gearTraitPolarityClasses(tag.polarity)}`}
                       >
-                        <span>{settlementPropertyPrefix(tag)}</span>
+                        <span className="uppercase tracking-wider leading-none">
+                          {settlementPropertyLabel(tag)}
+                        </span>
                         {rank != null && (
-                          <span className="tabular-nums font-semibold text-[11px] opacity-100 tracking-normal">
-                            {rank}
-                          </span>
+                          <TraitValueBadge polarity={tag.polarity} value={rank} />
                         )}
                       </span>
                     )
@@ -675,47 +956,38 @@ export default function SettlementPage({
                     rows={2}
                     className="w-full rounded border border-border bg-surface px-2 py-1.5 text-sm text-ink"
                   />
-                  {selectedLinks.length > 0 && (
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-[10px] font-mono uppercase tracking-wider text-ink-faint">
-                          {t('settlement.connectionsOf')}
-                        </p>
-                        <button
-                          type="button"
-                          className="text-[10px] font-mono uppercase tracking-wider text-blood hover:text-blood-light"
-                          onClick={removeLinksOfSelected}
-                        >
-                          {t('settlement.removeConstructionLinks')}
-                        </button>
-                      </div>
-                      <ul className="space-y-1">
-                        {selectedLinks.map(({ connection, other }) => (
-                          <li
-                            key={connection.id}
-                            className="flex items-center justify-between gap-2 text-xs text-ink-muted"
-                          >
-                            <button
-                              type="button"
-                              className="min-w-0 truncate text-left hover:text-ink"
-                              onClick={() => selectConnection(connection.id)}
-                            >
-                              ↔ {constructionLabel(other)}
-                            </button>
-                            <button
-                              type="button"
-                              className="shrink-0 text-[10px] font-mono uppercase tracking-wider text-blood hover:text-blood-light"
-                              onClick={() => removeConnectionById(connection.id)}
-                            >
-                              {t('settlement.removeConnectionShort')}
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
                   <Button variant="danger" className="text-xs" onClick={removeSelected}>
                     {t('settlement.removeConstruction')}
+                  </Button>
+                </div>
+              )}
+            </>
+          ) : selectedObject && selectedObjectDef ? (
+            <>
+              <p className="text-sm text-ink font-medium">
+                {selectedObject.label.trim()
+                  || mapObjectLocalizedName(selectedObjectDef, i18n.language)}
+              </p>
+              <p className="text-xs text-ink-muted leading-relaxed">
+                {mapObjectLocalizedDescription(selectedObjectDef, i18n.language)}
+              </p>
+              {canEdit && (
+                <div className="space-y-2 pt-1 border-t border-border">
+                  <Input
+                    label={t('settlement.customLabel')}
+                    value={selectedObject.label}
+                    onChange={(e) => updateSelectedObject({ label: e.target.value })}
+                    placeholder={mapObjectLocalizedName(selectedObjectDef, i18n.language)}
+                  />
+                  <textarea
+                    value={selectedObject.notes}
+                    onChange={(e) => updateSelectedObject({ notes: e.target.value })}
+                    placeholder={t('settlement.objectNotes')}
+                    rows={2}
+                    className="w-full rounded border border-border bg-surface px-2 py-1.5 text-sm text-ink"
+                  />
+                  <Button variant="danger" className="text-xs" onClick={removeSelectedObject}>
+                    {t('settlement.removeObject')}
                   </Button>
                 </div>
               )}
@@ -726,16 +998,187 @@ export default function SettlementPage({
                 ? t('settlement.connectModeHint')
                 : linkMode === 'disconnect'
                   ? t('settlement.disconnectModeHint')
-                  : t('settlement.selectConstruction')}
+                  : t('settlement.selectMapItem')}
             </p>
           )}
         </aside>
+
+        {selected && selectedDef && canEdit && (
+          <aside className="rounded-lg border border-border bg-surface/60 p-3 space-y-3">
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-mono uppercase tracking-wider text-ink-faint">
+                {t('settlement.markerIconColor')}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {SETTLEMENT_MARKER_COLORS.map((hex) => {
+                  const active = settlementMarkerIconColor(selected.iconColor) === hex
+                  return (
+                    <button
+                      key={`icon-${hex}`}
+                      type="button"
+                      title={hex}
+                      onClick={() =>
+                        updateSelected({
+                          iconColor:
+                            hex === DEFAULT_SETTLEMENT_MARKER_ICON_COLOR ? undefined : hex,
+                        })
+                      }
+                      className={`w-7 h-7 rounded-full border-2 transition-transform ${
+                        active ? 'border-ink scale-110' : 'border-border hover:border-ink-muted'
+                      }`}
+                      style={{ backgroundColor: hex }}
+                      aria-label={t('settlement.markerColorOption', { color: hex })}
+                      aria-pressed={active}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-mono uppercase tracking-wider text-ink-faint">
+                {t('settlement.markerBgColor')}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {SETTLEMENT_MARKER_COLORS.map((hex) => {
+                  const active = settlementMarkerBgColor(selected.bgColor) === hex
+                  return (
+                    <button
+                      key={`bg-${hex}`}
+                      type="button"
+                      title={hex}
+                      onClick={() =>
+                        updateSelected({
+                          bgColor:
+                            hex === DEFAULT_SETTLEMENT_MARKER_BG_COLOR ? undefined : hex,
+                        })
+                      }
+                      className={`w-7 h-7 rounded-full border-2 transition-transform ${
+                        active ? 'border-ink scale-110' : 'border-border hover:border-ink-muted'
+                      }`}
+                      style={{ backgroundColor: hex }}
+                      aria-label={t('settlement.markerColorOption', { color: hex })}
+                      aria-pressed={active}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+            {selectedLinks.length > 0 && (
+              <div className="space-y-1.5 pt-1 border-t border-border">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-ink-faint">
+                    {t('settlement.connectionsOf')}
+                  </p>
+                  <button
+                    type="button"
+                    className="text-[10px] font-mono uppercase tracking-wider text-blood hover:text-blood-light"
+                    onClick={removeLinksOfSelected}
+                  >
+                    {t('settlement.removeConstructionLinks')}
+                  </button>
+                </div>
+                <ul className="space-y-1">
+                  {selectedLinks.map(({ connection, other }) => (
+                    <li
+                      key={connection.id}
+                      className="flex items-center justify-between gap-2 text-xs text-ink-muted"
+                    >
+                      <button
+                        type="button"
+                        className="min-w-0 truncate text-left hover:text-ink"
+                        onClick={() => selectConnection(connection.id)}
+                      >
+                        ↔ {constructionLabel(other)}
+                      </button>
+                      <button
+                        type="button"
+                        className="shrink-0 text-[10px] font-mono uppercase tracking-wider text-blood hover:text-blood-light"
+                        onClick={() => removeConnectionById(connection.id)}
+                      >
+                        {t('settlement.removeConnectionShort')}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </aside>
+        )}
+
+        {selectedObject && selectedObjectDef && canEdit && (
+          <aside className="rounded-lg border border-border bg-surface/60 p-3 space-y-3">
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-mono uppercase tracking-wider text-ink-faint">
+                {t('settlement.markerIconColor')}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {SETTLEMENT_MARKER_COLORS.map((hex) => {
+                  const fallback = selectedObjectDef.defaultIconColor
+                  const active = (selectedObject.iconColor?.trim() || fallback) === hex
+                  return (
+                    <button
+                      key={`obj-icon-${hex}`}
+                      type="button"
+                      title={hex}
+                      onClick={() =>
+                        updateSelectedObject({
+                          iconColor: hex === fallback ? undefined : hex,
+                        })
+                      }
+                      className={`w-7 h-7 rounded-full border-2 transition-transform ${
+                        active ? 'border-ink scale-110' : 'border-border hover:border-ink-muted'
+                      }`}
+                      style={{ backgroundColor: hex }}
+                      aria-label={t('settlement.markerColorOption', { color: hex })}
+                      aria-pressed={active}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-mono uppercase tracking-wider text-ink-faint">
+                {t('settlement.markerBgColor')}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {SETTLEMENT_MARKER_COLORS.map((hex) => {
+                  const fallback = selectedObjectDef.defaultBgColor
+                  const active = (selectedObject.bgColor?.trim() || fallback) === hex
+                  return (
+                    <button
+                      key={`obj-bg-${hex}`}
+                      type="button"
+                      title={hex}
+                      onClick={() =>
+                        updateSelectedObject({
+                          bgColor: hex === fallback ? undefined : hex,
+                        })
+                      }
+                      className={`w-7 h-7 rounded-full border-2 transition-transform ${
+                        active ? 'border-ink scale-110' : 'border-border hover:border-ink-muted'
+                      }`}
+                      style={{ backgroundColor: hex }}
+                      aria-label={t('settlement.markerColorOption', { color: hex })}
+                      aria-pressed={active}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+          </aside>
+        )}
+        </div>
       </div>
 
       <ConstructionPicker
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
         onPick={addConstruction}
+      />
+      <MapObjectPicker
+        open={objectPickerOpen}
+        onClose={() => setObjectPickerOpen(false)}
+        onPick={addObject}
       />
         </>
       )}

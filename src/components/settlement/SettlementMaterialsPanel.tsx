@@ -2,10 +2,11 @@ import { useTranslation } from 'react-i18next'
 import { SETTLEMENT_MATERIAL_ICONS } from '@/config/settlementMaterialIcons'
 import { SETTLEMENT_MATERIALS, type SettlementMaterialKey } from '@/config/settlementMaterials'
 import { gearTraitPolarityClasses } from '@/utils/gearTraits'
+import TraitValueBadge from '@/components/ui/TraitValueBadge'
 import {
   parseSettlementProperties,
   settlementPropertyDisplayValue,
-  settlementPropertyPrefix,
+  settlementPropertyLabel,
 } from '@/utils/settlementProperties'
 
 interface Props {
@@ -45,13 +46,13 @@ export default function SettlementMaterialsPanel({ materials, canEdit, onChange 
                     return (
                       <span
                         key={`${tag.polarity}-${tag.name}-${tag.value}`}
-                        className={`inline-flex items-baseline gap-0.5 text-[9px] font-mono uppercase tracking-wider px-1 py-px rounded border ${gearTraitPolarityClasses(tag.polarity)}`}
+                        className={`inline-flex items-center gap-1 leading-none text-[11px] font-mono pl-1.5 ${rank != null ? 'pr-1' : 'pr-1.5'} py-0.5 rounded-full border ${gearTraitPolarityClasses(tag.polarity)}`}
                       >
-                        <span>{settlementPropertyPrefix(tag)}</span>
+                        <span className="uppercase tracking-wider leading-none">
+                          {settlementPropertyLabel(tag)}
+                        </span>
                         {rank != null && (
-                          <span className="tabular-nums font-semibold text-[11px] opacity-100 tracking-normal">
-                            {rank}
-                          </span>
+                          <TraitValueBadge polarity={tag.polarity} value={rank} />
                         )}
                       </span>
                     )

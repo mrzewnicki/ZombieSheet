@@ -4,6 +4,7 @@ import {
   gearTraitPolarityClasses,
   gearTraitTooltipClasses,
 } from '@/utils/gearTraits'
+import TraitValueBadge from '@/components/ui/TraitValueBadge'
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
@@ -28,12 +29,10 @@ export default function GearTraitChip({ name, polarity, description, value }: Pr
       onMouseDown={(e) => e.stopPropagation()}
     >
       <span
-        className={`text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded border ${gearTraitPolarityClasses(polarity)}${hasDescription ? ' cursor-help' : ''}`}
+        className={`inline-flex items-center gap-1 leading-none text-[12px] font-mono pl-1.5 ${hasValue ? 'pr-1' : 'pr-1.5'} py-0.5 rounded-full border ${gearTraitPolarityClasses(polarity)}${hasDescription ? ' cursor-help' : ''}`}
       >
-        {name}
-        {hasValue && (
-          <span className="ml-1 tabular-nums opacity-90">{displayValue}</span>
-        )}
+        <span className="uppercase tracking-wider leading-none">{name}</span>
+        {hasValue && <TraitValueBadge polarity={polarity} value={displayValue} />}
       </span>
 
       {hasDescription && (
@@ -50,9 +49,9 @@ export default function GearTraitChip({ name, polarity, description, value }: Pr
           <div
             className={`max-w-xs min-w-[10rem] px-3 py-2 rounded border shadow-lg shadow-black/40 ${gearTraitTooltipClasses(polarity)}`}
           >
-            <p className="text-[10px] font-mono uppercase tracking-wider mb-1.5 opacity-80">
-              {name}
-              {hasValue && <span className="ml-1 tabular-nums">{displayValue}</span>}
+            <p className="text-[12px] font-mono mb-1.5 opacity-80 inline-flex items-center gap-1 leading-none">
+              <span className="uppercase tracking-wider leading-none">{name}</span>
+              {hasValue && <TraitValueBadge polarity={polarity} value={displayValue} />}
             </p>
             <div className="prose-hero text-xs normal-case tracking-normal font-body [&_p]:mb-1 [&_p:last-child]:mb-0">
               <ReactMarkdown

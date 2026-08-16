@@ -1,4 +1,9 @@
-import type { SettlementConstructionInstance, SettlementConnection } from '@/types'
+import type {
+  SettlementConstructionInstance,
+  SettlementConnection,
+  SettlementConnectionEndSymbol,
+  SettlementConnectionLineStyle,
+} from '@/types'
 
 function dist2(
   a: SettlementConstructionInstance,
@@ -34,6 +39,102 @@ export function newSettlementConnection(fromId: string, toId: string): Settlemen
     fromId: ends.fromId,
     toId: ends.toId,
   }
+}
+
+/** Default stroke when a connection has no custom color. */
+export const DEFAULT_SETTLEMENT_CONNECTION_COLOR = '#8a7a5a'
+
+/** Default marker icon / background when unset. */
+export const DEFAULT_SETTLEMENT_MARKER_ICON_COLOR = '#b02020'
+export const DEFAULT_SETTLEMENT_MARKER_BG_COLOR = '#231c16'
+
+/** Preset swatches for connection / marker color pickers (hex). */
+export const SETTLEMENT_CONNECTION_COLORS = [
+  DEFAULT_SETTLEMENT_CONNECTION_COLOR,
+  '#c45c4a',
+  '#a89050',
+  '#5a7a4a',
+  '#5a6a7a',
+  '#6a5a7a',
+  '#a07050',
+  '#4a4035',
+] as const
+
+export const SETTLEMENT_MARKER_COLORS = [
+  DEFAULT_SETTLEMENT_MARKER_ICON_COLOR,
+  DEFAULT_SETTLEMENT_MARKER_BG_COLOR,
+  '#d4c9a8',
+  '#c45c4a',
+  '#a89050',
+  '#5a7a4a',
+  '#5a6a7a',
+  '#6a5a7a',
+  '#a07050',
+  '#8a7a5a',
+  '#0e0a07',
+] as const
+
+export function settlementConnectionStroke(color: string | undefined): string {
+  if (color && /^#[0-9A-Fa-f]{6}$/.test(color)) return color
+  return DEFAULT_SETTLEMENT_CONNECTION_COLOR
+}
+
+export const SETTLEMENT_CONNECTION_LINE_STYLES = [
+  'solid',
+  'dashed',
+  'dotted',
+  'dashDot',
+] as const satisfies readonly SettlementConnectionLineStyle[]
+
+export const SETTLEMENT_CONNECTION_END_SYMBOLS = [
+  'none',
+  'arrowTo',
+  'arrowFrom',
+  'arrowBoth',
+] as const satisfies readonly SettlementConnectionEndSymbol[]
+
+export function normalizeConnectionLineStyle(
+  raw: unknown,
+): SettlementConnectionLineStyle | undefined {
+  if (raw === 'dashed' || raw === 'dotted' || raw === 'dashDot' || raw === 'solid') {
+    return raw === 'solid' ? undefined : raw
+  }
+  return undefined
+}
+
+export function normalizeConnectionEndSymbol(
+  raw: unknown,
+): SettlementConnectionEndSymbol | undefined {
+  if (raw === 'arrowTo' || raw === 'arrowFrom' || raw === 'arrowBoth' || raw === 'none') {
+    return raw === 'none' ? undefined : raw
+  }
+  return undefined
+}
+
+/** SVG stroke-dasharray in viewBox units (0–100 map). */
+export function settlementConnectionDashArray(
+  style: SettlementConnectionLineStyle | undefined,
+): string | undefined {
+  switch (style) {
+    case 'dashed':
+      return '3.5 2.2'
+    case 'dotted':
+      return '0.9 1.8'
+    case 'dashDot':
+      return '3.2 1.4 0.9 1.4'
+    default:
+      return undefined
+  }
+}
+
+export function settlementMarkerIconColor(color: string | undefined): string {
+  if (color && /^#[0-9A-Fa-f]{6}$/.test(color)) return color
+  return DEFAULT_SETTLEMENT_MARKER_ICON_COLOR
+}
+
+export function settlementMarkerBgColor(color: string | undefined): string {
+  if (color && /^#[0-9A-Fa-f]{6}$/.test(color)) return color
+  return DEFAULT_SETTLEMENT_MARKER_BG_COLOR
 }
 
 /** Drop edges that reference missing constructions. */

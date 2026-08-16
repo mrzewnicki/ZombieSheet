@@ -301,13 +301,40 @@ export interface SettlementConstructionInstance {
   x: number
   y: number
   notes: string
+  /** Optional marker icon color (CSS hex). */
+  iconColor?: string
+  /** Optional marker background color (CSS hex). */
+  bgColor?: string
+}
+
+/** Decorative / terrain marker on the settlement map (not a buildable construction). */
+export interface SettlementMapObjectInstance {
+  id: string
+  catalogKey: string
+  label: string
+  /** Position on map as 0–100 percent. */
+  x: number
+  y: number
+  notes: string
+  iconColor?: string
+  bgColor?: string
 }
 
 /** Undirected path/link between two constructions on the settlement map. */
+export type SettlementConnectionLineStyle = 'solid' | 'dashed' | 'dotted' | 'dashDot'
+/** Arrow relative to stored fromId → toId (ids are sorted). */
+export type SettlementConnectionEndSymbol = 'none' | 'arrowTo' | 'arrowFrom' | 'arrowBoth'
+
 export interface SettlementConnection {
   id: string
   fromId: string
   toId: string
+  /** Optional stroke color (CSS hex). Empty = default map path color. */
+  color?: string
+  /** Stroke pattern. Default solid. */
+  lineStyle?: SettlementConnectionLineStyle
+  /** Optional arrowhead(s). Default none. */
+  endSymbol?: SettlementConnectionEndSymbol
 }
 
 /** Neutral settlement character (NPC). */
@@ -335,6 +362,8 @@ export interface Settlement {
   description: string
   materials: Record<string, number>
   constructions: SettlementConstructionInstance[]
+  /** Terrain / environment markers (forest, water, etc.). */
+  objects: SettlementMapObjectInstance[]
   connections: SettlementConnection[]
   npcs: SettlementNpc[]
   traits: SettlementTraitLine[]
