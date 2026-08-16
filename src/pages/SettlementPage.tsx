@@ -563,6 +563,10 @@ export default function SettlementPage({
         const next = { ...z, ...patchItem }
         if ('icon' in patchItem && !patchItem.icon?.trim()) delete next.icon
         if ('iconColor' in patchItem && !patchItem.iconColor) delete next.iconColor
+        if ('smoothCorners' in patchItem) {
+          if (patchItem.smoothCorners === false) next.smoothCorners = false
+          else delete next.smoothCorners
+        }
         return next
       }),
     })
@@ -1298,6 +1302,19 @@ export default function SettlementPage({
                     value={selectedZone.icon ?? ''}
                     onChange={(icon) => updateSelectedZone({ icon })}
                   />
+                  <label className="flex items-center gap-2 cursor-pointer w-fit pt-0.5">
+                    <input
+                      type="checkbox"
+                      checked={selectedZone.smoothCorners !== false}
+                      onChange={(e) =>
+                        updateSelectedZone({
+                          smoothCorners: e.target.checked ? undefined : false,
+                        })
+                      }
+                      className="gear-checkbox"
+                    />
+                    <span className="text-sm text-ink">{t('settlement.zoneSmoothCorners')}</span>
+                  </label>
                   <div className="space-y-1.5">
                     <p className="text-[10px] font-mono uppercase tracking-wider text-ink-faint">
                       {t('settlement.zoneColor')}

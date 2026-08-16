@@ -2,6 +2,14 @@ import type { SettlementZone, SettlementZonePoint } from '@/types'
 
 export const DEFAULT_SETTLEMENT_ZONE_COLOR = '#5a7a4a'
 export const DEFAULT_SETTLEMENT_ZONE_ICON_COLOR = '#d4c9a8'
+/** Corner radius in map % when `smoothCorners` is enabled. */
+export const DEFAULT_ZONE_CORNER_RADIUS = 2.8
+/** Default: corners are smoothed unless explicitly disabled. */
+export const DEFAULT_ZONE_SMOOTH_CORNERS = true
+
+export function zoneSmoothCorners(smoothCorners: boolean | undefined): boolean {
+  return smoothCorners !== false
+}
 
 export const SETTLEMENT_ZONE_COLORS = [
   DEFAULT_SETTLEMENT_ZONE_COLOR,
@@ -194,6 +202,49 @@ export function zoneCentroid(points: SettlementZonePoint[]): SettlementZonePoint
 
 export function zonePointsToSvg(points: SettlementZonePoint[]): string {
   return points.map((p) => `${p.x},${p.y}`).join(' ')
+}
+
+/**
+ * SVG path for a closed polygon with quadratic rounded corners.
+ * Vertices stay sharp for editing; this is display-only.
+ */
+export function zoneRoundedPathSvg(
+  points: SettlementZonePoint[],
+  radius = DEFAULT_ZONE_CORNER_RADIUS,
+): string {
+  const n = points.length
+  if (n < 3) return ''
+  if (radius <= 0) {
+    return `M ${points.map((p) => `${p.x} ${p.y}`).join(' L ')} Z`
+  }
+
+  const parts: string[] = []
+  for (let i = 0; i < n; i++) {
+    const prev = points[(i - 1 + n) % n]
+    const curr = points[i]
+    const next = points[(i + 1) % n]
+    const toPrevX = prev.x - curr.x
+    const toPrevY = prev.y - curr.y
+    const toNextX = next.x - curr.x
+    const toNextY = next.y - curr.y
+    const lenPrev = Math.hypot(toPrevX, toPrevY)
+    const lenNext = Math.hypot(toNextX, toNextY)
+    if (lenPrev < 1e-8 || lenNext < 1e-8) {
+      if (i === 0) parts.push(`M ${curr.x} ${curr.y}`)
+      else parts.push(`L ${curr.x} ${curr.y}`)
+      continue
+    }
+    const r = Math.min(radius, lenPrev * 0.5, lenNext * 0.5)
+    const startX = curr.x + (toPrevX / lenPrev) * r
+    const startY = curr.y + (toPrevY / lenPrev) * r
+    const endX = curr.x + (toNextX / lenNext) * r
+    const endY = curr.y + (toNextY / lenNext) * r
+    if (i === 0) parts.push(`M ${startX} ${startY}`)
+    else parts.push(`L ${startX} ${startY}`)
+    parts.push(`Q ${curr.x} ${curr.y} ${endX} ${endY}`)
+  }
+  parts.push('Z')
+  return parts.join(' ')
 }
 
 export function translateZonePoints(

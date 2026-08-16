@@ -647,6 +647,7 @@
     "zoneEditHint": "Przeciągaj wierzchołki. Kliknij krawędź (styczną), aby dodać punkt.",
     "zoneName": "Nazwa strefy",
     "zoneNamePlaceholder": "np. Rynek, Las…",
+    "zoneSmoothCorners": "Wygładź kąty",
     "zoneColor": "Kolor strefy",
     "zoneIconColor": "Kolor ikony",
     "zonePoints": "{{count}} punktów",

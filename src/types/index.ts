@@ -390,6 +390,8 @@ export interface SettlementZone {
   iconColor?: string
   /** Map layer; default background. */
   layer?: 'background' | 'objects'
+  /** Soften sharp polygon corners when rendering. Default true. */
+  smoothCorners?: boolean
 }
 
 export interface Settlement {

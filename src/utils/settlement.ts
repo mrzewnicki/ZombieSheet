@@ -165,6 +165,8 @@ function normalizeZone(raw: unknown): SettlementZone | null {
   const iconColor = parseHexColor(src.iconColor)
   const icon = typeof src.icon === 'string' && src.icon.trim() ? src.icon.trim() : undefined
   const layer = normalizeMapLayer(src.layer, DEFAULT_BACKGROUND_LAYER)
+  // Default true — only persist the off state.
+  const smoothCornersOff = src.smoothCorners === false
   return {
     id,
     name: typeof src.name === 'string' ? src.name : '',
@@ -173,6 +175,7 @@ function normalizeZone(raw: unknown): SettlementZone | null {
     ...(icon ? { icon } : {}),
     ...(iconColor ? { iconColor } : {}),
     ...(layer !== DEFAULT_BACKGROUND_LAYER ? { layer } : {}),
+    ...(smoothCornersOff ? { smoothCorners: false } : {}),
   }
 }
 
@@ -349,6 +352,7 @@ export function settlementPayload(settlement: Settlement, uid?: string) {
       ...(z.icon?.trim() ? { icon: z.icon.trim() } : {}),
       ...(z.iconColor ? { iconColor: z.iconColor } : {}),
       ...(z.layer && z.layer !== DEFAULT_BACKGROUND_LAYER ? { layer: z.layer } : {}),
+      ...(z.smoothCorners === false ? { smoothCorners: false } : {}),
     })),
     connections: pruneSettlementConnections(settlement.connections, settlement.constructions).map((c) => ({
       id: c.id,

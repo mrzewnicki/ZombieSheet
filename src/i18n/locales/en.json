@@ -647,6 +647,7 @@
     "zoneEditHint": "Drag vertices. Click an edge to add a point.",
     "zoneName": "Zone name",
     "zoneNamePlaceholder": "e.g. Market, Woods…",
+    "zoneSmoothCorners": "Smooth corners",
     "zoneColor": "Zone color",
     "zoneIconColor": "Icon color",
     "zonePoints": "{{count}} points",

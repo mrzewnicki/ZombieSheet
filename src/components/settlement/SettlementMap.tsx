@@ -40,6 +40,8 @@ import {
   translateZonePoints,
   zoneCentroid,
   zonePointsToSvg,
+  zoneRoundedPathSvg,
+  zoneSmoothCorners,
 } from '@/utils/settlementZones'
 
 const DRAG_THRESHOLD_PX = 5
@@ -384,7 +386,7 @@ export default function SettlementMap({
     if (viewRef.current.zoom <= 1.001) return
     const target = e.target as Element
     if (target.closest('button')) return
-    if (target.closest('line, polygon')) return
+    if (target.closest('line, polygon, path')) return
     e.preventDefault()
     panDragRef.current = {
       pointerId: e.pointerId,
@@ -643,25 +645,30 @@ export default function SettlementMap({
     const onLayer = layerActive(layer)
     const interactive = onLayer && !linking && !drawingZone
     const editing = selected && canEdit && interactive
+    const fill = zone.color || DEFAULT_SETTLEMENT_ZONE_COLOR
+    const shapeProps = {
+      fill,
+      fillOpacity: selected ? 0.45 : 0.28,
+      stroke: fill,
+      strokeWidth: selected ? 0.9 : 0.55,
+      vectorEffect: 'non-scaling-stroke' as const,
+      className: interactive ? 'cursor-grab' : 'pointer-events-none',
+      onPointerDown: interactive ? (e: React.PointerEvent) => handlePointerDown(e, zone.id, 'zone') : undefined,
+      onPointerMove: interactive ? handlePointerMove : undefined,
+      onPointerUp: interactive ? handlePointerUp : undefined,
+      onPointerCancel: interactive ? handlePointerUp : undefined,
+      onClick: interactive ? (e: React.MouseEvent) => handleZoneClick(e, zone.id) : undefined,
+      onContextMenu: onLayer
+        ? (e: React.MouseEvent) => openContextMenu(e, 'zone', zone.id, layer)
+        : undefined,
+    }
     return (
       <g key={zone.id} opacity={onLayer ? 1 : INACTIVE_LAYER_OPACITY}>
-        <polygon
-          points={zonePointsToSvg(zone.points)}
-          fill={zone.color || DEFAULT_SETTLEMENT_ZONE_COLOR}
-          fillOpacity={selected ? 0.45 : 0.28}
-          stroke={zone.color || DEFAULT_SETTLEMENT_ZONE_COLOR}
-          strokeWidth={selected ? 0.9 : 0.55}
-          vectorEffect="non-scaling-stroke"
-          className={interactive ? 'cursor-grab' : 'pointer-events-none'}
-          onPointerDown={interactive ? (e) => handlePointerDown(e, zone.id, 'zone') : undefined}
-          onPointerMove={interactive ? handlePointerMove : undefined}
-          onPointerUp={interactive ? handlePointerUp : undefined}
-          onPointerCancel={interactive ? handlePointerUp : undefined}
-          onClick={interactive ? (e) => handleZoneClick(e, zone.id) : undefined}
-          onContextMenu={
-            onLayer ? (e) => openContextMenu(e, 'zone', zone.id, layer) : undefined
-          }
-        />
+        {zoneSmoothCorners(zone.smoothCorners) ? (
+          <path d={zoneRoundedPathSvg(zone.points)} {...shapeProps} />
+        ) : (
+          <polygon points={zonePointsToSvg(zone.points)} {...shapeProps} />
+        )}
         {editing && zone.points.map((p, i) => {
           const next = zone.points[(i + 1) % zone.points.length]
           return (

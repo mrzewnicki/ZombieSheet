@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { pointInPolygon, zoneCentroid, zoneLabelPoint } from './settlementZones'
+import { pointInPolygon, zoneCentroid, zoneLabelPoint, zoneRoundedPathSvg } from './settlementZones'
 import type { SettlementZonePoint } from '@/types'
 
 /** Classic L: vertex average sits in the empty corner outside the fill. */
@@ -46,5 +46,20 @@ describe('zoneLabelPoint', () => {
 describe('zoneCentroid', () => {
   it('delegates to the visual label point', () => {
     expect(zoneCentroid(L_SHAPE)).toEqual(zoneLabelPoint(L_SHAPE))
+  })
+})
+
+describe('zoneRoundedPathSvg', () => {
+  it('returns a closed path with quadratic corners', () => {
+    const square: SettlementZonePoint[] = [
+      { x: 20, y: 20 },
+      { x: 80, y: 20 },
+      { x: 80, y: 80 },
+      { x: 20, y: 80 },
+    ]
+    const d = zoneRoundedPathSvg(square)
+    expect(d.startsWith('M ')).toBe(true)
+    expect(d.includes('Q ')).toBe(true)
+    expect(d.endsWith('Z')).toBe(true)
   })
 })
