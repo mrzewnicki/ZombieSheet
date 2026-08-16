@@ -1,4 +1,5 @@
 import type { SettlementMaterialKey } from '@/config/settlementMaterials'
+import type { SettlementCustomConstruction } from '@/types'
 
 export type SettlementConstructionCategory =
   | 'podstawowe'
@@ -34,6 +35,8 @@ export interface SettlementConstructionDef {
   properties: string
   description: string
   descriptionEn: string
+  /** Optional custom gear icon (`gi:…` / `ra:…`) for user-defined entries. */
+  icon?: string
 }
 
 function c(
@@ -337,6 +340,46 @@ const BY_KEY = new Map(SETTLEMENT_CONSTRUCTIONS.map((item) => [item.key, item]))
 
 export function getSettlementConstruction(key: string): SettlementConstructionDef | undefined {
   return BY_KEY.get(key)
+}
+
+export function isSettlementConstructionCategory(
+  value: string,
+): value is SettlementConstructionCategory {
+  return (SETTLEMENT_CONSTRUCTION_CATEGORIES as readonly string[]).includes(value)
+}
+
+export function customConstructionAsDef(
+  custom: SettlementCustomConstruction,
+): SettlementConstructionDef {
+  const category = isSettlementConstructionCategory(custom.category)
+    ? custom.category
+    : 'podstawowe'
+  const name = custom.name.trim() || custom.id
+  const description = custom.description.trim()
+  const icon = custom.icon?.trim() || undefined
+  return {
+    key: custom.id,
+    name,
+    nameEn: name,
+    category,
+    complexity: Math.max(1, Math.trunc(custom.complexity) || 1),
+    time: Math.max(1, Math.trunc(custom.time) || 1),
+    materials: {},
+    properties: '',
+    description,
+    descriptionEn: description,
+    ...(icon ? { icon } : {}),
+  }
+}
+
+export function resolveSettlementConstruction(
+  key: string,
+  customs: SettlementCustomConstruction[] = [],
+): SettlementConstructionDef | undefined {
+  const fromCatalog = getSettlementConstruction(key)
+  if (fromCatalog) return fromCatalog
+  const custom = customs.find((c) => c.id === key)
+  return custom ? customConstructionAsDef(custom) : undefined
 }
 
 export function constructionsByCategory(

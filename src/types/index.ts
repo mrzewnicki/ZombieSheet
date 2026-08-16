@@ -356,6 +356,18 @@ export interface SettlementMapSize {
   height: number
 }
 
+/** User-defined construction entry for this settlement's catalog. */
+export interface SettlementCustomConstruction {
+  id: string
+  name: string
+  description: string
+  category: string
+  complexity: number
+  time: number
+  /** Optional gear icon value (`gi:…` / `ra:…`). */
+  icon?: string
+}
+
 export interface Settlement {
   id: string
   name: string
@@ -364,6 +376,8 @@ export interface Settlement {
   constructions: SettlementConstructionInstance[]
   /** Terrain / environment markers (forest, water, etc.). */
   objects: SettlementMapObjectInstance[]
+  /** Extra constructions added to this settlement's picker catalog. */
+  customConstructions: SettlementCustomConstruction[]
   connections: SettlementConnection[]
   npcs: SettlementNpc[]
   traits: SettlementTraitLine[]

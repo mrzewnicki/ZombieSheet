@@ -12,11 +12,12 @@ import { db } from '@/config/firebase'
 import {
   constructionLocalizedDescription,
   constructionLocalizedName,
-  getSettlementConstruction,
+  resolveSettlementConstruction,
 } from '@/config/settlementConstructions'
 import { SETTLEMENT_MATERIALS, type SettlementMaterialKey } from '@/config/settlementMaterials'
 import ConstructionPicker from '@/components/settlement/ConstructionPicker'
 import MapObjectPicker from '@/components/settlement/MapObjectPicker'
+import SettlementBuildTransactionBar from '@/components/settlement/SettlementBuildTransactionBar'
 import SettlementMap, { type SettlementLinkMode } from '@/components/settlement/SettlementMap'
 import SettlementMaterialsPanel from '@/components/settlement/SettlementMaterialsPanel'
 import SettlementNpcsPanel from '@/components/settlement/SettlementNpcsPanel'
@@ -31,6 +32,7 @@ import Input from '@/components/ui/Input'
 import RichTextEditor from '@/components/ui/RichTextEditor'
 import Spinner from '@/components/ui/Spinner'
 import SaveIcon from '@/components/icons/SaveIcon'
+import GearIconPicker from '@/components/hero/GearIconPicker'
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
@@ -41,7 +43,6 @@ import { useCampaignNpcs } from '@/hooks/useCampaignNpcs'
 import { useGameRole } from '@/hooks/useGameRole'
 import {
   connectionExists,
-  connectToNearest,
   fillMissingMstConnections,
   newSettlementConnection,
   pruneSettlementConnections,
@@ -71,11 +72,18 @@ import {
   SETTLEMENT_COLLECTION,
   SETTLEMENT_DOC_ID,
   newConstructionInstance,
+  newCustomConstruction,
   newMapObjectInstance,
   normalizeSettlement,
   pruneSettlementNpcs,
   settlementPayload,
 } from '@/utils/settlement'
+import {
+  applyBuildTxnChange,
+  applyMaterialDelta,
+  summarizeBuildTxnCost,
+  type BuildTxnEntry,
+} from '@/utils/settlementBuildTransaction'
 import { gearTraitPolarityClasses } from '@/utils/gearTraits'
 import TraitValueBadge from '@/components/ui/TraitValueBadge'
 import {
@@ -175,6 +183,7 @@ export default function SettlementPage({
   const [linkFromId, setLinkFromId] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [objectPickerOpen, setObjectPickerOpen] = useState(false)
+  const [buildTxn, setBuildTxn] = useState<BuildTxnEntry[] | null>(null)
   const [activeTab, setActiveTab] = useState<'osada' | 'npc'>('osada')
   const [editDesc, setEditDesc] = useState(false)
   const [descriptionDraft, setDescriptionDraft] = useState('')
@@ -329,12 +338,17 @@ export default function SettlementPage({
 
   function removeSelected() {
     if (!settlement || !selectedId) return
+    const removed = settlement.constructions.find((c) => c.id === selectedId)
     const constructions = settlement.constructions.filter((c) => c.id !== selectedId)
     patch({
       constructions,
       connections: pruneSettlementConnections(settlement.connections, constructions),
       npcs: pruneSettlementNpcs(settlement.npcs, constructions),
     })
+    if (removed && buildTxn) {
+      const next = applyBuildTxnChange(buildTxn, removed.id, removed.catalogKey, 'remove')
+      setBuildTxn(next.length === 0 ? null : next)
+    }
     setSelectedId(null)
   }
 
@@ -346,16 +360,68 @@ export default function SettlementPage({
     setSelectedObjectId(null)
   }
 
+  function trackBuildAdd(instanceId: string, catalogKey: string) {
+    setBuildTxn((prev) => applyBuildTxnChange(prev ?? [], instanceId, catalogKey, 'add'))
+  }
+
   function addConstruction(catalogKey: string) {
     if (!settlement) return
     const instance = newConstructionInstance(catalogKey, 40 + Math.random() * 20, 40 + Math.random() * 20)
-    const constructions = [...settlement.constructions, instance]
-    const connections = connectToNearest(settlement.connections, constructions, instance.id)
-    patch({ constructions, connections })
+    patch({ constructions: [...settlement.constructions, instance] })
+    trackBuildAdd(instance.id, catalogKey)
     setSelectedId(instance.id)
     setSelectedObjectId(null)
     setSelectedConnectionId(null)
     setPickerOpen(false)
+  }
+
+  function createCustomConstruction(input: {
+    name: string
+    description: string
+    category: string
+    complexity: number
+    time: number
+    icon: string
+  }) {
+    if (!settlement) return
+    const entry = newCustomConstruction(input)
+    const instance = newConstructionInstance(entry.id, 40 + Math.random() * 20, 40 + Math.random() * 20)
+    patch({
+      customConstructions: [...settlement.customConstructions, entry],
+      constructions: [...settlement.constructions, instance],
+    })
+    trackBuildAdd(instance.id, entry.id)
+    setSelectedId(instance.id)
+    setSelectedObjectId(null)
+    setSelectedConnectionId(null)
+    setPickerOpen(false)
+  }
+
+  function confirmBuildTxn() {
+    if (!settlement || !buildTxn) return
+    const delta = summarizeBuildTxnCost(buildTxn, settlement.customConstructions)
+    patch({ materials: applyMaterialDelta(settlement.materials, delta) })
+    setBuildTxn(null)
+  }
+
+  function freeBuildTxn() {
+    setBuildTxn(null)
+  }
+
+  function updateSelectedCustomConstruction(patchItem: Partial<{ icon: string; name: string; description: string }>) {
+    if (!settlement || !selectedId) return
+    const instance = settlement.constructions.find((c) => c.id === selectedId)
+    if (!instance) return
+    const customId = instance.catalogKey
+    if (!settlement.customConstructions.some((c) => c.id === customId)) return
+    patch({
+      customConstructions: settlement.customConstructions.map((c) => {
+        if (c.id !== customId) return c
+        const next = { ...c, ...patchItem }
+        if ('icon' in patchItem && !patchItem.icon?.trim()) delete next.icon
+        return next
+      }),
+    })
   }
 
   function addObject(catalogKey: string) {
@@ -486,19 +552,24 @@ export default function SettlementPage({
 
       if (selectedId && settlement) {
         e.preventDefault()
+        const removed = settlement.constructions.find((c) => c.id === selectedId)
         const constructions = settlement.constructions.filter((c) => c.id !== selectedId)
         patch({
           constructions,
           connections: pruneSettlementConnections(settlement.connections, constructions),
           npcs: pruneSettlementNpcs(settlement.npcs, constructions),
         })
+        if (removed && buildTxn) {
+          const next = applyBuildTxnChange(buildTxn, removed.id, removed.catalogKey, 'remove')
+          setBuildTxn(next.length === 0 ? null : next)
+        }
         setSelectedId(null)
       }
     }
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [canEdit, objectPickerOpen, patch, pickerOpen, selectedConnectionId, selectedId, selectedObjectId, settlement])
+  }, [buildTxn, canEdit, objectPickerOpen, patch, pickerOpen, selectedConnectionId, selectedId, selectedObjectId, settlement])
 
   function selectConstruction(id: string | null) {
     setSelectedId(id)
@@ -527,7 +598,12 @@ export default function SettlementPage({
   const selected = settlement?.constructions.find((c) => c.id === selectedId) ?? null
   const selectedObject = settlement?.objects.find((o) => o.id === selectedObjectId) ?? null
   const selectedObjectDef = selectedObject ? getSettlementMapObject(selectedObject.catalogKey) : undefined
-  const selectedDef = selected ? getSettlementConstruction(selected.catalogKey) : undefined
+  const selectedDef = selected
+    ? resolveSettlementConstruction(selected.catalogKey, settlement?.customConstructions)
+    : undefined
+  const selectedCustom = selected && settlement
+    ? settlement.customConstructions.find((c) => c.id === selected.catalogKey) ?? null
+    : null
   const selectedConnection = settlement?.connections.find((c) => c.id === selectedConnectionId) ?? null
   const connectionFrom = selectedConnection
     ? settlement?.constructions.find((c) => c.id === selectedConnection.fromId)
@@ -550,7 +626,7 @@ export default function SettlementPage({
 
   function constructionLabel(item: SettlementConstructionInstance | null | undefined): string {
     if (!item) return '—'
-    const def = getSettlementConstruction(item.catalogKey)
+    const def = resolveSettlementConstruction(item.catalogKey, settlement?.customConstructions)
     return item.label.trim()
       || (def ? constructionLocalizedName(def, i18n.language) : item.catalogKey)
   }
@@ -673,6 +749,7 @@ export default function SettlementPage({
           npcs={settlement.npcs}
           campaignNpcs={campaignNpcs}
           constructions={settlement.constructions}
+          customConstructions={settlement.customConstructions}
           canEdit={canEdit}
           onChange={(npcs) => patch({ npcs })}
         />
@@ -736,6 +813,7 @@ export default function SettlementPage({
           <SettlementMap
             constructions={settlement.constructions}
             objects={settlement.objects}
+            customConstructions={settlement.customConstructions}
             connections={settlement.connections}
             npcs={settlement.npcs}
             settlementName={settlement.name}
@@ -753,6 +831,16 @@ export default function SettlementPage({
             onMove={moveConstruction}
             onMoveObject={moveObject}
           />
+          {buildTxn && canEdit && (
+            <SettlementBuildTransactionBar
+              delta={summarizeBuildTxnCost(buildTxn, settlement.customConstructions)}
+              materials={settlement.materials}
+              addedCount={buildTxn.filter((e) => e.delta === 1).length}
+              removedCount={buildTxn.filter((e) => e.delta === -1).length}
+              onConfirm={confirmBuildTxn}
+              onFree={freeBuildTxn}
+            />
+          )}
         </div>
 
         <div className="space-y-3 min-w-0">
@@ -943,6 +1031,13 @@ export default function SettlementPage({
               )}
               {canEdit && (
                 <div className="space-y-2 pt-1 border-t border-border">
+                  {selectedCustom && (
+                    <GearIconPicker
+                      label={t('inventory.visual.icon')}
+                      value={selectedCustom.icon ?? ''}
+                      onChange={(icon) => updateSelectedCustomConstruction({ icon })}
+                    />
+                  )}
                   <Input
                     label={t('settlement.customLabel')}
                     value={selected.label}
@@ -1174,6 +1269,8 @@ export default function SettlementPage({
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
         onPick={addConstruction}
+        customConstructions={settlement.customConstructions}
+        onCreateCustom={createCustomConstruction}
       />
       <MapObjectPicker
         open={objectPickerOpen}

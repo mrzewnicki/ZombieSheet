@@ -1,12 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FaSearchMinus, FaSearchPlus, FaUser } from 'react-icons/fa'
+import GearIcon from '@/components/hero/GearIcon'
 import {
   constructionLocalizedName,
-  getSettlementConstruction,
+  resolveSettlementConstruction,
 } from '@/config/settlementConstructions'
 import { settlementConstructionIcon } from '@/config/settlementConstructionIcons'
-import type { SettlementConnection, SettlementConstructionInstance, SettlementMapObjectInstance, SettlementNpc } from '@/types'
+import type {
+  SettlementConnection,
+  SettlementConstructionInstance,
+  SettlementCustomConstruction,
+  SettlementMapObjectInstance,
+  SettlementNpc,
+} from '@/types'
 import {
   settlementConnectionDashArray,
   settlementConnectionStroke,
@@ -25,6 +32,13 @@ const MIN_ZOOM = 1
 const MAX_ZOOM = 3.5
 const ZOOM_BUTTON_STEP = 0.35
 const ZOOM_WHEEL_FACTOR = 1.12
+const MARKER_BOX_PX = 32
+const MARKER_ICON_PX = 16
+const OBJECT_BOX_PX = 40
+const OBJECT_ICON_PX = 22
+const MARKER_LABEL_PX = 9
+const MARKER_MAX_W_PX = 112
+const NPC_AVATAR_PX = 20
 
 function connectionArrowPoints(
   x1: number,
@@ -56,6 +70,7 @@ export type SettlementLinkMode = 'off' | 'connect' | 'disconnect'
 interface Props {
   constructions: SettlementConstructionInstance[]
   objects?: SettlementMapObjectInstance[]
+  customConstructions?: SettlementCustomConstruction[]
   connections: SettlementConnection[]
   npcs?: SettlementNpc[]
   settlementName?: string
@@ -74,17 +89,19 @@ interface Props {
   onMoveObject?: (id: string, x: number, y: number) => void
 }
 
-function NpcAvatar({ npc }: { npc: SettlementNpc }) {
+function NpcAvatar({ npc, size }: { npc: SettlementNpc; size: number }) {
   const title = [npc.name.trim(), npc.role.trim()].filter(Boolean).join(' · ') || undefined
+  const iconSize = Math.max(8, size * 0.5)
   return (
     <span
-      className="w-5 h-5 rounded-full border border-border-light overflow-hidden bg-void flex items-center justify-center shadow shadow-void/40"
+      className="rounded-full border border-border-light overflow-hidden bg-void flex items-center justify-center shadow shadow-void/40 shrink-0"
+      style={{ width: size, height: size }}
       title={title}
     >
       {npc.imageURL ? (
         <img src={npc.imageURL} alt="" className="w-full h-full object-cover" />
       ) : (
-        <FaUser className="w-2.5 h-2.5 text-ink-faint" aria-hidden />
+        <FaUser className="text-ink-faint" style={{ width: iconSize, height: iconSize }} aria-hidden />
       )}
     </span>
   )
@@ -93,6 +110,7 @@ function NpcAvatar({ npc }: { npc: SettlementNpc }) {
 export default function SettlementMap({
   constructions,
   objects = [],
+  customConstructions = [],
   connections,
   npcs = [],
   settlementName = '',
@@ -379,6 +397,16 @@ export default function SettlementMap({
           ? t('settlement.mapLabelNamed', { name: named })
           : t('settlement.mapLabel')
 
+  const markerBox = MARKER_BOX_PX * zoom
+  const markerIcon = MARKER_ICON_PX * zoom
+  const objectBox = OBJECT_BOX_PX * zoom
+  const objectIcon = OBJECT_ICON_PX * zoom
+  const markerLabel = MARKER_LABEL_PX * zoom
+  const markerMaxW = MARKER_MAX_W_PX * zoom
+  const npcAvatar = NPC_AVATAR_PX * zoom
+  const labelPadX = 6 * zoom
+  const labelPadY = 2 * zoom
+
   return (
     <div
       ref={surfaceRef}
@@ -449,9 +477,11 @@ export default function SettlementMap({
 
       <div
         data-map-world="1"
-        className="absolute inset-0 origin-top-left will-change-transform"
+        className="absolute left-0 top-0"
         style={{
-          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+          width: `${zoom * 100}%`,
+          height: `${zoom * 100}%`,
+          transform: `translate(${pan.x}px, ${pan.y}px)`,
         }}
         onClick={clearSelection}
       >
@@ -543,12 +573,12 @@ export default function SettlementMap({
         </svg>
 
         {constructions.map((item) => {
-          const def = getSettlementConstruction(item.catalogKey)
+          const def = resolveSettlementConstruction(item.catalogKey, customConstructions)
           const label = item.label.trim()
             || (def ? constructionLocalizedName(def, i18n.language) : item.catalogKey)
           const selected = selectedId === item.id
           const linkFrom = linkFromId === item.id
-          const Icon = settlementConstructionIcon(item.catalogKey, def?.category)
+          const FallbackIcon = settlementConstructionIcon(item.catalogKey, def?.category)
           const assigned = npcsByConstruction.get(item.id) ?? []
           const visibleNpcs = assigned.slice(0, MAX_VISIBLE_NPCS)
           const extraNpcs = assigned.length - visibleNpcs.length
@@ -563,7 +593,7 @@ export default function SettlementMap({
               onClick={(e) => handleMarkerClick(e, item.id)}
               className={`
                 absolute z-10 -translate-x-1/2 -translate-y-1/2
-                flex flex-col items-center gap-0.5 max-w-[7rem]
+                flex flex-col items-center
                 ${linking
                   ? 'cursor-crosshair'
                   : canEdit
@@ -571,16 +601,37 @@ export default function SettlementMap({
                     : 'cursor-pointer'}
                 ${draggingId === item.id ? 'z-20' : ''}
               `}
-              style={{ left: `${item.x}%`, top: `${item.y}%` }}
+              style={{
+                left: `${item.x}%`,
+                top: `${item.y}%`,
+                maxWidth: markerMaxW,
+                gap: 2 * zoom,
+              }}
               title={label}
             >
               {assigned.length > 0 && (
-                <span className="flex items-center -space-x-1 mb-0.5 pointer-events-none">
-                  {visibleNpcs.map((npc) => (
-                    <NpcAvatar key={npc.id} npc={npc} />
+                <span
+                  className="flex items-center pointer-events-none"
+                  style={{ marginBottom: 2 * zoom, marginLeft: npcAvatar * 0.25, marginRight: npcAvatar * 0.25 }}
+                >
+                  {visibleNpcs.map((npc, i) => (
+                    <span
+                      key={npc.id}
+                      style={{ marginLeft: i === 0 ? 0 : -npcAvatar * 0.35 }}
+                    >
+                      <NpcAvatar npc={npc} size={npcAvatar} />
+                    </span>
                   ))}
                   {extraNpcs > 0 && (
-                    <span className="w-5 h-5 rounded-full border border-border bg-elevated text-[8px] font-mono text-ink-faint flex items-center justify-center">
+                    <span
+                      className="rounded-full border border-border bg-elevated font-mono text-ink-faint flex items-center justify-center"
+                      style={{
+                        width: npcAvatar,
+                        height: npcAvatar,
+                        marginLeft: -npcAvatar * 0.35,
+                        fontSize: Math.max(7, 8 * zoom),
+                      }}
+                    >
                       +{extraNpcs}
                     </span>
                   )}
@@ -588,7 +639,7 @@ export default function SettlementMap({
               )}
               <span
                 className={`
-                  w-8 h-8 rounded-md border flex items-center justify-center
+                  rounded-md border flex items-center justify-center
                   shadow-md shadow-void/50
                   ${linkFrom
                     ? 'ring-2 ring-blood-light/50 border-blood-light'
@@ -597,13 +648,33 @@ export default function SettlementMap({
                       : 'border-border'}
                 `}
                 style={{
+                  width: markerBox,
+                  height: markerBox,
                   backgroundColor: item.bgColor?.trim() || '#231c16',
                   color: item.iconColor?.trim() || '#b02020',
                 }}
               >
-                <Icon className="w-4 h-4" aria-hidden />
+                {def?.icon ? (
+                  <span
+                    className="inline-flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>i]:leading-none"
+                    style={{ width: markerIcon, height: markerIcon, fontSize: markerIcon }}
+                  >
+                    <GearIcon value={def.icon} className="w-full h-full" />
+                  </span>
+                ) : (
+                  <FallbackIcon style={{ width: markerIcon, height: markerIcon }} aria-hidden />
+                )}
               </span>
-              <span className="text-[9px] leading-tight text-center text-ink px-1.5 py-0.5 rounded bg-void/95 border border-border/60 shadow-sm shadow-void/60 line-clamp-2">
+              <span
+                className="leading-tight text-center text-ink rounded bg-void/95 border border-border/60 shadow-sm shadow-void/60 line-clamp-2"
+                style={{
+                  fontSize: markerLabel,
+                  paddingLeft: labelPadX,
+                  paddingRight: labelPadX,
+                  paddingTop: labelPadY,
+                  paddingBottom: labelPadY,
+                }}
+              >
                 {label}
               </span>
             </button>
@@ -627,7 +698,7 @@ export default function SettlementMap({
               onClick={(e) => handleObjectClick(e, item.id)}
               className={`
                 absolute z-10 -translate-x-1/2 -translate-y-1/2
-                flex flex-col items-center gap-0.5 max-w-[7rem]
+                flex flex-col items-center
                 ${linking
                   ? 'pointer-events-none opacity-60'
                   : canEdit
@@ -635,26 +706,42 @@ export default function SettlementMap({
                     : 'cursor-pointer'}
                 ${draggingId === item.id ? 'z-20' : ''}
               `}
-              style={{ left: `${item.x}%`, top: `${item.y}%` }}
+              style={{
+                left: `${item.x}%`,
+                top: `${item.y}%`,
+                maxWidth: markerMaxW,
+                gap: 2 * zoom,
+              }}
               title={label}
               tabIndex={linking ? -1 : undefined}
             >
               <span
                 className={`
-                  w-8 h-8 rounded-full border flex items-center justify-center
+                  rounded-full border flex items-center justify-center
                   shadow-md shadow-void/50
                   ${selected
                     ? 'ring-2 ring-blood-light/40 border-blood-light'
                     : 'border-border'}
                 `}
                 style={{
+                  width: objectBox,
+                  height: objectBox,
                   backgroundColor: item.bgColor?.trim() || def?.defaultBgColor || '#1c1b19',
                   color: item.iconColor?.trim() || def?.defaultIconColor || '#9a958c',
                 }}
               >
-                <Icon className="w-4 h-4" aria-hidden />
+                <Icon style={{ width: objectIcon, height: objectIcon }} aria-hidden />
               </span>
-              <span className="text-[9px] leading-tight text-center text-ink px-1.5 py-0.5 rounded bg-void/95 border border-border/60 shadow-sm shadow-void/60 line-clamp-2">
+              <span
+                className="leading-tight text-center text-ink rounded bg-void/95 border border-border/60 shadow-sm shadow-void/60 line-clamp-2"
+                style={{
+                  fontSize: markerLabel,
+                  paddingLeft: labelPadX,
+                  paddingRight: labelPadX,
+                  paddingTop: labelPadY,
+                  paddingBottom: labelPadY,
+                }}
+              >
                 {label}
               </span>
             </button>

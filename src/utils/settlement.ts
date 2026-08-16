@@ -7,6 +7,7 @@ import type {
   Settlement,
   SettlementConnection,
   SettlementConstructionInstance,
+  SettlementCustomConstruction,
   SettlementMapObjectInstance,
   SettlementNpc,
   SettlementTraitLine,
@@ -18,6 +19,9 @@ import {
   pruneSettlementConnections,
 } from '@/utils/settlementConnections'
 import { isSettlementMapObjectKey } from '@/config/settlementMapObjects'
+import {
+  isSettlementConstructionCategory,
+} from '@/config/settlementConstructions'
 export const SETTLEMENT_DOC_ID = 'main'
 export const SETTLEMENT_COLLECTION = 'settlement'
 
@@ -29,6 +33,7 @@ export function emptySettlement(id = SETTLEMENT_DOC_ID): Settlement {
     materials: emptySettlementMaterials(),
     constructions: [],
     objects: [],
+    customConstructions: [],
     connections: [],
     npcs: [],
     traits: [],
@@ -103,6 +108,25 @@ function normalizeMapObject(raw: unknown): SettlementMapObjectInstance | null {
     notes: typeof src.notes === 'string' ? src.notes : '',
     ...(iconColor ? { iconColor } : {}),
     ...(bgColor ? { bgColor } : {}),
+  }
+}
+
+function normalizeCustomConstruction(raw: unknown): SettlementCustomConstruction | null {
+  if (!raw || typeof raw !== 'object') return null
+  const src = raw as Record<string, unknown>
+  const id = typeof src.id === 'string' && src.id ? src.id : null
+  if (!id) return null
+  const categoryRaw = typeof src.category === 'string' ? src.category : 'podstawowe'
+  return {
+    id,
+    name: typeof src.name === 'string' ? src.name : '',
+    description: typeof src.description === 'string' ? src.description : '',
+    category: isSettlementConstructionCategory(categoryRaw) ? categoryRaw : 'podstawowe',
+    complexity: Math.max(1, nonNegInt(src.complexity, 1)),
+    time: Math.max(1, nonNegInt(src.time, 1)),
+    ...(typeof src.icon === 'string' && src.icon.trim()
+      ? { icon: src.icon.trim() }
+      : {}),
   }
 }
 
@@ -189,6 +213,11 @@ export function normalizeSettlement(id: string, raw: Record<string, unknown> | u
   const objects = Array.isArray(raw.objects)
     ? raw.objects.map(normalizeMapObject).filter((o): o is SettlementMapObjectInstance => o != null)
     : []
+  const customConstructions = Array.isArray(raw.customConstructions)
+    ? raw.customConstructions
+      .map(normalizeCustomConstruction)
+      .filter((c): c is SettlementCustomConstruction => c != null)
+    : []
   const connections = pruneSettlementConnections(
     Array.isArray(raw.connections)
       ? raw.connections.map(normalizeConnection).filter((c): c is SettlementConnection => c != null)
@@ -208,6 +237,7 @@ export function normalizeSettlement(id: string, raw: Record<string, unknown> | u
     materials: normalizeMaterials(raw.materials),
     constructions,
     objects,
+    customConstructions,
     connections,
     npcs,
     traits: Array.isArray(raw.traits)
@@ -246,6 +276,15 @@ export function settlementPayload(settlement: Settlement, uid?: string) {
       notes: o.notes.trim(),
       ...(o.iconColor ? { iconColor: o.iconColor } : {}),
       ...(o.bgColor ? { bgColor: o.bgColor } : {}),
+    })),
+    customConstructions: settlement.customConstructions.map((c) => ({
+      id: c.id,
+      name: c.name.trim(),
+      description: c.description.trim(),
+      category: isSettlementConstructionCategory(c.category) ? c.category : 'podstawowe',
+      complexity: Math.max(1, nonNegInt(c.complexity, 1)),
+      time: Math.max(1, nonNegInt(c.time, 1)),
+      ...(c.icon?.trim() ? { icon: c.icon.trim() } : {}),
     })),
     connections: pruneSettlementConnections(settlement.connections, settlement.constructions).map((c) => ({
       id: c.id,
@@ -306,6 +345,29 @@ export function newMapObjectInstance(
     x: clampPct(x, 50),
     y: clampPct(y, 50),
     notes: '',
+  }
+}
+
+export function newCustomConstruction(input: {
+  name: string
+  description?: string
+  category?: string
+  complexity?: number
+  time?: number
+  icon?: string
+}): SettlementCustomConstruction {
+  const category = input.category && isSettlementConstructionCategory(input.category)
+    ? input.category
+    : 'podstawowe'
+  const icon = input.icon?.trim()
+  return {
+    id: crypto.randomUUID(),
+    name: input.name.trim(),
+    description: (input.description ?? '').trim(),
+    category,
+    complexity: Math.max(1, Math.trunc(input.complexity ?? 1) || 1),
+    time: Math.max(1, Math.trunc(input.time ?? 1) || 1),
+    ...(icon ? { icon } : {}),
   }
 }
 

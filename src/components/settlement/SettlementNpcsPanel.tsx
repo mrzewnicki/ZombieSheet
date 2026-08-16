@@ -9,11 +9,12 @@ import Input from '@/components/ui/Input'
 import Spinner from '@/components/ui/Spinner'
 import {
   constructionLocalizedName,
-  getSettlementConstruction,
+  resolveSettlementConstruction,
 } from '@/config/settlementConstructions'
 import type {
   CampaignNpc,
   SettlementConstructionInstance,
+  SettlementCustomConstruction,
   SettlementNpc,
 } from '@/types'
 import {
@@ -27,6 +28,7 @@ interface Props {
   npcs: SettlementNpc[]
   campaignNpcs: CampaignNpc[]
   constructions: SettlementConstructionInstance[]
+  customConstructions?: SettlementCustomConstruction[]
   canEdit: boolean
   onChange: (npcs: SettlementNpc[]) => void
 }
@@ -42,6 +44,7 @@ export default function SettlementNpcsPanel({
   npcs,
   campaignNpcs,
   constructions,
+  customConstructions = [],
   canEdit,
   onChange,
 }: Props) {
@@ -84,7 +87,7 @@ export default function SettlementNpcsPanel({
   function constructionLabel(id: string): string {
     const item = constructions.find((c) => c.id === id)
     if (!item) return t('settlement.npcUnassigned')
-    const def = getSettlementConstruction(item.catalogKey)
+    const def = resolveSettlementConstruction(item.catalogKey, customConstructions)
     return item.label.trim()
       || (def ? constructionLocalizedName(def, i18n.language) : item.catalogKey)
   }
