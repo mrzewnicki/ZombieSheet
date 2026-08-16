@@ -128,9 +128,36 @@ export interface Hero {
   skills: Record<string, number>
   /** Current vital pools; maxima are derived from attributes (+ race for HP). */
   vitals: HeroVitals
+  /** Relationship graph edges (hero↔NPC and NPC↔NPC). */
+  npcRelations?: HeroNpcRelation[]
   sheetVersion: number
   createdAt: Timestamp
   updatedAt: Timestamp
+}
+
+/** Labeled relationship graph on the hero sheet (hero ↔ NPC and NPC ↔ NPC). */
+export type HeroNpcStance = 'ally' | 'enemy' | 'neutral'
+
+export interface HeroNpcRelation {
+  id: string
+  /** Endpoint A — `__hero__` or campaign NPC id. */
+  fromId: string
+  /** Endpoint B — `__hero__` or campaign NPC id. */
+  toId: string
+  label: string
+  /** Graph color: ally=green, enemy=red, neutral=gray. Hero node is gold. */
+  stance: HeroNpcStance
+}
+
+/** Game-wide / campaign NPC (shared catalog; GM manages, players may create). */
+export interface CampaignNpc {
+  id: string
+  name: string
+  role: string
+  imageURL: string
+  notes: string
+  /** Creator uid — players may edit their own; GM edits all. */
+  createdByUid?: string
 }
 
 export interface GearVisualFields {
@@ -254,3 +281,65 @@ export interface HeroSheetOutletContext {
   heroId: string
   canEdit: boolean
 }
+
+/** Shared settlement card under games/{gameId}/settlement/{id}. */
+export type SettlementTraitPolarity = 'positive' | 'negative'
+
+export interface SettlementTraitLine {
+  id: string
+  name: string
+  polarity: SettlementTraitPolarity
+  description: string
+  value: number
+}
+
+export interface SettlementConstructionInstance {
+  id: string
+  catalogKey: string
+  label: string
+  /** Position on map as 0–100 percent. */
+  x: number
+  y: number
+  notes: string
+}
+
+/** Undirected path/link between two constructions on the settlement map. */
+export interface SettlementConnection {
+  id: string
+  fromId: string
+  toId: string
+}
+
+/** Neutral settlement character (NPC). */
+export interface SettlementNpc {
+  id: string
+  name: string
+  /** Role / function in the settlement (free text). */
+  role: string
+  /** Assigned construction instance id, or empty if unassigned. */
+  constructionId: string
+  imageURL: string
+  notes: string
+  /** When set, this entry was added from the campaign NPC catalog. */
+  campaignNpcId?: string
+}
+
+export interface SettlementMapSize {
+  width: number
+  height: number
+}
+
+export interface Settlement {
+  id: string
+  name: string
+  description: string
+  materials: Record<string, number>
+  constructions: SettlementConstructionInstance[]
+  connections: SettlementConnection[]
+  npcs: SettlementNpc[]
+  traits: SettlementTraitLine[]
+  map: SettlementMapSize
+  updatedAt?: Timestamp
+  updatedBy?: string
+}
+

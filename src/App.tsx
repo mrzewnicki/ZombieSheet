@@ -8,6 +8,8 @@ import Dashboard from '@/pages/Dashboard'
 import CreateGame from '@/pages/CreateGame'
 import GameLobby from '@/pages/GameLobby'
 import GameTraits from '@/pages/GameTraits'
+import SettlementPage from '@/pages/SettlementPage'
+import GameNpcs from '@/pages/GameNpcs'
 import JoinGame from '@/pages/JoinGame'
 import CreateHero from '@/pages/hero/CreateHero'
 import HeroSheet from '@/pages/hero/HeroSheet'
@@ -16,6 +18,8 @@ import MechanicsTab from '@/pages/hero/MechanicsTab'
 import InventoryTab from '@/pages/hero/InventoryTab'
 import CombatTab from '@/pages/hero/CombatTab'
 import MutationsTab from '@/pages/hero/MutationsTab'
+import SettlementTab from '@/pages/hero/SettlementTab'
+import NpcTab from '@/pages/hero/NpcTab'
 import HistoryTab from '@/pages/hero/HistoryTab'
 import ImagesTab from '@/pages/hero/ImagesTab'
 import SettingsTab from '@/pages/hero/SettingsTab'
@@ -41,6 +45,8 @@ export default function App() {
               <Route path="/game/:gameId" element={<GameShell />}>
                 <Route index element={<GameLobby />} />
                 <Route path="traits" element={<GameTraits />} />
+                <Route path="npcs" element={<GameNpcs />} />
+                <Route path="settlement" element={<SettlementPage />} />
                 <Route path="hero/new" element={<CreateHero />} />
                 <Route path="hero/:heroId" element={<HeroSheet />}>
                   <Route index element={<Navigate to="personal" replace />} />
@@ -48,8 +54,10 @@ export default function App() {
                   <Route path="mechanics" element={<MechanicsTab />} />
                   <Route path="inventory" element={<InventoryTab />} />
                   <Route path="mutations" element={<MutationsTab />} />
-                  <Route path="combat"    element={<CombatTab />} />
-                  <Route path="images"    element={<ImagesTab />} />
+                  <Route path="combat"     element={<CombatTab />} />
+                  <Route path="settlement" element={<SettlementTab />} />
+                  <Route path="npc" element={<NpcTab />} />
+                  <Route path="images"     element={<ImagesTab />} />
                   <Route path="history"   element={<HistoryTab />} />
                   <Route path="settings"  element={<SettingsTab />} />
                 </Route>

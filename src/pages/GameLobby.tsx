@@ -245,18 +245,49 @@ export default function GameLobby() {
           )}
         </section>
 
-        {/* Traits catalog */}
-        <section>
-          <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-3">
-            {t('traitsCatalog.title')}
-          </h2>
-          <Link to={`/game/${gameId}/traits`} className="inline-block mb-3">
-            <Button variant="outline" className="text-xs py-1.5">
-              {t('traitsCatalog.open')}
-            </Button>
+        {/* Shared game tools */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <Link
+            to={`/game/${gameId}/traits`}
+            className="rounded-lg border border-border bg-elevated/40 px-4 py-4 hover:border-border-light hover:bg-elevated/60 transition-colors group"
+          >
+            <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-2 group-hover:text-blood">
+              {t('traitsCatalog.title')}
+            </h2>
+            <p className="text-ink-faint text-sm leading-relaxed">{t('traitsCatalog.lobbyHint')}</p>
+            <p className="mt-3 text-[10px] font-mono uppercase tracking-wider text-ink-muted group-hover:text-blood-light">
+              {t('traitsCatalog.open')} →
+            </p>
           </Link>
-          <p className="text-ink-faint text-sm">{t('traitsCatalog.lobbyHint')}</p>
-        </section>
+
+          <Link
+            to={`/game/${gameId}/npcs`}
+            className="rounded-lg border border-border bg-elevated/40 px-4 py-4 hover:border-border-light hover:bg-elevated/60 transition-colors group"
+          >
+            <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-2 group-hover:text-blood">
+              {isGm ? t('campaignNpcs.gmPanelTitle') : t('campaignNpcs.title')}
+            </h2>
+            <p className="text-ink-faint text-sm leading-relaxed">
+              {isGm ? t('campaignNpcs.gmLobbyHint') : t('campaignNpcs.lobbyHint')}
+            </p>
+            <p className="mt-3 text-[10px] font-mono uppercase tracking-wider text-ink-muted group-hover:text-blood-light">
+              {isGm ? t('campaignNpcs.gmOpen') : t('campaignNpcs.open')} →
+            </p>
+          </Link>
+
+          <Link
+            to={`/game/${gameId}/settlement`}
+            className="rounded-lg border border-border bg-elevated/40 px-4 py-4 hover:border-border-light hover:bg-elevated/60 transition-colors group sm:col-span-2 lg:col-span-1"
+          >
+            <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-2 group-hover:text-blood">
+              {t('settlement.title')}
+            </h2>
+            <p className="text-ink-faint text-sm leading-relaxed">{t('settlement.lobbyHint')}</p>
+            <p className="mt-3 text-[10px] font-mono uppercase tracking-wider text-ink-muted group-hover:text-blood-light">
+              {t('settlement.open')} →
+            </p>
+          </Link>
+        </div>
       </div>
 
       <ConfirmDialog

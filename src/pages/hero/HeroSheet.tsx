@@ -16,7 +16,7 @@ import {
 } from '@/utils/vitals'
 import { heroFullName, type Hero } from '@/types'
 import { useLayoutHeader } from '@/contexts/LayoutContext'
-import { FaDna, FaShieldAlt } from 'react-icons/fa'
+import { FaDna, FaShieldAlt, FaUserFriends } from 'react-icons/fa'
 import HeroHeaderVitals from '@/components/hero/HeroHeaderVitals'
 import Spinner from '@/components/ui/Spinner'
 
@@ -99,6 +99,8 @@ export default function HeroSheet() {
     { key: 'inventory', label: t('hero.tabs.inventory'), icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M6 1a2 2 0 0 0-2 2v.341C2.215 3.958 1 5.494 1 7.318V13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7.318c0-1.824-1.215-3.36-3-3.977V3a2 2 0 0 0-2-2H6zm3 3.82V3a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v1.82A4 4 0 0 1 8 4.5a4 4 0 0 1 1 .32zM5 5.62V7.5a.5.5 0 0 0 1 0v-2.1A3 3 0 0 1 8 5a3 3 0 0 1 2 .4V7.5a.5.5 0 0 0 1 0V5.62A3.001 3.001 0 0 1 13 8.318V13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8.318A3.001 3.001 0 0 1 5 5.62z"/></svg> },
     { key: 'mutations', label: t('hero.tabs.mutations'), icon: <FaDna size={13} aria-hidden /> },
     { key: 'combat',    label: t('hero.tabs.combat'),    icon: <FaShieldAlt size={13} aria-hidden /> },
+    { key: 'settlement', label: t('hero.tabs.settlement'), icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden><path d="M8 0 1 4v2h14V4L8 0zM2 7v7h3V9h2v5h3V7H2zm9 0v7h3V7h-3z"/></svg> },
+    { key: 'npc', label: t('hero.tabs.npc'), icon: <FaUserFriends size={13} aria-hidden /> },
     { key: 'images',    label: t('hero.tabs.images'),    icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/><path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2h-12zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1h12z"/></svg> },
   ]
 
@@ -172,37 +174,37 @@ export default function HeroSheet() {
       )}
 
       {/* Tab navigation */}
-      <nav ref={navRef} className="relative flex border-b border-border mb-6 gap-1">
+      <nav ref={navRef} className="relative flex flex-nowrap items-end border-b border-border mb-6 gap-1 overflow-x-auto">
         {tabs.map((tab) => (
           <NavLink
             key={tab.key}
             to={`/game/${gameId}/hero/${heroId}/${tab.key}`}
             className={({ isActive }) =>
-              `flex items-center gap-1.5 px-4 py-2 text-sm transition-colors ${
+              `flex items-center gap-1.5 px-3 py-2 text-sm whitespace-nowrap shrink-0 transition-colors ${
                 isActive ? 'text-ink font-medium' : 'text-ink/60 hover:text-ink'
               }`
             }
           >
-            <span className="relative -top-[2px]">{tab.icon}</span>
+            <span className="relative -top-[2px] shrink-0">{tab.icon}</span>
             {tab.label}
           </NavLink>
         ))}
         <NavLink
           to={`/game/${gameId}/hero/${heroId}/history`}
           className={({ isActive }) =>
-            `ml-auto flex items-center gap-1.5 px-4 py-2 text-sm transition-colors ${
+            `ml-auto flex items-center gap-1.5 px-3 py-2 text-sm whitespace-nowrap shrink-0 transition-colors ${
               isActive ? 'text-ink font-medium' : 'text-ink/60 hover:text-ink'
             }`
           }
         >
-          <span className="relative -top-[2px]">{historyIcon}</span>
+          <span className="relative -top-[2px] shrink-0">{historyIcon}</span>
           {t('hero.tabs.history')}
         </NavLink>
         {canEdit && (
           <NavLink
             to={`/game/${gameId}/hero/${heroId}/settings`}
             className={({ isActive }) =>
-              `flex items-center gap-1.5 px-4 py-2 text-sm transition-colors ${
+              `flex items-center gap-1.5 px-3 py-2 text-sm whitespace-nowrap shrink-0 transition-colors ${
                 isActive ? 'text-ink font-medium' : 'text-ink/60 hover:text-ink'
               }`
             }

@@ -148,6 +148,24 @@ service cloud.firestore {
         }
       }
 
+      // Shared settlement card (one doc per game, typically id "main")
+      match /settlement/{docId} {
+        allow read: if isMember(gameId) || isGameMaster(gameId);
+        allow create, update, delete: if isMember(gameId) || isGameMaster(gameId);
+      }
+
+      // Campaign NPC catalog (same membership gate as settlement;
+      // createdByUid is stored for UX ownership, not enforced via hasAll —
+      // that check was rejecting valid creates with serverTimestamp fields).
+      match /npcs/{npcId} {
+        allow read: if isMember(gameId) || isGameMaster(gameId);
+        allow create: if isMember(gameId) || isGameMaster(gameId);
+        allow update, delete: if isGameMaster(gameId)
+          || (isMember(gameId)
+              && (!('createdByUid' in resource.data)
+                  || resource.data.createdByUid == uid()));
+      }
+
       // Shared gear trait catalog (reusable across all item types in this game).
       match /gearTraits/{traitId} {
         allow read: if isAuthed();
