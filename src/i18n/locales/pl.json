@@ -617,6 +617,7 @@
     "mapZoomIn": "Przybliż",
     "mapZoomOut": "Oddal",
     "mapZoomReset": "Resetuj zoom",
+    "mapZoom": "Zoom mapy",
     "layerToggle": "Przełącz warstwę mapy",
     "layerBackground": "Tło",
     "layerObjects": "Obiekty",

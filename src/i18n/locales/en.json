@@ -617,6 +617,7 @@
     "mapZoomIn": "Zoom in",
     "mapZoomOut": "Zoom out",
     "mapZoomReset": "Reset zoom",
+    "mapZoom": "Map zoom",
     "layerToggle": "Toggle map layer",
     "layerBackground": "Background",
     "layerObjects": "Objects",

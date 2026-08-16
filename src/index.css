@@ -116,6 +116,86 @@
   .prose-hero td { @apply px-3 py-1.5 border border-border text-ink-muted; }
   .prose-hero tr:nth-child(even) td { @apply bg-elevated/50; }
 
+  /* Settlement map vertical zoom — muted track/thumb, no bright OS chrome */
+  .settlement-map-zoom {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 7rem;
+    height: 0.2rem;
+    margin: 0;
+    background: transparent;
+    cursor: pointer;
+    transform: rotate(-90deg);
+    transform-origin: center center;
+  }
+
+  .settlement-map-zoom:focus {
+    outline: none;
+  }
+
+  .settlement-map-zoom:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 2px #080604, 0 0 0 3px rgba(176, 32, 32, 0.45);
+  }
+
+  .settlement-map-zoom:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 2px #080604, 0 0 0 3px rgba(176, 32, 32, 0.45);
+  }
+
+  .settlement-map-zoom::-webkit-slider-runnable-track {
+    height: 0.2rem;
+    border-radius: 999px;
+    background: #2a221c;
+    border: 1px solid #3d342a;
+  }
+
+  .settlement-map-zoom::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 0.7rem;
+    height: 0.7rem;
+    margin-top: -0.28rem;
+    border-radius: 999px;
+    background: #5c5244;
+    border: 1px solid #8a7d68;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  }
+
+  .settlement-map-zoom:hover::-webkit-slider-thumb {
+    background: #6e6352;
+    border-color: #a89878;
+  }
+
+  .settlement-map-zoom:active::-webkit-slider-thumb {
+    background: #8b1a1a;
+    border-color: #b02020;
+  }
+
+  .settlement-map-zoom::-moz-range-track {
+    height: 0.2rem;
+    border-radius: 999px;
+    background: #2a221c;
+    border: 1px solid #3d342a;
+  }
+
+  .settlement-map-zoom::-moz-range-thumb {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 999px;
+    background: #5c5244;
+    border: 1px solid #8a7d68;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  }
+
+  .settlement-map-zoom:hover::-moz-range-thumb {
+    background: #6e6352;
+    border-color: #a89878;
+  }
+
+  .settlement-map-zoom:active::-moz-range-thumb {
+    background: #8b1a1a;
+    border-color: #b02020;
+  }
+
   /* Tab content fade-in */
   .tab-enter {
     animation: tab-enter 0.22s ease-out both;

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FaLayerGroup, FaSearchMinus, FaSearchPlus, FaUser } from 'react-icons/fa'
+import { FaLayerGroup, FaUser } from 'react-icons/fa'
 import GearIcon from '@/components/hero/GearIcon'
 import {
   constructionLocalizedName,
@@ -48,7 +48,6 @@ const ARROW_PULLBACK = 2.6
 const ARROW_SIZE = 1.35
 const MIN_ZOOM = 1
 const MAX_ZOOM = 3.5
-const ZOOM_BUTTON_STEP = 0.35
 /** Opacity for items on the inactive map layer (still readable, clearly de-emphasized). */
 const INACTIVE_LAYER_OPACITY = 0.72
 const ZOOM_WHEEL_FACTOR = 1.12
@@ -977,7 +976,7 @@ export default function SettlementMap({
       onPointerCancel={handleSurfacePointerUp}
       onClick={handleWorldClick}
     >
-      <div className="absolute top-2 right-2 z-30 flex items-center gap-1">
+      <div className="absolute top-2 right-2 z-30 flex flex-col items-center gap-1">
         <button
           type="button"
           className={`w-8 h-8 rounded border bg-void/85 flex items-center justify-center transition-colors ${
@@ -999,38 +998,30 @@ export default function SettlementMap({
         >
           <FaLayerGroup className="w-3.5 h-3.5" aria-hidden />
         </button>
-        <button
-          type="button"
-          className="w-8 h-8 rounded border border-border bg-void/85 text-ink-muted hover:text-ink hover:border-ink-muted flex items-center justify-center transition-colors disabled:opacity-40"
-          title={t('settlement.mapZoomIn')}
-          aria-label={t('settlement.mapZoomIn')}
-          onClick={(e) => {
-            e.stopPropagation()
-            zoomAt(viewRef.current.zoom + ZOOM_BUTTON_STEP)
-          }}
-          disabled={zoom >= MAX_ZOOM - 0.001}
+        <div
+          className="w-8 rounded border border-border bg-void/90 flex flex-col items-center py-1.5 gap-1"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
         >
-          <FaSearchPlus className="w-3.5 h-3.5" aria-hidden />
-        </button>
-        <button
-          type="button"
-          className="w-8 h-8 rounded border border-border bg-void/85 text-ink-muted hover:text-ink hover:border-ink-muted flex items-center justify-center transition-colors disabled:opacity-40"
-          title={t('settlement.mapZoomOut')}
-          aria-label={t('settlement.mapZoomOut')}
-          onClick={(e) => {
-            e.stopPropagation()
-            zoomAt(viewRef.current.zoom - ZOOM_BUTTON_STEP)
-          }}
-          disabled={zoom <= MIN_ZOOM}
-        >
-          <FaSearchMinus className="w-3.5 h-3.5" aria-hidden />
-        </button>
-        {zoom > 1.001 && (
+          <div className="relative h-28 w-7 flex items-center justify-center">
+            <input
+              type="range"
+              min={MIN_ZOOM}
+              max={MAX_ZOOM}
+              step={0.05}
+              value={zoom}
+              aria-label={t('settlement.mapZoom')}
+              title={t('settlement.mapZoom')}
+              className="settlement-map-zoom"
+              onChange={(e) => zoomAt(Number(e.target.value))}
+            />
+          </div>
           <button
             type="button"
-            className="h-8 px-2 rounded border border-border bg-void/85 text-[10px] font-mono uppercase tracking-wider text-ink-muted hover:text-ink hover:border-ink-muted transition-colors"
+            className="w-full px-0.5 text-[9px] font-mono uppercase tracking-wider text-ink-faint hover:text-ink-muted transition-colors disabled:opacity-40 disabled:hover:text-ink-faint"
             title={t('settlement.mapZoomReset')}
             aria-label={t('settlement.mapZoomReset')}
+            disabled={zoom <= MIN_ZOOM + 0.001}
             onClick={(e) => {
               e.stopPropagation()
               setZoom(1)
@@ -1039,7 +1030,7 @@ export default function SettlementMap({
           >
             {Math.round(zoom * 100)}%
           </button>
-        )}
+        </div>
       </div>
 
       <p className="absolute top-2 left-2 text-[10px] font-mono uppercase tracking-widest text-ink-faint/70 pointer-events-none z-20 max-w-[55%]">
