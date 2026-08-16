@@ -16,8 +16,7 @@ export const SETTLEMENT_ZONE_COLORS = [
   '#d4c9a8',
 ] as const
 
-export function zoneCentroid(points: SettlementZonePoint[]): SettlementZonePoint {
-  if (points.length === 0) return { x: 50, y: 50 }
+function averageOfVertices(points: SettlementZonePoint[]): SettlementZonePoint {
   let sx = 0
   let sy = 0
   for (const p of points) {
@@ -25,6 +24,172 @@ export function zoneCentroid(points: SettlementZonePoint[]): SettlementZonePoint
     sy += p.y
   }
   return { x: sx / points.length, y: sy / points.length }
+}
+
+/** Ray-cast point-in-polygon (non-zero / even-odd for simple rings). */
+export function pointInPolygon(point: SettlementZonePoint, ring: SettlementZonePoint[]): boolean {
+  if (ring.length < 3) return false
+  let inside = false
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i].x
+    const yi = ring[i].y
+    const xj = ring[j].x
+    const yj = ring[j].y
+    const intersect =
+      yi > point.y !== yj > point.y
+      && point.x < ((xj - xi) * (point.y - yi)) / (yj - yi + Number.EPSILON) + xi
+    if (intersect) inside = !inside
+  }
+  return inside
+}
+
+function distToSegmentSquared(
+  p: SettlementZonePoint,
+  a: SettlementZonePoint,
+  b: SettlementZonePoint,
+): number {
+  const abx = b.x - a.x
+  const aby = b.y - a.y
+  const len2 = abx * abx + aby * aby
+  if (len2 < 1e-12) {
+    const dx = p.x - a.x
+    const dy = p.y - a.y
+    return dx * dx + dy * dy
+  }
+  let t = ((p.x - a.x) * abx + (p.y - a.y) * aby) / len2
+  t = Math.max(0, Math.min(1, t))
+  const dx = p.x - (a.x + abx * t)
+  const dy = p.y - (a.y + aby * t)
+  return dx * dx + dy * dy
+}
+
+/** Signed distance: positive inside, negative outside (approx via edge distance). */
+function polygonSignedDistance(point: SettlementZonePoint, ring: SettlementZonePoint[]): number {
+  let minDist2 = Infinity
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    minDist2 = Math.min(minDist2, distToSegmentSquared(point, ring[j], ring[i]))
+  }
+  const dist = Math.sqrt(minDist2)
+  return pointInPolygon(point, ring) ? dist : -dist
+}
+
+type Cell = { x: number; y: number; h: number; d: number; max: number }
+
+/** Tiny max-heap by `max` (polylabel cell potential). */
+function pushCell(heap: Cell[], cell: Cell) {
+  heap.push(cell)
+  let i = heap.length - 1
+  while (i > 0) {
+    const parent = (i - 1) >> 1
+    if (heap[parent].max >= heap[i].max) break
+    ;[heap[parent], heap[i]] = [heap[i], heap[parent]]
+    i = parent
+  }
+}
+
+function popCell(heap: Cell[]): Cell | undefined {
+  if (heap.length === 0) return undefined
+  const top = heap[0]
+  const last = heap.pop()!
+  if (heap.length === 0) return top
+  heap[0] = last
+  let i = 0
+  for (;;) {
+    const left = i * 2 + 1
+    const right = left + 1
+    let largest = i
+    if (left < heap.length && heap[left].max > heap[largest].max) largest = left
+    if (right < heap.length && heap[right].max > heap[largest].max) largest = right
+    if (largest === i) break
+    ;[heap[i], heap[largest]] = [heap[largest], heap[i]]
+    i = largest
+  }
+  return top
+}
+
+/**
+ * Visual center for labels: pole of inaccessibility (Mapbox polylabel-style).
+ * Always prefers a point inside the polygon, in its thickest region.
+ */
+export function zoneLabelPoint(
+  points: SettlementZonePoint[],
+  precision = 0.5,
+): SettlementZonePoint {
+  if (points.length === 0) return { x: 50, y: 50 }
+  if (points.length < 3) return averageOfVertices(points)
+
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const p of points) {
+    minX = Math.min(minX, p.x)
+    minY = Math.min(minY, p.y)
+    maxX = Math.max(maxX, p.x)
+    maxY = Math.max(maxY, p.y)
+  }
+
+  const width = maxX - minX
+  const height = maxY - minY
+  if (width < 1e-6 && height < 1e-6) {
+    return { x: points[0].x, y: points[0].y }
+  }
+
+  const cellSize = Math.max(width, height) || 1
+  let h = cellSize / 2
+
+  const centroid = averageOfVertices(points)
+  let best: Cell = {
+    x: centroid.x,
+    y: centroid.y,
+    h: 0,
+    d: polygonSignedDistance(centroid, points),
+    max: 0,
+  }
+  const bboxCenter = { x: minX + width / 2, y: minY + height / 2 }
+  const bboxD = polygonSignedDistance(bboxCenter, points)
+  if (bboxD > best.d) {
+    best = { x: bboxCenter.x, y: bboxCenter.y, h: 0, d: bboxD, max: 0 }
+  }
+
+  const cellQueue: Cell[] = []
+
+  function enqueue(x: number, y: number, half: number) {
+    const d = polygonSignedDistance({ x, y }, points)
+    pushCell(cellQueue, { x, y, h: half, d, max: d + half * Math.SQRT2 })
+  }
+
+  for (let x = minX; x < maxX; x += cellSize) {
+    for (let y = minY; y < maxY; y += cellSize) {
+      enqueue(x + h, y + h, h)
+    }
+  }
+
+  for (;;) {
+    const cell = popCell(cellQueue)
+    if (!cell) break
+    if (cell.d > best.d) best = cell
+    if (cell.max - best.d <= precision) break
+    h = cell.h / 2
+    enqueue(cell.x - h, cell.y - h, h)
+    enqueue(cell.x + h, cell.y - h, h)
+    enqueue(cell.x - h, cell.y + h, h)
+    enqueue(cell.x + h, cell.y + h, h)
+  }
+
+  if (best.d < 0) {
+    return {
+      x: Math.max(minX, Math.min(maxX, centroid.x)),
+      y: Math.max(minY, Math.min(maxY, centroid.y)),
+    }
+  }
+
+  return { x: best.x, y: best.y }
+}
+
+/** Label anchor for a zone (visual center inside the polygon). */
+export function zoneCentroid(points: SettlementZonePoint[]): SettlementZonePoint {
+  return zoneLabelPoint(points)
 }
 
 export function zonePointsToSvg(points: SettlementZonePoint[]): string {
