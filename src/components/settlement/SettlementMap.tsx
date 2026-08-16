@@ -1065,7 +1065,7 @@ export default function SettlementMap({
         </div>
       </div>
 
-      <p className="absolute top-2 left-2 text-[10px] font-mono uppercase tracking-widest text-ink-faint/70 pointer-events-none z-20 max-w-[55%]">
+      <p className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] font-mono uppercase tracking-widest text-ink-faint/70 pointer-events-none z-20 max-w-[70%] text-center">
         {mapHint}
       </p>
 

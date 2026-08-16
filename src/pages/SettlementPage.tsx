@@ -3,6 +3,17 @@ import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { FaUser } from 'react-icons/fa'
 import {
+  FaCheck,
+  FaCog,
+  FaDrawPolygon,
+  FaHome,
+  FaLink,
+  FaMapMarkerAlt,
+  FaProjectDiagram,
+  FaTimes,
+  FaUnlink,
+} from 'react-icons/fa'
+import {
   doc,
   onSnapshot,
   setDoc,
@@ -1033,104 +1044,153 @@ export default function SettlementPage({
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] gap-4 items-start">
         <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="font-heading text-sm text-blood-light tracking-widest uppercase">
-              {t('settlement.mapSection')}
-            </h3>
+          <h3 className="font-heading text-sm text-blood-light tracking-widest uppercase">
+            {t('settlement.mapSection')}
+          </h3>
+          <div className="relative">
             {canEdit && (
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant={mapSettingsOpen ? 'primary' : 'outline'}
-                  className="text-xs"
-                  onClick={openMapSettings}
-                >
-                  {t('settlement.mapSettings')}
-                </Button>
-                <Button
-                  variant={linkMode === 'connect' ? 'primary' : 'outline'}
-                  className="text-xs"
-                  onClick={() => setMapLinkMode('connect')}
-                  disabled={settlement.constructions.length < 2}
-                >
-                  {t('settlement.linkMode')}
-                </Button>
-                <Button
-                  variant={linkMode === 'disconnect' ? 'danger' : 'outline'}
-                  className="text-xs"
-                  onClick={() => setMapLinkMode('disconnect')}
-                  disabled={settlement.connections.length === 0}
-                >
-                  {t('settlement.disconnectMode')}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="text-xs"
-                  onClick={generateConnections}
-                  disabled={settlement.constructions.length < 2}
-                  title={t('settlement.generateConnectionsHint')}
-                >
-                  {t('settlement.generateConnections')}
-                </Button>
-                <Button variant="outline" className="text-xs" onClick={() => setPickerOpen(true)}>
-                  {t('settlement.addConstruction')}
-                </Button>
-                <Button variant="outline" className="text-xs" onClick={() => setObjectPickerOpen(true)}>
-                  {t('settlement.addObject')}
-                </Button>
-                {zoneDrawMode ? (
-                  <>
-                    <Button
-                      variant="primary"
-                      className="text-xs"
-                      disabled={zoneDraftPoints.length < 3}
-                      onClick={() => finishZoneDraw(zoneDraftPoints)}
+              <div
+                className="absolute left-2 top-2 z-30 flex flex-col gap-1"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {(
+                  [
+                    {
+                      key: 'settings',
+                      label: t('settlement.mapSettings'),
+                      variant: mapSettingsOpen ? 'active' : 'default',
+                      onClick: openMapSettings,
+                      icon: FaCog,
+                    },
+                    {
+                      key: 'connect',
+                      label: t('settlement.linkMode'),
+                      variant: linkMode === 'connect' ? 'active' : 'default',
+                      disabled: settlement.constructions.length < 2,
+                      onClick: () => setMapLinkMode('connect'),
+                      icon: FaLink,
+                    },
+                    {
+                      key: 'disconnect',
+                      label: t('settlement.disconnectMode'),
+                      variant: linkMode === 'disconnect' ? 'danger' : 'default',
+                      disabled: settlement.connections.length === 0,
+                      onClick: () => setMapLinkMode('disconnect'),
+                      icon: FaUnlink,
+                    },
+                    {
+                      key: 'paths',
+                      label: t('settlement.generateConnections'),
+                      title: t('settlement.generateConnectionsHint'),
+                      disabled: settlement.constructions.length < 2,
+                      onClick: generateConnections,
+                      icon: FaProjectDiagram,
+                    },
+                    {
+                      key: 'construction',
+                      label: t('settlement.addConstruction'),
+                      onClick: () => setPickerOpen(true),
+                      icon: FaHome,
+                    },
+                    {
+                      key: 'object',
+                      label: t('settlement.addObject'),
+                      onClick: () => setObjectPickerOpen(true),
+                      icon: FaMapMarkerAlt,
+                    },
+                    ...(zoneDrawMode
+                      ? [
+                          {
+                            key: 'zone-finish',
+                            label: t('settlement.zoneFinish'),
+                            variant: 'active' as const,
+                            disabled: zoneDraftPoints.length < 3,
+                            onClick: () => finishZoneDraw(zoneDraftPoints),
+                            icon: FaCheck,
+                          },
+                          {
+                            key: 'zone-cancel',
+                            label: t('common.cancel'),
+                            onClick: cancelZoneDraw,
+                            icon: FaTimes,
+                          },
+                        ]
+                      : [
+                          {
+                            key: 'zone',
+                            label: t('settlement.addZone'),
+                            onClick: startZoneDraw,
+                            icon: FaDrawPolygon,
+                          },
+                        ]),
+                  ] as Array<{
+                    key: string
+                    label: string
+                    title?: string
+                    variant?: 'default' | 'active' | 'danger'
+                    disabled?: boolean
+                    onClick: () => void
+                    icon: typeof FaCog
+                  }>
+                ).map((tool) => {
+                  const Icon = tool.icon
+                  const variant = tool.variant ?? 'default'
+                  const activeClass =
+                    variant === 'active'
+                      ? 'border-blood-light text-blood-light'
+                      : variant === 'danger'
+                        ? 'border-blood text-blood-light'
+                        : 'border-border text-ink-muted hover:text-ink hover:border-ink-muted'
+                  return (
+                    <button
+                      key={tool.key}
+                      type="button"
+                      title={tool.title ?? tool.label}
+                      aria-label={tool.label}
+                      disabled={tool.disabled}
+                      onClick={tool.onClick}
+                      className={`w-8 h-8 rounded border bg-void/85 flex items-center justify-center transition-colors disabled:opacity-40 ${activeClass}`}
                     >
-                      {t('settlement.zoneFinish')}
-                    </Button>
-                    <Button variant="ghost" className="text-xs" onClick={cancelZoneDraw}>
-                      {t('common.cancel')}
-                    </Button>
-                  </>
-                ) : (
-                  <Button variant="outline" className="text-xs" onClick={startZoneDraw}>
-                    {t('settlement.addZone')}
-                  </Button>
-                )}
+                      <Icon className="w-3.5 h-3.5" aria-hidden />
+                    </button>
+                  )
+                })}
               </div>
             )}
+            <SettlementMap
+              constructions={settlement.constructions}
+              objects={settlement.objects}
+              zones={settlement.zones}
+              customConstructions={settlement.customConstructions}
+              connections={settlement.connections}
+              npcs={settlement.npcs}
+              settlementName={settlement.name}
+              selectedId={selectedId}
+              selectedObjectId={selectedObjectId}
+              selectedZoneId={selectedZoneId}
+              selectedConnectionId={selectedConnectionId}
+              linkMode={linkMode}
+              linkFromId={linkFromId}
+              zoneDrawMode={zoneDrawMode}
+              zoneDraftPoints={zoneDraftPoints}
+              activeLayer={activeLayer}
+              map={settlement.map}
+              canEdit={canEdit}
+              onSelect={selectConstruction}
+              onSelectObject={selectObject}
+              onSelectZone={selectZone}
+              onSelectConnection={selectConnection}
+              onLinkPick={handleLinkPick}
+              onRemoveConnection={removeConnectionById}
+              onMove={moveConstruction}
+              onMoveObject={moveObject}
+              onMoveZone={moveZone}
+              onZoneDraftClick={handleZoneDraftClick}
+              onActiveLayerChange={handleActiveLayerChange}
+              onMoveToLayer={moveToLayer}
+            />
           </div>
-          <SettlementMap
-            constructions={settlement.constructions}
-            objects={settlement.objects}
-            zones={settlement.zones}
-            customConstructions={settlement.customConstructions}
-            connections={settlement.connections}
-            npcs={settlement.npcs}
-            settlementName={settlement.name}
-            selectedId={selectedId}
-            selectedObjectId={selectedObjectId}
-            selectedZoneId={selectedZoneId}
-            selectedConnectionId={selectedConnectionId}
-            linkMode={linkMode}
-            linkFromId={linkFromId}
-            zoneDrawMode={zoneDrawMode}
-            zoneDraftPoints={zoneDraftPoints}
-            activeLayer={activeLayer}
-            map={settlement.map}
-            canEdit={canEdit}
-            onSelect={selectConstruction}
-            onSelectObject={selectObject}
-            onSelectZone={selectZone}
-            onSelectConnection={selectConnection}
-            onLinkPick={handleLinkPick}
-            onRemoveConnection={removeConnectionById}
-            onMove={moveConstruction}
-            onMoveObject={moveObject}
-            onMoveZone={moveZone}
-            onZoneDraftClick={handleZoneDraftClick}
-            onActiveLayerChange={handleActiveLayerChange}
-            onMoveToLayer={moveToLayer}
-          />
           {buildTxn && canEdit && (
             <SettlementBuildTransactionBar
               delta={summarizeBuildTxnCost(buildTxn, settlement.customConstructions)}
