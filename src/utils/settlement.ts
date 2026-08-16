@@ -12,6 +12,8 @@ import type {
   SettlementNpc,
   SettlementTraitLine,
   SettlementTraitPolarity,
+  SettlementZone,
+  SettlementZonePoint,
 } from '@/types'
 import {
   normalizeConnectionEndSymbol,
@@ -22,6 +24,7 @@ import { isSettlementMapObjectKey } from '@/config/settlementMapObjects'
 import {
   isSettlementConstructionCategory,
 } from '@/config/settlementConstructions'
+import { DEFAULT_SETTLEMENT_ZONE_COLOR } from '@/utils/settlementZones'
 export const SETTLEMENT_DOC_ID = 'main'
 export const SETTLEMENT_COLLECTION = 'settlement'
 
@@ -34,6 +37,7 @@ export function emptySettlement(id = SETTLEMENT_DOC_ID): Settlement {
     constructions: [],
     objects: [],
     customConstructions: [],
+    zones: [],
     connections: [],
     npcs: [],
     traits: [],
@@ -130,6 +134,37 @@ function normalizeCustomConstruction(raw: unknown): SettlementCustomConstruction
   }
 }
 
+function normalizeZonePoint(raw: unknown): SettlementZonePoint | null {
+  if (!raw || typeof raw !== 'object') return null
+  const src = raw as Record<string, unknown>
+  return {
+    x: clampPct(src.x, 50),
+    y: clampPct(src.y, 50),
+  }
+}
+
+function normalizeZone(raw: unknown): SettlementZone | null {
+  if (!raw || typeof raw !== 'object') return null
+  const src = raw as Record<string, unknown>
+  const id = typeof src.id === 'string' && src.id ? src.id : null
+  if (!id) return null
+  const points = Array.isArray(src.points)
+    ? src.points.map(normalizeZonePoint).filter((p): p is SettlementZonePoint => p != null)
+    : []
+  if (points.length < 3) return null
+  const color = parseHexColor(src.color) || DEFAULT_SETTLEMENT_ZONE_COLOR
+  const iconColor = parseHexColor(src.iconColor)
+  const icon = typeof src.icon === 'string' && src.icon.trim() ? src.icon.trim() : undefined
+  return {
+    id,
+    name: typeof src.name === 'string' ? src.name : '',
+    points,
+    color,
+    ...(icon ? { icon } : {}),
+    ...(iconColor ? { iconColor } : {}),
+  }
+}
+
 function normalizeConnection(raw: unknown): SettlementConnection | null {
   if (!raw || typeof raw !== 'object') return null
   const src = raw as Record<string, unknown>
@@ -218,6 +253,9 @@ export function normalizeSettlement(id: string, raw: Record<string, unknown> | u
       .map(normalizeCustomConstruction)
       .filter((c): c is SettlementCustomConstruction => c != null)
     : []
+  const zones = Array.isArray(raw.zones)
+    ? raw.zones.map(normalizeZone).filter((z): z is SettlementZone => z != null)
+    : []
   const connections = pruneSettlementConnections(
     Array.isArray(raw.connections)
       ? raw.connections.map(normalizeConnection).filter((c): c is SettlementConnection => c != null)
@@ -238,6 +276,7 @@ export function normalizeSettlement(id: string, raw: Record<string, unknown> | u
     constructions,
     objects,
     customConstructions,
+    zones,
     connections,
     npcs,
     traits: Array.isArray(raw.traits)
@@ -285,6 +324,17 @@ export function settlementPayload(settlement: Settlement, uid?: string) {
       complexity: Math.max(1, nonNegInt(c.complexity, 1)),
       time: Math.max(1, nonNegInt(c.time, 1)),
       ...(c.icon?.trim() ? { icon: c.icon.trim() } : {}),
+    })),
+    zones: settlement.zones.map((z) => ({
+      id: z.id,
+      name: z.name.trim(),
+      points: z.points.map((p) => ({
+        x: clampPct(p.x, 50),
+        y: clampPct(p.y, 50),
+      })),
+      color: parseHexColor(z.color) || DEFAULT_SETTLEMENT_ZONE_COLOR,
+      ...(z.icon?.trim() ? { icon: z.icon.trim() } : {}),
+      ...(z.iconColor ? { iconColor: z.iconColor } : {}),
     })),
     connections: pruneSettlementConnections(settlement.connections, settlement.constructions).map((c) => ({
       id: c.id,

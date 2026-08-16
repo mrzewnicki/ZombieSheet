@@ -13,6 +13,8 @@ import type {
   SettlementCustomConstruction,
   SettlementMapObjectInstance,
   SettlementNpc,
+  SettlementZone,
+  SettlementZonePoint,
 } from '@/types'
 import {
   settlementConnectionDashArray,
@@ -23,6 +25,16 @@ import {
   mapObjectLocalizedName,
 } from '@/config/settlementMapObjects'
 import { settlementMapObjectIcon } from '@/config/settlementMapObjectIcons'
+import {
+  DEFAULT_SETTLEMENT_ZONE_COLOR,
+  DEFAULT_SETTLEMENT_ZONE_ICON_COLOR,
+  insertZonePointOnEdge,
+  moveZoneVertex,
+  projectPointOntoSegment,
+  translateZonePoints,
+  zoneCentroid,
+  zonePointsToSvg,
+} from '@/utils/settlementZones'
 
 const DRAG_THRESHOLD_PX = 5
 const MAX_VISIBLE_NPCS = 3
@@ -70,23 +82,30 @@ export type SettlementLinkMode = 'off' | 'connect' | 'disconnect'
 interface Props {
   constructions: SettlementConstructionInstance[]
   objects?: SettlementMapObjectInstance[]
+  zones?: SettlementZone[]
   customConstructions?: SettlementCustomConstruction[]
   connections: SettlementConnection[]
   npcs?: SettlementNpc[]
   settlementName?: string
   selectedId: string | null
   selectedObjectId?: string | null
+  selectedZoneId?: string | null
   selectedConnectionId: string | null
   linkMode: SettlementLinkMode
   linkFromId: string | null
+  zoneDrawMode?: boolean
+  zoneDraftPoints?: SettlementZonePoint[]
   canEdit: boolean
   onSelect: (id: string | null) => void
   onSelectObject?: (id: string | null) => void
+  onSelectZone?: (id: string | null) => void
   onSelectConnection: (id: string | null) => void
   onLinkPick: (id: string) => void
   onRemoveConnection: (id: string) => void
   onMove: (id: string, x: number, y: number) => void
   onMoveObject?: (id: string, x: number, y: number) => void
+  onMoveZone?: (id: string, points: SettlementZonePoint[]) => void
+  onZoneDraftClick?: (point: SettlementZonePoint) => void
 }
 
 function NpcAvatar({ npc, size }: { npc: SettlementNpc; size: number }) {
@@ -110,32 +129,41 @@ function NpcAvatar({ npc, size }: { npc: SettlementNpc; size: number }) {
 export default function SettlementMap({
   constructions,
   objects = [],
+  zones = [],
   customConstructions = [],
   connections,
   npcs = [],
   settlementName = '',
   selectedId,
   selectedObjectId = null,
+  selectedZoneId = null,
   selectedConnectionId,
   linkMode,
   linkFromId,
+  zoneDrawMode = false,
+  zoneDraftPoints = [],
   canEdit,
   onSelect,
   onSelectObject,
+  onSelectZone,
   onSelectConnection,
   onLinkPick,
   onRemoveConnection,
   onMove,
   onMoveObject,
+  onMoveZone,
+  onZoneDraftClick,
 }: Props) {
   const { t, i18n } = useTranslation()
   const surfaceRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{
     id: string
-    kind: 'construction' | 'object'
+    kind: 'construction' | 'object' | 'zone' | 'zone-vertex'
     pointerId: number
     startX: number
     startY: number
+    originPoints?: SettlementZonePoint[]
+    vertexIndex?: number
     active: boolean
   } | null>(null)
   const panDragRef = useRef<{
@@ -155,6 +183,7 @@ export default function SettlementMap({
 
   const byId = new Map(constructions.map((c) => [c.id, c]))
   const linking = linkMode !== 'off'
+  const drawingZone = zoneDrawMode && canEdit
 
   const npcsByConstruction = new Map<string, SettlementNpc[]>()
   for (const npc of npcs) {
@@ -241,16 +270,22 @@ export default function SettlementMap({
   function handlePointerDown(
     e: React.PointerEvent,
     id: string,
-    kind: 'construction' | 'object' = 'construction',
+    kind: 'construction' | 'object' | 'zone' | 'zone-vertex' = 'construction',
+    vertexIndex?: number,
   ) {
     e.stopPropagation()
-    if (!canEdit || linking) return
+    if (!canEdit || linking || drawingZone) return
+    const zone = kind === 'zone' || kind === 'zone-vertex'
+      ? zones.find((z) => z.id === id)
+      : undefined
     dragRef.current = {
       id,
       kind,
       pointerId: e.pointerId,
       startX: e.clientX,
       startY: e.clientY,
+      originPoints: zone ? zone.points.map((p) => ({ ...p })) : undefined,
+      vertexIndex,
       active: false,
     }
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
@@ -258,7 +293,7 @@ export default function SettlementMap({
 
   function handlePointerMove(e: React.PointerEvent) {
     const drag = dragRef.current
-    if (!drag || drag.pointerId !== e.pointerId || !canEdit || linking) return
+    if (!drag || drag.pointerId !== e.pointerId || !canEdit || linking || drawingZone) return
 
     const dx = e.clientX - drag.startX
     const dy = e.clientY - drag.startY
@@ -267,6 +302,24 @@ export default function SettlementMap({
       drag.active = true
       suppressClickRef.current = true
       setDraggingId(drag.id)
+    }
+
+    if (drag.kind === 'zone-vertex') {
+      const pct = clientToPct(e.clientX, e.clientY)
+      if (!pct || drag.vertexIndex == null || !drag.originPoints) return
+      onMoveZone?.(drag.id, moveZoneVertex(drag.originPoints, drag.vertexIndex, pct))
+      return
+    }
+
+    if (drag.kind === 'zone') {
+      const el = surfaceRef.current
+      if (!el || !drag.originPoints) return
+      const rect = el.getBoundingClientRect()
+      const { zoom: z } = viewRef.current
+      const dPctX = (dx / (rect.width * z)) * 100
+      const dPctY = (dy / (rect.height * z)) * 100
+      onMoveZone?.(drag.id, translateZonePoints(drag.originPoints, dPctX, dPctY))
+      return
     }
 
     const pct = clientToPct(e.clientX, e.clientY)
@@ -290,6 +343,7 @@ export default function SettlementMap({
 
   function handleSurfacePointerDown(e: React.PointerEvent) {
     if (e.button !== 0 && e.button !== 1) return
+    if (drawingZone) return
     if (viewRef.current.zoom <= 1.001) return
     const target = e.target as Element
     if (target.closest('button')) return
@@ -344,11 +398,13 @@ export default function SettlementMap({
       suppressClickRef.current = false
       return
     }
+    if (drawingZone) return
     if (linking && canEdit) {
       onLinkPick(id)
       return
     }
     onSelectObject?.(null)
+    onSelectZone?.(null)
     onSelectConnection(null)
     onSelect(id)
   }
@@ -359,14 +415,49 @@ export default function SettlementMap({
       suppressClickRef.current = false
       return
     }
-    if (linking) return
+    if (linking || drawingZone) return
     onSelect(null)
+    onSelectZone?.(null)
     onSelectConnection(null)
     onSelectObject?.(id)
   }
 
+  function handleZoneEdgeClick(e: React.MouseEvent, zoneId: string, edgeIndex: number) {
+    e.stopPropagation()
+    if (!canEdit || linking || drawingZone) return
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false
+      return
+    }
+    const zone = zones.find((z) => z.id === zoneId)
+    if (!zone) return
+    const pct = clientToPct(e.clientX, e.clientY)
+    if (!pct) return
+    const a = zone.points[edgeIndex]
+    const b = zone.points[(edgeIndex + 1) % zone.points.length]
+    const { point, t } = projectPointOntoSegment(pct, a, b)
+    // Avoid stacking on existing vertices
+    if (t < 0.08 || t > 0.92) return
+    onSelectZone?.(zoneId)
+    onMoveZone?.(zoneId, insertZonePointOnEdge(zone.points, edgeIndex, point))
+  }
+
+  function handleZoneClick(e: React.MouseEvent, id: string) {
+    e.stopPropagation()
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false
+      return
+    }
+    if (linking || drawingZone) return
+    onSelect(null)
+    onSelectObject?.(null)
+    onSelectConnection(null)
+    onSelectZone?.(id)
+  }
+
   function handleConnectionClick(e: React.MouseEvent, id: string) {
     e.stopPropagation()
+    if (drawingZone) return
     if (linkMode === 'disconnect' && canEdit) {
       onRemoveConnection(id)
       return
@@ -374,22 +465,32 @@ export default function SettlementMap({
     if (linking) return
     onSelect(null)
     onSelectObject?.(null)
+    onSelectZone?.(null)
     onSelectConnection(id)
   }
 
-  function clearSelection() {
+  function handleWorldClick(e: React.MouseEvent) {
     if (suppressClickRef.current) {
       suppressClickRef.current = false
       return
     }
+    if (drawingZone) {
+      const pct = clientToPct(e.clientX, e.clientY)
+      if (pct) onZoneDraftClick?.(pct)
+      return
+    }
     onSelect(null)
     onSelectObject?.(null)
+    onSelectZone?.(null)
     onSelectConnection(null)
   }
 
   const named = settlementName.trim()
-  const mapHint =
-    linkMode === 'connect'
+  const mapHint = drawingZone
+    ? t('settlement.zoneDrawHint')
+    : selectedZoneId && canEdit
+      ? t('settlement.zoneEditHint')
+      : linkMode === 'connect'
       ? t('settlement.connectModeHint')
       : linkMode === 'disconnect'
         ? t('settlement.disconnectModeHint')
@@ -411,12 +512,14 @@ export default function SettlementMap({
     <div
       ref={surfaceRef}
       className={`relative w-full aspect-square max-h-[min(70vh,36rem)] rounded-lg border overflow-hidden select-none touch-none ${
-        linkMode === 'connect'
-          ? 'border-blood-light/60'
-          : linkMode === 'disconnect'
-            ? 'border-blood/70'
-            : 'border-border'
-      } ${panning ? 'cursor-grabbing' : zoom > 1 ? 'cursor-grab' : ''}`}
+        drawingZone
+          ? 'border-blood-light/60 cursor-crosshair'
+          : linkMode === 'connect'
+            ? 'border-blood-light/60'
+            : linkMode === 'disconnect'
+              ? 'border-blood/70'
+              : 'border-border'
+      } ${!drawingZone && panning ? 'cursor-grabbing' : !drawingZone && zoom > 1 ? 'cursor-grab' : ''}`}
       style={{
         background:
           'radial-gradient(ellipse at 40% 30%, #1c1814 0%, transparent 50%), radial-gradient(ellipse at 70% 70%, #161210 0%, transparent 45%), linear-gradient(165deg, #100e0c 0%, #0c0a08 55%, #080706 100%)',
@@ -425,7 +528,7 @@ export default function SettlementMap({
       onPointerMove={handleSurfacePointerMove}
       onPointerUp={handleSurfacePointerUp}
       onPointerCancel={handleSurfacePointerUp}
-      onClick={clearSelection}
+      onClick={handleWorldClick}
     >
       <div className="absolute top-2 right-2 z-30 flex items-center gap-1">
         <button
@@ -483,7 +586,6 @@ export default function SettlementMap({
           height: `${zoom * 100}%`,
           transform: `translate(${pan.x}px, ${pan.y}px)`,
         }}
-        onClick={clearSelection}
       >
         <div
           data-map-world="1"
@@ -495,7 +597,7 @@ export default function SettlementMap({
           }}
         />
 
-        {constructions.length === 0 && objects.length === 0 && (
+        {constructions.length === 0 && objects.length === 0 && zones.length === 0 && (
           <p className="absolute inset-0 flex items-center justify-center text-sm text-ink-faint pointer-events-none px-4 text-center">
             {t('settlement.mapEmpty')}
           </p>
@@ -508,6 +610,102 @@ export default function SettlementMap({
           preserveAspectRatio="none"
           aria-hidden
         >
+          {zones.map((zone) => {
+            const selected = selectedZoneId === zone.id
+            const interactive = !linking && !drawingZone
+            const editing = selected && canEdit && interactive
+            return (
+              <g key={zone.id}>
+                <polygon
+                  points={zonePointsToSvg(zone.points)}
+                  fill={zone.color || DEFAULT_SETTLEMENT_ZONE_COLOR}
+                  fillOpacity={selected ? 0.45 : 0.28}
+                  stroke={zone.color || DEFAULT_SETTLEMENT_ZONE_COLOR}
+                  strokeWidth={selected ? 0.9 : 0.55}
+                  vectorEffect="non-scaling-stroke"
+                  className={interactive ? 'cursor-grab' : 'pointer-events-none'}
+                  onPointerDown={(e) => handlePointerDown(e, zone.id, 'zone')}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={handlePointerUp}
+                  onPointerCancel={handlePointerUp}
+                  onClick={(e) => handleZoneClick(e, zone.id)}
+                />
+                {editing && zone.points.map((p, i) => {
+                  const next = zone.points[(i + 1) % zone.points.length]
+                  return (
+                    <line
+                      key={`edge-${zone.id}-${i}`}
+                      x1={p.x}
+                      y1={p.y}
+                      x2={next.x}
+                      y2={next.y}
+                      stroke="transparent"
+                      strokeWidth={10}
+                      vectorEffect="non-scaling-stroke"
+                      className="cursor-copy"
+                      onClick={(e) => handleZoneEdgeClick(e, zone.id, i)}
+                    />
+                  )
+                })}
+                {editing && zone.points.map((p, i) => (
+                  <circle
+                    key={`vertex-${zone.id}-${i}`}
+                    cx={p.x}
+                    cy={p.y}
+                    r={0.85}
+                    fill="#e8dcc0"
+                    stroke="#0c0a08"
+                    strokeWidth={0.25}
+                    vectorEffect="non-scaling-stroke"
+                    className="cursor-move"
+                    onPointerDown={(e) => handlePointerDown(e, zone.id, 'zone-vertex', i)}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={handlePointerUp}
+                    onPointerCancel={handlePointerUp}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ))}
+              </g>
+            )
+          })}
+
+          {drawingZone && zoneDraftPoints.length > 0 && (
+            <g>
+              {zoneDraftPoints.length >= 2 && (
+                <polyline
+                  points={zonePointsToSvg(zoneDraftPoints)}
+                  fill="none"
+                  stroke="#c45c4a"
+                  strokeWidth={0.7}
+                  strokeDasharray="1.5 1.2"
+                  vectorEffect="non-scaling-stroke"
+                  className="pointer-events-none"
+                />
+              )}
+              {zoneDraftPoints.length >= 3 && (
+                <polygon
+                  points={zonePointsToSvg(zoneDraftPoints)}
+                  fill="#c45c4a"
+                  fillOpacity={0.12}
+                  stroke="none"
+                  className="pointer-events-none"
+                />
+              )}
+              {zoneDraftPoints.map((p, i) => (
+                <circle
+                  key={`draft-${i}`}
+                  cx={p.x}
+                  cy={p.y}
+                  r={i === 0 ? 1.4 : 1}
+                  fill={i === 0 ? '#e8dcc0' : '#c45c4a'}
+                  stroke="#0c0a08"
+                  strokeWidth={0.25}
+                  className="pointer-events-none"
+                />
+              ))}
+            </g>
+          )}
+
           {connections.map((conn) => {
             const from = byId.get(conn.fromId)
             const to = byId.get(conn.toId)
@@ -572,6 +770,55 @@ export default function SettlementMap({
           })}
         </svg>
 
+        {zones.map((zone) => {
+          const c = zoneCentroid(zone.points)
+          const label = zone.name.trim() || t('settlement.zoneUnnamed')
+          const selected = selectedZoneId === zone.id
+          const showIcon = Boolean(zone.icon?.trim())
+          return (
+            <div
+              key={`zone-label-${zone.id}`}
+              className={`absolute z-[2] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none ${
+                draggingId === zone.id ? 'z-20' : ''
+              }`}
+              style={{ left: `${c.x}%`, top: `${c.y}%`, maxWidth: markerMaxW, gap: 2 * zoom }}
+            >
+              {showIcon && (
+                <span
+                  className={`rounded-md border flex items-center justify-center shadow-md shadow-void/50 ${
+                    selected ? 'ring-2 ring-blood-light/40 border-blood-light' : 'border-border'
+                  }`}
+                  style={{
+                    width: markerBox * 0.85,
+                    height: markerBox * 0.85,
+                    backgroundColor: '#231c16',
+                    color: zone.iconColor?.trim() || DEFAULT_SETTLEMENT_ZONE_ICON_COLOR,
+                  }}
+                >
+                  <span
+                    className="inline-flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>i]:leading-none"
+                    style={{ width: markerIcon * 0.9, height: markerIcon * 0.9, fontSize: markerIcon * 0.9 }}
+                  >
+                    <GearIcon value={zone.icon!} className="w-full h-full" />
+                  </span>
+                </span>
+              )}
+              <span
+                className="leading-tight text-center text-ink rounded bg-void/95 border border-border/60 shadow-sm shadow-void/60 line-clamp-2"
+                style={{
+                  fontSize: markerLabel,
+                  paddingLeft: labelPadX,
+                  paddingRight: labelPadX,
+                  paddingTop: labelPadY,
+                  paddingBottom: labelPadY,
+                }}
+              >
+                {label}
+              </span>
+            </div>
+          )
+        })}
+
         {constructions.map((item) => {
           const def = resolveSettlementConstruction(item.catalogKey, customConstructions)
           const label = item.label.trim()
@@ -594,11 +841,13 @@ export default function SettlementMap({
               className={`
                 absolute z-10 -translate-x-1/2 -translate-y-1/2
                 flex flex-col items-center
-                ${linking
-                  ? 'cursor-crosshair'
-                  : canEdit
-                    ? 'cursor-grab active:cursor-grabbing'
-                    : 'cursor-pointer'}
+                ${drawingZone
+                  ? 'pointer-events-none opacity-50'
+                  : linking
+                    ? 'cursor-crosshair'
+                    : canEdit
+                      ? 'cursor-grab active:cursor-grabbing'
+                      : 'cursor-pointer'}
                 ${draggingId === item.id ? 'z-20' : ''}
               `}
               style={{
@@ -699,8 +948,8 @@ export default function SettlementMap({
               className={`
                 absolute z-10 -translate-x-1/2 -translate-y-1/2
                 flex flex-col items-center
-                ${linking
-                  ? 'pointer-events-none opacity-60'
+                ${drawingZone || linking
+                  ? 'pointer-events-none opacity-50'
                   : canEdit
                     ? 'cursor-grab active:cursor-grabbing'
                     : 'cursor-pointer'}

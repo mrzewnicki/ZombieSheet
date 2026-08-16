@@ -368,6 +368,24 @@ export interface SettlementCustomConstruction {
   icon?: string
 }
 
+/** Filled polygon region on the settlement map. */
+export interface SettlementZonePoint {
+  x: number
+  y: number
+}
+
+export interface SettlementZone {
+  id: string
+  name: string
+  /** Polygon vertices in 0–100 map percent. */
+  points: SettlementZonePoint[]
+  /** Fill / stroke color (CSS hex). */
+  color: string
+  /** Optional gear icon (`gi:…` / `ra:…`) at the centroid. */
+  icon?: string
+  iconColor?: string
+}
+
 export interface Settlement {
   id: string
   name: string
@@ -378,6 +396,8 @@ export interface Settlement {
   objects: SettlementMapObjectInstance[]
   /** Extra constructions added to this settlement's picker catalog. */
   customConstructions: SettlementCustomConstruction[]
+  /** Named filled regions on the map. */
+  zones: SettlementZone[]
   connections: SettlementConnection[]
   npcs: SettlementNpc[]
   traits: SettlementTraitLine[]

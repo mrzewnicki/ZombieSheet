@@ -67,6 +67,8 @@ import type {
   SettlementConnectionLineStyle,
   SettlementConstructionInstance,
   SettlementMapObjectInstance,
+  SettlementZone,
+  SettlementZonePoint,
 } from '@/types'
 import {
   SETTLEMENT_COLLECTION,
@@ -84,6 +86,13 @@ import {
   summarizeBuildTxnCost,
   type BuildTxnEntry,
 } from '@/utils/settlementBuildTransaction'
+import {
+  DEFAULT_SETTLEMENT_ZONE_COLOR,
+  DEFAULT_SETTLEMENT_ZONE_ICON_COLOR,
+  isNearZonePoint,
+  newSettlementZone,
+  SETTLEMENT_ZONE_COLORS,
+} from '@/utils/settlementZones'
 import { gearTraitPolarityClasses } from '@/utils/gearTraits'
 import TraitValueBadge from '@/components/ui/TraitValueBadge'
 import {
@@ -178,9 +187,12 @@ export default function SettlementPage({
   const [error, setError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null)
+  const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null)
   const [linkMode, setLinkMode] = useState<SettlementLinkMode>('off')
   const [linkFromId, setLinkFromId] = useState<string | null>(null)
+  const [zoneDrawMode, setZoneDrawMode] = useState(false)
+  const [zoneDraftPoints, setZoneDraftPoints] = useState<SettlementZonePoint[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
   const [objectPickerOpen, setObjectPickerOpen] = useState(false)
   const [buildTxn, setBuildTxn] = useState<BuildTxnEntry[] | null>(null)
@@ -371,6 +383,7 @@ export default function SettlementPage({
     trackBuildAdd(instance.id, catalogKey)
     setSelectedId(instance.id)
     setSelectedObjectId(null)
+    setSelectedZoneId(null)
     setSelectedConnectionId(null)
     setPickerOpen(false)
   }
@@ -393,6 +406,7 @@ export default function SettlementPage({
     trackBuildAdd(instance.id, entry.id)
     setSelectedId(instance.id)
     setSelectedObjectId(null)
+    setSelectedZoneId(null)
     setSelectedConnectionId(null)
     setPickerOpen(false)
   }
@@ -430,14 +444,79 @@ export default function SettlementPage({
     patch({ objects: [...settlement.objects, instance] })
     setSelectedObjectId(instance.id)
     setSelectedId(null)
+    setSelectedZoneId(null)
     setSelectedConnectionId(null)
     setObjectPickerOpen(false)
+  }
+
+  function startZoneDraw() {
+    setZoneDrawMode(true)
+    setZoneDraftPoints([])
+    setLinkMode('off')
+    setLinkFromId(null)
+    setSelectedId(null)
+    setSelectedObjectId(null)
+    setSelectedZoneId(null)
+    setSelectedConnectionId(null)
+  }
+
+  function cancelZoneDraw() {
+    setZoneDrawMode(false)
+    setZoneDraftPoints([])
+  }
+
+  function finishZoneDraw(points: SettlementZonePoint[]) {
+    if (!settlement || points.length < 3) return
+    const zone = newSettlementZone(points)
+    patch({ zones: [...settlement.zones, zone] })
+    setZoneDrawMode(false)
+    setZoneDraftPoints([])
+    setSelectedZoneId(zone.id)
+    setSelectedId(null)
+    setSelectedObjectId(null)
+    setSelectedConnectionId(null)
+  }
+
+  function handleZoneDraftClick(point: SettlementZonePoint) {
+    if (!zoneDrawMode) return
+    if (zoneDraftPoints.length >= 3 && isNearZonePoint(point, zoneDraftPoints[0])) {
+      finishZoneDraw(zoneDraftPoints)
+      return
+    }
+    setZoneDraftPoints((prev) => [...prev, point])
+  }
+
+  function moveZone(id: string, points: SettlementZonePoint[]) {
+    if (!settlement) return
+    patch({
+      zones: settlement.zones.map((z) => (z.id === id ? { ...z, points } : z)),
+    })
+  }
+
+  function updateSelectedZone(patchItem: Partial<SettlementZone>) {
+    if (!settlement || !selectedZoneId) return
+    patch({
+      zones: settlement.zones.map((z) => {
+        if (z.id !== selectedZoneId) return z
+        const next = { ...z, ...patchItem }
+        if ('icon' in patchItem && !patchItem.icon?.trim()) delete next.icon
+        if ('iconColor' in patchItem && !patchItem.iconColor) delete next.iconColor
+        return next
+      }),
+    })
+  }
+
+  function removeSelectedZone() {
+    if (!settlement || !selectedZoneId) return
+    patch({ zones: settlement.zones.filter((z) => z.id !== selectedZoneId) })
+    setSelectedZoneId(null)
   }
 
   function setMapLinkMode(mode: SettlementLinkMode) {
     setLinkMode((prev) => (prev === mode ? 'off' : mode))
     setLinkFromId(null)
     setSelectedConnectionId(null)
+    cancelZoneDraw()
   }
 
   function handleLinkPick(id: string) {
@@ -541,6 +620,13 @@ export default function SettlementPage({
         return
       }
 
+      if (selectedZoneId && settlement) {
+        e.preventDefault()
+        patch({ zones: settlement.zones.filter((z) => z.id !== selectedZoneId) })
+        setSelectedZoneId(null)
+        return
+      }
+
       if (selectedObjectId && settlement) {
         e.preventDefault()
         patch({
@@ -569,12 +655,13 @@ export default function SettlementPage({
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [buildTxn, canEdit, objectPickerOpen, patch, pickerOpen, selectedConnectionId, selectedId, selectedObjectId, settlement])
+  }, [buildTxn, canEdit, objectPickerOpen, patch, pickerOpen, selectedConnectionId, selectedId, selectedObjectId, selectedZoneId, settlement])
 
   function selectConstruction(id: string | null) {
     setSelectedId(id)
     if (id) {
       setSelectedObjectId(null)
+      setSelectedZoneId(null)
       setSelectedConnectionId(null)
     }
   }
@@ -583,6 +670,16 @@ export default function SettlementPage({
     setSelectedObjectId(id)
     if (id) {
       setSelectedId(null)
+      setSelectedZoneId(null)
+      setSelectedConnectionId(null)
+    }
+  }
+
+  function selectZone(id: string | null) {
+    setSelectedZoneId(id)
+    if (id) {
+      setSelectedId(null)
+      setSelectedObjectId(null)
       setSelectedConnectionId(null)
     }
   }
@@ -592,11 +689,13 @@ export default function SettlementPage({
     if (id) {
       setSelectedId(null)
       setSelectedObjectId(null)
+      setSelectedZoneId(null)
     }
   }
 
   const selected = settlement?.constructions.find((c) => c.id === selectedId) ?? null
   const selectedObject = settlement?.objects.find((o) => o.id === selectedObjectId) ?? null
+  const selectedZone = settlement?.zones.find((z) => z.id === selectedZoneId) ?? null
   const selectedObjectDef = selectedObject ? getSettlementMapObject(selectedObject.catalogKey) : undefined
   const selectedDef = selected
     ? resolveSettlementConstruction(selected.catalogKey, settlement?.customConstructions)
@@ -807,29 +906,55 @@ export default function SettlementPage({
                 <Button variant="outline" className="text-xs" onClick={() => setObjectPickerOpen(true)}>
                   {t('settlement.addObject')}
                 </Button>
+                {zoneDrawMode ? (
+                  <>
+                    <Button
+                      variant="primary"
+                      className="text-xs"
+                      disabled={zoneDraftPoints.length < 3}
+                      onClick={() => finishZoneDraw(zoneDraftPoints)}
+                    >
+                      {t('settlement.zoneFinish')}
+                    </Button>
+                    <Button variant="ghost" className="text-xs" onClick={cancelZoneDraw}>
+                      {t('common.cancel')}
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="outline" className="text-xs" onClick={startZoneDraw}>
+                    {t('settlement.addZone')}
+                  </Button>
+                )}
               </div>
             )}
           </div>
           <SettlementMap
             constructions={settlement.constructions}
             objects={settlement.objects}
+            zones={settlement.zones}
             customConstructions={settlement.customConstructions}
             connections={settlement.connections}
             npcs={settlement.npcs}
             settlementName={settlement.name}
             selectedId={selectedId}
             selectedObjectId={selectedObjectId}
+            selectedZoneId={selectedZoneId}
             selectedConnectionId={selectedConnectionId}
             linkMode={linkMode}
             linkFromId={linkFromId}
+            zoneDrawMode={zoneDrawMode}
+            zoneDraftPoints={zoneDraftPoints}
             canEdit={canEdit}
             onSelect={selectConstruction}
             onSelectObject={selectObject}
+            onSelectZone={selectZone}
             onSelectConnection={selectConnection}
             onLinkPick={handleLinkPick}
             onRemoveConnection={removeConnectionById}
             onMove={moveConstruction}
             onMoveObject={moveObject}
+            onMoveZone={moveZone}
+            onZoneDraftClick={handleZoneDraftClick}
           />
           {buildTxn && canEdit && (
             <SettlementBuildTransactionBar
@@ -1087,13 +1212,96 @@ export default function SettlementPage({
                 </div>
               )}
             </>
+          ) : selectedZone ? (
+            <>
+              <p className="text-sm text-ink font-medium">
+                {selectedZone.name.trim() || t('settlement.zoneUnnamed')}
+              </p>
+              <p className="text-xs text-ink-muted">
+                {t('settlement.zonePoints', { count: selectedZone.points.length })}
+              </p>
+              {canEdit && (
+                <div className="space-y-2 pt-1 border-t border-border">
+                  <Input
+                    label={t('settlement.zoneName')}
+                    value={selectedZone.name}
+                    onChange={(e) => updateSelectedZone({ name: e.target.value })}
+                    placeholder={t('settlement.zoneNamePlaceholder')}
+                  />
+                  <GearIconPicker
+                    label={t('inventory.visual.icon')}
+                    value={selectedZone.icon ?? ''}
+                    onChange={(icon) => updateSelectedZone({ icon })}
+                  />
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-mono uppercase tracking-wider text-ink-faint">
+                      {t('settlement.zoneColor')}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {SETTLEMENT_ZONE_COLORS.map((hex) => {
+                        const active = (selectedZone.color || DEFAULT_SETTLEMENT_ZONE_COLOR) === hex
+                        return (
+                          <button
+                            key={`zone-color-${hex}`}
+                            type="button"
+                            title={hex}
+                            onClick={() => updateSelectedZone({ color: hex })}
+                            className={`w-7 h-7 rounded-full border-2 transition-transform ${
+                              active ? 'border-ink scale-110' : 'border-border hover:border-ink-muted'
+                            }`}
+                            style={{ backgroundColor: hex }}
+                            aria-label={t('settlement.markerColorOption', { color: hex })}
+                            aria-pressed={active}
+                          />
+                        )
+                      })}
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-mono uppercase tracking-wider text-ink-faint">
+                      {t('settlement.zoneIconColor')}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {SETTLEMENT_MARKER_COLORS.map((hex) => {
+                        const active =
+                          (selectedZone.iconColor?.trim() || DEFAULT_SETTLEMENT_ZONE_ICON_COLOR) === hex
+                        return (
+                          <button
+                            key={`zone-icon-${hex}`}
+                            type="button"
+                            title={hex}
+                            onClick={() =>
+                              updateSelectedZone({
+                                iconColor:
+                                  hex === DEFAULT_SETTLEMENT_ZONE_ICON_COLOR ? undefined : hex,
+                              })
+                            }
+                            className={`w-7 h-7 rounded-full border-2 transition-transform ${
+                              active ? 'border-ink scale-110' : 'border-border hover:border-ink-muted'
+                            }`}
+                            style={{ backgroundColor: hex }}
+                            aria-label={t('settlement.markerColorOption', { color: hex })}
+                            aria-pressed={active}
+                          />
+                        )
+                      })}
+                    </div>
+                  </div>
+                  <Button variant="danger" className="text-xs" onClick={removeSelectedZone}>
+                    {t('settlement.removeZone')}
+                  </Button>
+                </div>
+              )}
+            </>
           ) : (
             <p className="text-sm text-ink-faint">
-              {linkMode === 'connect'
-                ? t('settlement.connectModeHint')
-                : linkMode === 'disconnect'
-                  ? t('settlement.disconnectModeHint')
-                  : t('settlement.selectMapItem')}
+              {zoneDrawMode
+                ? t('settlement.zoneDrawHint')
+                : linkMode === 'connect'
+                  ? t('settlement.connectModeHint')
+                  : linkMode === 'disconnect'
+                    ? t('settlement.disconnectModeHint')
+                    : t('settlement.selectMapItem')}
             </p>
           )}
         </aside>
