@@ -305,6 +305,8 @@ export interface SettlementConstructionInstance {
   iconColor?: string
   /** Optional marker background color (CSS hex). */
   bgColor?: string
+  /** Map layer; default objects. */
+  layer?: 'background' | 'objects'
 }
 
 /** Decorative / terrain marker on the settlement map (not a buildable construction). */
@@ -318,6 +320,8 @@ export interface SettlementMapObjectInstance {
   notes: string
   iconColor?: string
   bgColor?: string
+  /** Map layer; default background. */
+  layer?: 'background' | 'objects'
 }
 
 /** Undirected path/link between two constructions on the settlement map. */
@@ -384,6 +388,8 @@ export interface SettlementZone {
   /** Optional gear icon (`gi:…` / `ra:…`) at the centroid. */
   icon?: string
   iconColor?: string
+  /** Map layer; default background. */
+  layer?: 'background' | 'objects'
 }
 
 export interface Settlement {

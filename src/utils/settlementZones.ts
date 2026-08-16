@@ -100,8 +100,9 @@ export function isNearZonePoint(
 
 export function newSettlementZone(
   points: SettlementZonePoint[],
-  partial?: Partial<Pick<SettlementZone, 'name' | 'color' | 'icon' | 'iconColor'>>,
+  partial?: Partial<Pick<SettlementZone, 'name' | 'color' | 'icon' | 'iconColor' | 'layer'>>,
 ): SettlementZone {
+  const layer = partial?.layer
   return {
     id: crypto.randomUUID(),
     name: partial?.name?.trim() ?? '',
@@ -112,5 +113,6 @@ export function newSettlementZone(
     color: partial?.color?.trim() || DEFAULT_SETTLEMENT_ZONE_COLOR,
     ...(partial?.icon?.trim() ? { icon: partial.icon.trim() } : {}),
     ...(partial?.iconColor?.trim() ? { iconColor: partial.iconColor.trim() } : {}),
+    ...(layer && layer !== 'background' ? { layer } : {}),
   }
 }

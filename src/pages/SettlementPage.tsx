@@ -93,6 +93,12 @@ import {
   newSettlementZone,
   SETTLEMENT_ZONE_COLORS,
 } from '@/utils/settlementZones'
+import {
+  constructionMapLayer,
+  objectMapLayer,
+  zoneMapLayer,
+  type SettlementMapLayer,
+} from '@/utils/settlementMapLayers'
 import { gearTraitPolarityClasses } from '@/utils/gearTraits'
 import TraitValueBadge from '@/components/ui/TraitValueBadge'
 import {
@@ -193,6 +199,7 @@ export default function SettlementPage({
   const [linkFromId, setLinkFromId] = useState<string | null>(null)
   const [zoneDrawMode, setZoneDrawMode] = useState(false)
   const [zoneDraftPoints, setZoneDraftPoints] = useState<SettlementZonePoint[]>([])
+  const [activeLayer, setActiveLayer] = useState<SettlementMapLayer>('objects')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [objectPickerOpen, setObjectPickerOpen] = useState(false)
   const [buildTxn, setBuildTxn] = useState<BuildTxnEntry[] | null>(null)
@@ -467,7 +474,7 @@ export default function SettlementPage({
 
   function finishZoneDraw(points: SettlementZonePoint[]) {
     if (!settlement || points.length < 3) return
-    const zone = newSettlementZone(points)
+    const zone = newSettlementZone(points, { layer: activeLayer })
     patch({ zones: [...settlement.zones, zone] })
     setZoneDrawMode(false)
     setZoneDraftPoints([])
@@ -475,6 +482,61 @@ export default function SettlementPage({
     setSelectedId(null)
     setSelectedObjectId(null)
     setSelectedConnectionId(null)
+  }
+
+  function handleActiveLayerChange(layer: SettlementMapLayer) {
+    setActiveLayer(layer)
+    if (!settlement) return
+    if (selectedId) {
+      const c = settlement.constructions.find((x) => x.id === selectedId)
+      if (!c || constructionMapLayer(c.layer) !== layer) setSelectedId(null)
+    }
+    if (selectedObjectId) {
+      const o = settlement.objects.find((x) => x.id === selectedObjectId)
+      if (!o || objectMapLayer(o.layer) !== layer) setSelectedObjectId(null)
+    }
+    if (selectedZoneId) {
+      const z = settlement.zones.find((x) => x.id === selectedZoneId)
+      if (!z || zoneMapLayer(z.layer) !== layer) setSelectedZoneId(null)
+    }
+    if (layer !== 'objects') {
+      setSelectedConnectionId(null)
+      if (linkMode !== 'off') {
+        setLinkMode('off')
+        setLinkFromId(null)
+      }
+    }
+  }
+
+  function moveToLayer(
+    target: { kind: 'construction' | 'object' | 'zone'; id: string },
+    layer: SettlementMapLayer,
+  ) {
+    if (!settlement) return
+    if (target.kind === 'construction') {
+      patch({
+        constructions: settlement.constructions.map((c) =>
+          c.id === target.id ? { ...c, layer } : c,
+        ),
+      })
+      if (selectedId === target.id && layer !== activeLayer) setSelectedId(null)
+      return
+    }
+    if (target.kind === 'object') {
+      patch({
+        objects: settlement.objects.map((o) =>
+          o.id === target.id ? { ...o, layer } : o,
+        ),
+      })
+      if (selectedObjectId === target.id && layer !== activeLayer) setSelectedObjectId(null)
+      return
+    }
+    patch({
+      zones: settlement.zones.map((z) =>
+        z.id === target.id ? { ...z, layer } : z,
+      ),
+    })
+    if (selectedZoneId === target.id && layer !== activeLayer) setSelectedZoneId(null)
   }
 
   function handleZoneDraftClick(point: SettlementZonePoint) {
@@ -944,6 +1006,7 @@ export default function SettlementPage({
             linkFromId={linkFromId}
             zoneDrawMode={zoneDrawMode}
             zoneDraftPoints={zoneDraftPoints}
+            activeLayer={activeLayer}
             canEdit={canEdit}
             onSelect={selectConstruction}
             onSelectObject={selectObject}
@@ -955,6 +1018,8 @@ export default function SettlementPage({
             onMoveObject={moveObject}
             onMoveZone={moveZone}
             onZoneDraftClick={handleZoneDraftClick}
+            onActiveLayerChange={handleActiveLayerChange}
+            onMoveToLayer={moveToLayer}
           />
           {buildTxn && canEdit && (
             <SettlementBuildTransactionBar

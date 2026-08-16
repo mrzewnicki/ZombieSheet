@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FaSearchMinus, FaSearchPlus, FaUser } from 'react-icons/fa'
+import { FaLayerGroup, FaSearchMinus, FaSearchPlus, FaUser } from 'react-icons/fa'
 import GearIcon from '@/components/hero/GearIcon'
 import {
   constructionLocalizedName,
@@ -26,6 +26,12 @@ import {
 } from '@/config/settlementMapObjects'
 import { settlementMapObjectIcon } from '@/config/settlementMapObjectIcons'
 import {
+  constructionMapLayer,
+  objectMapLayer,
+  zoneMapLayer,
+  type SettlementMapLayer,
+} from '@/utils/settlementMapLayers'
+import {
   DEFAULT_SETTLEMENT_ZONE_COLOR,
   DEFAULT_SETTLEMENT_ZONE_ICON_COLOR,
   insertZonePointOnEdge,
@@ -43,6 +49,8 @@ const ARROW_SIZE = 1.35
 const MIN_ZOOM = 1
 const MAX_ZOOM = 3.5
 const ZOOM_BUTTON_STEP = 0.35
+/** Opacity for items on the inactive map layer (still readable, clearly de-emphasized). */
+const INACTIVE_LAYER_OPACITY = 0.72
 const ZOOM_WHEEL_FACTOR = 1.12
 const MARKER_BOX_PX = 32
 const MARKER_ICON_PX = 16
@@ -95,6 +103,7 @@ interface Props {
   linkFromId: string | null
   zoneDrawMode?: boolean
   zoneDraftPoints?: SettlementZonePoint[]
+  activeLayer?: SettlementMapLayer
   canEdit: boolean
   onSelect: (id: string | null) => void
   onSelectObject?: (id: string | null) => void
@@ -106,6 +115,11 @@ interface Props {
   onMoveObject?: (id: string, x: number, y: number) => void
   onMoveZone?: (id: string, points: SettlementZonePoint[]) => void
   onZoneDraftClick?: (point: SettlementZonePoint) => void
+  onActiveLayerChange?: (layer: SettlementMapLayer) => void
+  onMoveToLayer?: (
+    target: { kind: 'construction' | 'object' | 'zone'; id: string },
+    layer: SettlementMapLayer,
+  ) => void
 }
 
 function NpcAvatar({ npc, size }: { npc: SettlementNpc; size: number }) {
@@ -142,6 +156,7 @@ export default function SettlementMap({
   linkFromId,
   zoneDrawMode = false,
   zoneDraftPoints = [],
+  activeLayer = 'objects',
   canEdit,
   onSelect,
   onSelectObject,
@@ -153,6 +168,8 @@ export default function SettlementMap({
   onMoveObject,
   onMoveZone,
   onZoneDraftClick,
+  onActiveLayerChange,
+  onMoveToLayer,
 }: Props) {
   const { t, i18n } = useTranslation()
   const surfaceRef = useRef<HTMLDivElement>(null)
@@ -177,6 +194,13 @@ export default function SettlementMap({
   const [panning, setPanning] = useState(false)
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [ctxMenu, setCtxMenu] = useState<{
+    kind: 'construction' | 'object' | 'zone'
+    id: string
+    x: number
+    y: number
+    currentLayer: SettlementMapLayer
+  } | null>(null)
   const viewRef = useRef({ zoom: 1, pan: { x: 0, y: 0 } })
   viewRef.current = { zoom, pan }
   const suppressClickRef = useRef(false)
@@ -184,6 +208,10 @@ export default function SettlementMap({
   const byId = new Map(constructions.map((c) => [c.id, c]))
   const linking = linkMode !== 'off'
   const drawingZone = zoneDrawMode && canEdit
+
+  function layerActive(layer: SettlementMapLayer) {
+    return layer === activeLayer
+  }
 
   const npcsByConstruction = new Map<string, SettlementNpc[]>()
   for (const npc of npcs) {
@@ -275,6 +303,16 @@ export default function SettlementMap({
   ) {
     e.stopPropagation()
     if (!canEdit || linking || drawingZone) return
+    if (kind === 'construction') {
+      const item = constructions.find((c) => c.id === id)
+      if (!item || !layerActive(constructionMapLayer(item.layer))) return
+    } else if (kind === 'object') {
+      const item = objects.find((o) => o.id === id)
+      if (!item || !layerActive(objectMapLayer(item.layer))) return
+    } else {
+      const zone = zones.find((z) => z.id === id)
+      if (!zone || !layerActive(zoneMapLayer(zone.layer))) return
+    }
     const zone = kind === 'zone' || kind === 'zone-vertex'
       ? zones.find((z) => z.id === id)
       : undefined
@@ -392,13 +430,46 @@ export default function SettlementMap({
     setPanning(false)
   }
 
+  useEffect(() => {
+    if (!ctxMenu) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setCtxMenu(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [ctxMenu])
+
+  function openContextMenu(
+    e: React.MouseEvent,
+    kind: 'construction' | 'object' | 'zone',
+    id: string,
+    currentLayer: SettlementMapLayer,
+  ) {
+    if (!canEdit) return
+    e.preventDefault()
+    e.stopPropagation()
+    const el = surfaceRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    setCtxMenu({
+      kind,
+      id,
+      x: Math.min(rect.width - 160, Math.max(8, e.clientX - rect.left)),
+      y: Math.min(rect.height - 88, Math.max(8, e.clientY - rect.top)),
+      currentLayer,
+    })
+  }
+
   function handleMarkerClick(e: React.MouseEvent, id: string) {
     e.stopPropagation()
+    setCtxMenu(null)
     if (suppressClickRef.current) {
       suppressClickRef.current = false
       return
     }
     if (drawingZone) return
+    const item = constructions.find((c) => c.id === id)
+    if (!item || !layerActive(constructionMapLayer(item.layer))) return
     if (linking && canEdit) {
       onLinkPick(id)
       return
@@ -411,11 +482,14 @@ export default function SettlementMap({
 
   function handleObjectClick(e: React.MouseEvent, id: string) {
     e.stopPropagation()
+    setCtxMenu(null)
     if (suppressClickRef.current) {
       suppressClickRef.current = false
       return
     }
     if (linking || drawingZone) return
+    const item = objects.find((o) => o.id === id)
+    if (!item || !layerActive(objectMapLayer(item.layer))) return
     onSelect(null)
     onSelectZone?.(null)
     onSelectConnection(null)
@@ -424,19 +498,19 @@ export default function SettlementMap({
 
   function handleZoneEdgeClick(e: React.MouseEvent, zoneId: string, edgeIndex: number) {
     e.stopPropagation()
+    setCtxMenu(null)
     if (!canEdit || linking || drawingZone) return
     if (suppressClickRef.current) {
       suppressClickRef.current = false
       return
     }
     const zone = zones.find((z) => z.id === zoneId)
-    if (!zone) return
+    if (!zone || !layerActive(zoneMapLayer(zone.layer))) return
     const pct = clientToPct(e.clientX, e.clientY)
     if (!pct) return
     const a = zone.points[edgeIndex]
     const b = zone.points[(edgeIndex + 1) % zone.points.length]
     const { point, t } = projectPointOntoSegment(pct, a, b)
-    // Avoid stacking on existing vertices
     if (t < 0.08 || t > 0.92) return
     onSelectZone?.(zoneId)
     onMoveZone?.(zoneId, insertZonePointOnEdge(zone.points, edgeIndex, point))
@@ -444,11 +518,14 @@ export default function SettlementMap({
 
   function handleZoneClick(e: React.MouseEvent, id: string) {
     e.stopPropagation()
+    setCtxMenu(null)
     if (suppressClickRef.current) {
       suppressClickRef.current = false
       return
     }
     if (linking || drawingZone) return
+    const zone = zones.find((z) => z.id === id)
+    if (!zone || !layerActive(zoneMapLayer(zone.layer))) return
     onSelect(null)
     onSelectObject?.(null)
     onSelectConnection(null)
@@ -457,7 +534,8 @@ export default function SettlementMap({
 
   function handleConnectionClick(e: React.MouseEvent, id: string) {
     e.stopPropagation()
-    if (drawingZone) return
+    setCtxMenu(null)
+    if (drawingZone || !layerActive('objects')) return
     if (linkMode === 'disconnect' && canEdit) {
       onRemoveConnection(id)
       return
@@ -470,6 +548,10 @@ export default function SettlementMap({
   }
 
   function handleWorldClick(e: React.MouseEvent) {
+    if (ctxMenu) {
+      setCtxMenu(null)
+      return
+    }
     if (suppressClickRef.current) {
       suppressClickRef.current = false
       return
@@ -488,15 +570,24 @@ export default function SettlementMap({
   const named = settlementName.trim()
   const mapHint = drawingZone
     ? t('settlement.zoneDrawHint')
-    : selectedZoneId && canEdit
+    : selectedZoneId && canEdit && layerActive(zoneMapLayer(zones.find((z) => z.id === selectedZoneId)?.layer))
       ? t('settlement.zoneEditHint')
       : linkMode === 'connect'
-      ? t('settlement.connectModeHint')
-      : linkMode === 'disconnect'
-        ? t('settlement.disconnectModeHint')
-        : named
-          ? t('settlement.mapLabelNamed', { name: named })
-          : t('settlement.mapLabel')
+        ? t('settlement.connectModeHint')
+        : linkMode === 'disconnect'
+          ? t('settlement.disconnectModeHint')
+          : activeLayer === 'background'
+            ? t('settlement.layerBackgroundHint')
+            : named
+              ? t('settlement.mapLabelNamed', { name: named })
+              : t('settlement.mapLabel')
+
+  const bgZones = zones.filter((z) => zoneMapLayer(z.layer) === 'background')
+  const objZones = zones.filter((z) => zoneMapLayer(z.layer) === 'objects')
+  const bgObjects = objects.filter((o) => objectMapLayer(o.layer) === 'background')
+  const objObjects = objects.filter((o) => objectMapLayer(o.layer) === 'objects')
+  const bgConstructions = constructions.filter((c) => constructionMapLayer(c.layer) === 'background')
+  const objConstructions = constructions.filter((c) => constructionMapLayer(c.layer) === 'objects')
 
   const markerBox = MARKER_BOX_PX * zoom
   const markerIcon = MARKER_ICON_PX * zoom
@@ -507,6 +598,362 @@ export default function SettlementMap({
   const npcAvatar = NPC_AVATAR_PX * zoom
   const labelPadX = 6 * zoom
   const labelPadY = 2 * zoom
+
+  function renderZoneDraft() {
+    if (zoneDraftPoints.length === 0) return null
+    return (
+      <g>
+        {zoneDraftPoints.length >= 2 && (
+          <polyline
+            points={zonePointsToSvg(zoneDraftPoints)}
+            fill="none"
+            stroke="#c45c4a"
+            strokeWidth={0.7}
+            strokeDasharray="1.5 1.2"
+            vectorEffect="non-scaling-stroke"
+            className="pointer-events-none"
+          />
+        )}
+        {zoneDraftPoints.length >= 3 && (
+          <polygon
+            points={zonePointsToSvg(zoneDraftPoints)}
+            fill="#c45c4a"
+            fillOpacity={0.12}
+            stroke="none"
+            className="pointer-events-none"
+          />
+        )}
+        {zoneDraftPoints.map((p, i) => (
+          <circle
+            key={`draft-${i}`}
+            cx={p.x}
+            cy={p.y}
+            r={i === 0 ? 1.4 : 1}
+            fill={i === 0 ? '#e8dcc0' : '#c45c4a'}
+            stroke="#0c0a08"
+            strokeWidth={0.25}
+            className="pointer-events-none"
+          />
+        ))}
+      </g>
+    )
+  }
+
+  function renderZoneSvg(zone: (typeof zones)[number], layer: SettlementMapLayer) {
+    const selected = selectedZoneId === zone.id
+    const onLayer = layerActive(layer)
+    const interactive = onLayer && !linking && !drawingZone
+    const editing = selected && canEdit && interactive
+    return (
+      <g key={zone.id} opacity={onLayer ? 1 : INACTIVE_LAYER_OPACITY}>
+        <polygon
+          points={zonePointsToSvg(zone.points)}
+          fill={zone.color || DEFAULT_SETTLEMENT_ZONE_COLOR}
+          fillOpacity={selected ? 0.45 : 0.28}
+          stroke={zone.color || DEFAULT_SETTLEMENT_ZONE_COLOR}
+          strokeWidth={selected ? 0.9 : 0.55}
+          vectorEffect="non-scaling-stroke"
+          className={interactive ? 'cursor-grab' : 'pointer-events-none'}
+          onPointerDown={interactive ? (e) => handlePointerDown(e, zone.id, 'zone') : undefined}
+          onPointerMove={interactive ? handlePointerMove : undefined}
+          onPointerUp={interactive ? handlePointerUp : undefined}
+          onPointerCancel={interactive ? handlePointerUp : undefined}
+          onClick={interactive ? (e) => handleZoneClick(e, zone.id) : undefined}
+          onContextMenu={
+            onLayer ? (e) => openContextMenu(e, 'zone', zone.id, layer) : undefined
+          }
+        />
+        {editing && zone.points.map((p, i) => {
+          const next = zone.points[(i + 1) % zone.points.length]
+          return (
+            <line
+              key={`edge-${zone.id}-${i}`}
+              x1={p.x}
+              y1={p.y}
+              x2={next.x}
+              y2={next.y}
+              stroke="transparent"
+              strokeWidth={10}
+              vectorEffect="non-scaling-stroke"
+              className="cursor-copy"
+              onClick={(e) => handleZoneEdgeClick(e, zone.id, i)}
+            />
+          )
+        })}
+        {editing && zone.points.map((p, i) => (
+          <circle
+            key={`vertex-${zone.id}-${i}`}
+            cx={p.x}
+            cy={p.y}
+            r={0.85}
+            fill="#e8dcc0"
+            stroke="#0c0a08"
+            strokeWidth={0.25}
+            vectorEffect="non-scaling-stroke"
+            className="cursor-move"
+            onPointerDown={(e) => handlePointerDown(e, zone.id, 'zone-vertex', i)}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ))}
+      </g>
+    )
+  }
+
+  function renderZoneLabel(zone: (typeof zones)[number], layer: SettlementMapLayer, zClass: string) {
+    const c = zoneCentroid(zone.points)
+    const label = zone.name.trim() || t('settlement.zoneUnnamed')
+    const selected = selectedZoneId === zone.id
+    const showIcon = Boolean(zone.icon?.trim())
+    const onLayer = layerActive(layer)
+    return (
+      <div
+        key={`zone-label-${zone.id}`}
+        className={`absolute ${zClass} -translate-x-1/2 -translate-y-1/2 flex flex-col items-center ${
+          draggingId === zone.id ? 'z-20' : ''
+        }`}
+        style={{
+          left: `${c.x}%`,
+          top: `${c.y}%`,
+          maxWidth: markerMaxW,
+          gap: 2 * zoom,
+          opacity: onLayer ? 1 : INACTIVE_LAYER_OPACITY,
+          pointerEvents: 'auto',
+        }}
+        onClick={onLayer && !linking && !drawingZone ? (e) => handleZoneClick(e, zone.id) : undefined}
+        onContextMenu={(e) => openContextMenu(e, 'zone', zone.id, layer)}
+      >
+        {showIcon && (
+          <span
+            className={`rounded-md border flex items-center justify-center shadow-md shadow-void/50 ${
+              selected ? 'ring-2 ring-blood-light/40 border-blood-light' : 'border-border'
+            }`}
+            style={{
+              width: markerBox * 0.85,
+              height: markerBox * 0.85,
+              backgroundColor: '#231c16',
+              color: zone.iconColor?.trim() || DEFAULT_SETTLEMENT_ZONE_ICON_COLOR,
+            }}
+          >
+            <span
+              className="inline-flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>i]:leading-none"
+              style={{ width: markerIcon * 0.9, height: markerIcon * 0.9, fontSize: markerIcon * 0.9 }}
+            >
+              <GearIcon value={zone.icon!} className="w-full h-full" />
+            </span>
+          </span>
+        )}
+        <span
+          className="leading-tight text-center text-ink rounded bg-void/95 border border-border/60 shadow-sm shadow-void/60 line-clamp-2"
+          style={{
+            fontSize: markerLabel,
+            paddingLeft: labelPadX,
+            paddingRight: labelPadX,
+            paddingTop: labelPadY,
+            paddingBottom: labelPadY,
+          }}
+        >
+          {label}
+        </span>
+      </div>
+    )
+  }
+
+  function renderConstructionMarker(
+    item: (typeof constructions)[number],
+    layer: SettlementMapLayer,
+    zClass: string,
+  ) {
+    const def = resolveSettlementConstruction(item.catalogKey, customConstructions)
+    const label = item.label.trim()
+      || (def ? constructionLocalizedName(def, i18n.language) : item.catalogKey)
+    const selected = selectedId === item.id
+    const linkFrom = linkFromId === item.id
+    const FallbackIcon = settlementConstructionIcon(item.catalogKey, def?.category)
+    const assigned = npcsByConstruction.get(item.id) ?? []
+    const visibleNpcs = assigned.slice(0, MAX_VISIBLE_NPCS)
+    const extraNpcs = assigned.length - visibleNpcs.length
+    const onLayer = layerActive(layer)
+    const interactive = onLayer && !drawingZone
+    return (
+      <button
+        key={item.id}
+        type="button"
+        onPointerDown={interactive ? (e) => handlePointerDown(e, item.id, 'construction') : undefined}
+        onPointerMove={interactive ? handlePointerMove : undefined}
+        onPointerUp={interactive ? handlePointerUp : undefined}
+        onPointerCancel={interactive ? handlePointerUp : undefined}
+        onClick={(e) => handleMarkerClick(e, item.id)}
+        onContextMenu={(e) => openContextMenu(e, 'construction', item.id, layer)}
+        className={`
+          absolute ${zClass} -translate-x-1/2 -translate-y-1/2
+          flex flex-col items-center
+          ${!interactive
+            ? 'cursor-default'
+            : linking
+              ? 'cursor-crosshair'
+              : canEdit
+                ? 'cursor-grab active:cursor-grabbing'
+                : 'cursor-pointer'}
+          ${draggingId === item.id ? 'z-20' : ''}
+        `}
+        style={{
+          left: `${item.x}%`,
+          top: `${item.y}%`,
+          maxWidth: markerMaxW,
+          gap: 2 * zoom,
+          opacity: onLayer ? (drawingZone ? 0.5 : 1) : INACTIVE_LAYER_OPACITY,
+        }}
+        title={label}
+      >
+        {assigned.length > 0 && (
+          <span
+            className="flex items-center pointer-events-none"
+            style={{ marginBottom: 2 * zoom, marginLeft: npcAvatar * 0.25, marginRight: npcAvatar * 0.25 }}
+          >
+            {visibleNpcs.map((npc, i) => (
+              <span
+                key={npc.id}
+                style={{ marginLeft: i === 0 ? 0 : -npcAvatar * 0.35 }}
+              >
+                <NpcAvatar npc={npc} size={npcAvatar} />
+              </span>
+            ))}
+            {extraNpcs > 0 && (
+              <span
+                className="rounded-full border border-border bg-elevated font-mono text-ink-faint flex items-center justify-center"
+                style={{
+                  width: npcAvatar,
+                  height: npcAvatar,
+                  marginLeft: -npcAvatar * 0.35,
+                  fontSize: Math.max(7, 8 * zoom),
+                }}
+              >
+                +{extraNpcs}
+              </span>
+            )}
+          </span>
+        )}
+        <span
+          className={`
+            rounded-md border flex items-center justify-center
+            shadow-md shadow-void/50
+            ${linkFrom
+              ? 'ring-2 ring-blood-light/50 border-blood-light'
+              : selected
+                ? 'ring-2 ring-blood-light/40 border-blood-light'
+                : 'border-border'}
+          `}
+          style={{
+            width: markerBox,
+            height: markerBox,
+            backgroundColor: item.bgColor?.trim() || '#231c16',
+            color: item.iconColor?.trim() || '#b02020',
+          }}
+        >
+          {def?.icon ? (
+            <span
+              className="inline-flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>i]:leading-none"
+              style={{ width: markerIcon, height: markerIcon, fontSize: markerIcon }}
+            >
+              <GearIcon value={def.icon} className="w-full h-full" />
+            </span>
+          ) : (
+            <FallbackIcon style={{ width: markerIcon, height: markerIcon }} aria-hidden />
+          )}
+        </span>
+        <span
+          className="leading-tight text-center text-ink rounded bg-void/95 border border-border/60 shadow-sm shadow-void/60 line-clamp-2"
+          style={{
+            fontSize: markerLabel,
+            paddingLeft: labelPadX,
+            paddingRight: labelPadX,
+            paddingTop: labelPadY,
+            paddingBottom: labelPadY,
+          }}
+        >
+          {label}
+        </span>
+      </button>
+    )
+  }
+
+  function renderObjectMarker(
+    item: (typeof objects)[number],
+    layer: SettlementMapLayer,
+    zClass: string,
+  ) {
+    const def = getSettlementMapObject(item.catalogKey)
+    const label = item.label.trim()
+      || (def ? mapObjectLocalizedName(def, i18n.language) : item.catalogKey)
+    const selected = selectedObjectId === item.id
+    const Icon = settlementMapObjectIcon(item.catalogKey)
+    const onLayer = layerActive(layer)
+    const interactive = onLayer && !drawingZone && !linking
+    return (
+      <button
+        key={item.id}
+        type="button"
+        onPointerDown={interactive ? (e) => handlePointerDown(e, item.id, 'object') : undefined}
+        onPointerMove={interactive ? handlePointerMove : undefined}
+        onPointerUp={interactive ? handlePointerUp : undefined}
+        onPointerCancel={interactive ? handlePointerUp : undefined}
+        onClick={(e) => handleObjectClick(e, item.id)}
+        onContextMenu={(e) => openContextMenu(e, 'object', item.id, layer)}
+        className={`
+          absolute ${zClass} -translate-x-1/2 -translate-y-1/2
+          flex flex-col items-center
+          ${interactive
+            ? canEdit
+              ? 'cursor-grab active:cursor-grabbing'
+              : 'cursor-pointer'
+            : 'cursor-default'}
+          ${draggingId === item.id ? 'z-20' : ''}
+        `}
+        style={{
+          left: `${item.x}%`,
+          top: `${item.y}%`,
+          maxWidth: markerMaxW,
+          gap: 2 * zoom,
+          opacity: onLayer ? 1 : INACTIVE_LAYER_OPACITY,
+        }}
+        title={label}
+        tabIndex={linking || !onLayer ? -1 : undefined}
+      >
+        <span
+          className={`
+            rounded-full border flex items-center justify-center
+            shadow-md shadow-void/50
+            ${selected
+              ? 'ring-2 ring-blood-light/40 border-blood-light'
+              : 'border-border'}
+          `}
+          style={{
+            width: objectBox,
+            height: objectBox,
+            backgroundColor: item.bgColor?.trim() || def?.defaultBgColor || '#1c1b19',
+            color: item.iconColor?.trim() || def?.defaultIconColor || '#9a958c',
+          }}
+        >
+          <Icon style={{ width: objectIcon, height: objectIcon }} aria-hidden />
+        </span>
+        <span
+          className="leading-tight text-center text-ink rounded bg-void/95 border border-border/60 shadow-sm shadow-void/60 line-clamp-2"
+          style={{
+            fontSize: markerLabel,
+            paddingLeft: labelPadX,
+            paddingRight: labelPadX,
+            paddingTop: labelPadY,
+            paddingBottom: labelPadY,
+          }}
+        >
+          {label}
+        </span>
+      </button>
+    )
+  }
 
   return (
     <div
@@ -531,6 +978,27 @@ export default function SettlementMap({
       onClick={handleWorldClick}
     >
       <div className="absolute top-2 right-2 z-30 flex items-center gap-1">
+        <button
+          type="button"
+          className={`w-8 h-8 rounded border bg-void/85 flex items-center justify-center transition-colors ${
+            activeLayer === 'background'
+              ? 'border-blood-light text-blood-light'
+              : 'border-border text-ink-muted hover:text-ink hover:border-ink-muted'
+          }`}
+          title={
+            activeLayer === 'background'
+              ? t('settlement.layerBackgroundActive')
+              : t('settlement.layerObjectsActive')
+          }
+          aria-label={t('settlement.layerToggle')}
+          onClick={(e) => {
+            e.stopPropagation()
+            setCtxMenu(null)
+            onActiveLayerChange?.(activeLayer === 'background' ? 'objects' : 'background')
+          }}
+        >
+          <FaLayerGroup className="w-3.5 h-3.5" aria-hidden />
+        </button>
         <button
           type="button"
           className="w-8 h-8 rounded border border-border bg-void/85 text-ink-muted hover:text-ink hover:border-ink-muted flex items-center justify-center transition-colors disabled:opacity-40"
@@ -610,108 +1078,14 @@ export default function SettlementMap({
           preserveAspectRatio="none"
           aria-hidden
         >
-          {zones.map((zone) => {
-            const selected = selectedZoneId === zone.id
-            const interactive = !linking && !drawingZone
-            const editing = selected && canEdit && interactive
-            return (
-              <g key={zone.id}>
-                <polygon
-                  points={zonePointsToSvg(zone.points)}
-                  fill={zone.color || DEFAULT_SETTLEMENT_ZONE_COLOR}
-                  fillOpacity={selected ? 0.45 : 0.28}
-                  stroke={zone.color || DEFAULT_SETTLEMENT_ZONE_COLOR}
-                  strokeWidth={selected ? 0.9 : 0.55}
-                  vectorEffect="non-scaling-stroke"
-                  className={interactive ? 'cursor-grab' : 'pointer-events-none'}
-                  onPointerDown={(e) => handlePointerDown(e, zone.id, 'zone')}
-                  onPointerMove={handlePointerMove}
-                  onPointerUp={handlePointerUp}
-                  onPointerCancel={handlePointerUp}
-                  onClick={(e) => handleZoneClick(e, zone.id)}
-                />
-                {editing && zone.points.map((p, i) => {
-                  const next = zone.points[(i + 1) % zone.points.length]
-                  return (
-                    <line
-                      key={`edge-${zone.id}-${i}`}
-                      x1={p.x}
-                      y1={p.y}
-                      x2={next.x}
-                      y2={next.y}
-                      stroke="transparent"
-                      strokeWidth={10}
-                      vectorEffect="non-scaling-stroke"
-                      className="cursor-copy"
-                      onClick={(e) => handleZoneEdgeClick(e, zone.id, i)}
-                    />
-                  )
-                })}
-                {editing && zone.points.map((p, i) => (
-                  <circle
-                    key={`vertex-${zone.id}-${i}`}
-                    cx={p.x}
-                    cy={p.y}
-                    r={0.85}
-                    fill="#e8dcc0"
-                    stroke="#0c0a08"
-                    strokeWidth={0.25}
-                    vectorEffect="non-scaling-stroke"
-                    className="cursor-move"
-                    onPointerDown={(e) => handlePointerDown(e, zone.id, 'zone-vertex', i)}
-                    onPointerMove={handlePointerMove}
-                    onPointerUp={handlePointerUp}
-                    onPointerCancel={handlePointerUp}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                ))}
-              </g>
-            )
-          })}
-
-          {drawingZone && zoneDraftPoints.length > 0 && (
-            <g>
-              {zoneDraftPoints.length >= 2 && (
-                <polyline
-                  points={zonePointsToSvg(zoneDraftPoints)}
-                  fill="none"
-                  stroke="#c45c4a"
-                  strokeWidth={0.7}
-                  strokeDasharray="1.5 1.2"
-                  vectorEffect="non-scaling-stroke"
-                  className="pointer-events-none"
-                />
-              )}
-              {zoneDraftPoints.length >= 3 && (
-                <polygon
-                  points={zonePointsToSvg(zoneDraftPoints)}
-                  fill="#c45c4a"
-                  fillOpacity={0.12}
-                  stroke="none"
-                  className="pointer-events-none"
-                />
-              )}
-              {zoneDraftPoints.map((p, i) => (
-                <circle
-                  key={`draft-${i}`}
-                  cx={p.x}
-                  cy={p.y}
-                  r={i === 0 ? 1.4 : 1}
-                  fill={i === 0 ? '#e8dcc0' : '#c45c4a'}
-                  stroke="#0c0a08"
-                  strokeWidth={0.25}
-                  className="pointer-events-none"
-                />
-              ))}
-            </g>
-          )}
-
+          {bgZones.map((zone) => renderZoneSvg(zone, 'background'))}
+          {drawingZone && activeLayer === 'background' && renderZoneDraft()}
           {connections.map((conn) => {
             const from = byId.get(conn.fromId)
             const to = byId.get(conn.toId)
             if (!from || !to) return null
             const selected = selectedConnectionId === conn.id
-            const interactive = !linking || linkMode === 'disconnect'
+            const interactive = activeLayer === 'objects' && (!linking || linkMode === 'disconnect')
             const stroke =
               linkMode === 'disconnect'
                 ? '#c45c4a'
@@ -721,7 +1095,7 @@ export default function SettlementMap({
             const showTo = end === 'arrowTo' || end === 'arrowBoth'
             const showFrom = end === 'arrowFrom' || end === 'arrowBoth'
             return (
-              <g key={conn.id}>
+              <g key={conn.id} opacity={activeLayer === 'objects' ? 1 : INACTIVE_LAYER_OPACITY}>
                 <line
                   x1={from.x}
                   y1={from.y}
@@ -731,7 +1105,7 @@ export default function SettlementMap({
                   strokeWidth={10}
                   vectorEffect="non-scaling-stroke"
                   className={interactive ? 'cursor-pointer' : 'pointer-events-none'}
-                  onClick={(e) => handleConnectionClick(e, conn.id)}
+                  onClick={interactive ? (e) => handleConnectionClick(e, conn.id) : undefined}
                 />
                 <line
                   x1={from.x}
@@ -745,7 +1119,7 @@ export default function SettlementMap({
                   vectorEffect="non-scaling-stroke"
                   className={interactive ? 'cursor-pointer' : 'pointer-events-none'}
                   opacity={selected ? 1 : linkMode === 'disconnect' ? 0.95 : 0.9}
-                  onClick={(e) => handleConnectionClick(e, conn.id)}
+                  onClick={interactive ? (e) => handleConnectionClick(e, conn.id) : undefined}
                 />
                 {showTo && (
                   <polygon
@@ -753,7 +1127,7 @@ export default function SettlementMap({
                     fill={stroke}
                     opacity={selected ? 1 : 0.95}
                     className={interactive ? 'cursor-pointer' : 'pointer-events-none'}
-                    onClick={(e) => handleConnectionClick(e, conn.id)}
+                    onClick={interactive ? (e) => handleConnectionClick(e, conn.id) : undefined}
                   />
                 )}
                 {showFrom && (
@@ -762,241 +1136,60 @@ export default function SettlementMap({
                     fill={stroke}
                     opacity={selected ? 1 : 0.95}
                     className={interactive ? 'cursor-pointer' : 'pointer-events-none'}
-                    onClick={(e) => handleConnectionClick(e, conn.id)}
+                    onClick={interactive ? (e) => handleConnectionClick(e, conn.id) : undefined}
                   />
                 )}
               </g>
             )
           })}
+          {objZones.map((zone) => renderZoneSvg(zone, 'objects'))}
+          {drawingZone && activeLayer === 'objects' && renderZoneDraft()}
         </svg>
 
-        {zones.map((zone) => {
-          const c = zoneCentroid(zone.points)
-          const label = zone.name.trim() || t('settlement.zoneUnnamed')
-          const selected = selectedZoneId === zone.id
-          const showIcon = Boolean(zone.icon?.trim())
-          return (
-            <div
-              key={`zone-label-${zone.id}`}
-              className={`absolute z-[2] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none ${
-                draggingId === zone.id ? 'z-20' : ''
-              }`}
-              style={{ left: `${c.x}%`, top: `${c.y}%`, maxWidth: markerMaxW, gap: 2 * zoom }}
-            >
-              {showIcon && (
-                <span
-                  className={`rounded-md border flex items-center justify-center shadow-md shadow-void/50 ${
-                    selected ? 'ring-2 ring-blood-light/40 border-blood-light' : 'border-border'
-                  }`}
-                  style={{
-                    width: markerBox * 0.85,
-                    height: markerBox * 0.85,
-                    backgroundColor: '#231c16',
-                    color: zone.iconColor?.trim() || DEFAULT_SETTLEMENT_ZONE_ICON_COLOR,
-                  }}
-                >
-                  <span
-                    className="inline-flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>i]:leading-none"
-                    style={{ width: markerIcon * 0.9, height: markerIcon * 0.9, fontSize: markerIcon * 0.9 }}
-                  >
-                    <GearIcon value={zone.icon!} className="w-full h-full" />
-                  </span>
-                </span>
-              )}
-              <span
-                className="leading-tight text-center text-ink rounded bg-void/95 border border-border/60 shadow-sm shadow-void/60 line-clamp-2"
-                style={{
-                  fontSize: markerLabel,
-                  paddingLeft: labelPadX,
-                  paddingRight: labelPadX,
-                  paddingTop: labelPadY,
-                  paddingBottom: labelPadY,
-                }}
-              >
-                {label}
-              </span>
-            </div>
-          )
-        })}
-
-        {constructions.map((item) => {
-          const def = resolveSettlementConstruction(item.catalogKey, customConstructions)
-          const label = item.label.trim()
-            || (def ? constructionLocalizedName(def, i18n.language) : item.catalogKey)
-          const selected = selectedId === item.id
-          const linkFrom = linkFromId === item.id
-          const FallbackIcon = settlementConstructionIcon(item.catalogKey, def?.category)
-          const assigned = npcsByConstruction.get(item.id) ?? []
-          const visibleNpcs = assigned.slice(0, MAX_VISIBLE_NPCS)
-          const extraNpcs = assigned.length - visibleNpcs.length
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onPointerDown={(e) => handlePointerDown(e, item.id, 'construction')}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerCancel={handlePointerUp}
-              onClick={(e) => handleMarkerClick(e, item.id)}
-              className={`
-                absolute z-10 -translate-x-1/2 -translate-y-1/2
-                flex flex-col items-center
-                ${drawingZone
-                  ? 'pointer-events-none opacity-50'
-                  : linking
-                    ? 'cursor-crosshair'
-                    : canEdit
-                      ? 'cursor-grab active:cursor-grabbing'
-                      : 'cursor-pointer'}
-                ${draggingId === item.id ? 'z-20' : ''}
-              `}
-              style={{
-                left: `${item.x}%`,
-                top: `${item.y}%`,
-                maxWidth: markerMaxW,
-                gap: 2 * zoom,
-              }}
-              title={label}
-            >
-              {assigned.length > 0 && (
-                <span
-                  className="flex items-center pointer-events-none"
-                  style={{ marginBottom: 2 * zoom, marginLeft: npcAvatar * 0.25, marginRight: npcAvatar * 0.25 }}
-                >
-                  {visibleNpcs.map((npc, i) => (
-                    <span
-                      key={npc.id}
-                      style={{ marginLeft: i === 0 ? 0 : -npcAvatar * 0.35 }}
-                    >
-                      <NpcAvatar npc={npc} size={npcAvatar} />
-                    </span>
-                  ))}
-                  {extraNpcs > 0 && (
-                    <span
-                      className="rounded-full border border-border bg-elevated font-mono text-ink-faint flex items-center justify-center"
-                      style={{
-                        width: npcAvatar,
-                        height: npcAvatar,
-                        marginLeft: -npcAvatar * 0.35,
-                        fontSize: Math.max(7, 8 * zoom),
-                      }}
-                    >
-                      +{extraNpcs}
-                    </span>
-                  )}
-                </span>
-              )}
-              <span
-                className={`
-                  rounded-md border flex items-center justify-center
-                  shadow-md shadow-void/50
-                  ${linkFrom
-                    ? 'ring-2 ring-blood-light/50 border-blood-light'
-                    : selected
-                      ? 'ring-2 ring-blood-light/40 border-blood-light'
-                      : 'border-border'}
-                `}
-                style={{
-                  width: markerBox,
-                  height: markerBox,
-                  backgroundColor: item.bgColor?.trim() || '#231c16',
-                  color: item.iconColor?.trim() || '#b02020',
-                }}
-              >
-                {def?.icon ? (
-                  <span
-                    className="inline-flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>i]:leading-none"
-                    style={{ width: markerIcon, height: markerIcon, fontSize: markerIcon }}
-                  >
-                    <GearIcon value={def.icon} className="w-full h-full" />
-                  </span>
-                ) : (
-                  <FallbackIcon style={{ width: markerIcon, height: markerIcon }} aria-hidden />
-                )}
-              </span>
-              <span
-                className="leading-tight text-center text-ink rounded bg-void/95 border border-border/60 shadow-sm shadow-void/60 line-clamp-2"
-                style={{
-                  fontSize: markerLabel,
-                  paddingLeft: labelPadX,
-                  paddingRight: labelPadX,
-                  paddingTop: labelPadY,
-                  paddingBottom: labelPadY,
-                }}
-              >
-                {label}
-              </span>
-            </button>
-          )
-        })}
-
-        {objects.map((item) => {
-          const def = getSettlementMapObject(item.catalogKey)
-          const label = item.label.trim()
-            || (def ? mapObjectLocalizedName(def, i18n.language) : item.catalogKey)
-          const selected = selectedObjectId === item.id
-          const Icon = settlementMapObjectIcon(item.catalogKey)
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onPointerDown={(e) => handlePointerDown(e, item.id, 'object')}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerCancel={handlePointerUp}
-              onClick={(e) => handleObjectClick(e, item.id)}
-              className={`
-                absolute z-10 -translate-x-1/2 -translate-y-1/2
-                flex flex-col items-center
-                ${drawingZone || linking
-                  ? 'pointer-events-none opacity-50'
-                  : canEdit
-                    ? 'cursor-grab active:cursor-grabbing'
-                    : 'cursor-pointer'}
-                ${draggingId === item.id ? 'z-20' : ''}
-              `}
-              style={{
-                left: `${item.x}%`,
-                top: `${item.y}%`,
-                maxWidth: markerMaxW,
-                gap: 2 * zoom,
-              }}
-              title={label}
-              tabIndex={linking ? -1 : undefined}
-            >
-              <span
-                className={`
-                  rounded-full border flex items-center justify-center
-                  shadow-md shadow-void/50
-                  ${selected
-                    ? 'ring-2 ring-blood-light/40 border-blood-light'
-                    : 'border-border'}
-                `}
-                style={{
-                  width: objectBox,
-                  height: objectBox,
-                  backgroundColor: item.bgColor?.trim() || def?.defaultBgColor || '#1c1b19',
-                  color: item.iconColor?.trim() || def?.defaultIconColor || '#9a958c',
-                }}
-              >
-                <Icon style={{ width: objectIcon, height: objectIcon }} aria-hidden />
-              </span>
-              <span
-                className="leading-tight text-center text-ink rounded bg-void/95 border border-border/60 shadow-sm shadow-void/60 line-clamp-2"
-                style={{
-                  fontSize: markerLabel,
-                  paddingLeft: labelPadX,
-                  paddingRight: labelPadX,
-                  paddingTop: labelPadY,
-                  paddingBottom: labelPadY,
-                }}
-              >
-                {label}
-              </span>
-            </button>
-          )
-        })}
+        {bgZones.map((zone) => renderZoneLabel(zone, 'background', 'z-[2]'))}
+        {bgObjects.map((item) => renderObjectMarker(item, 'background', 'z-[3]'))}
+        {bgConstructions.map((item) => renderConstructionMarker(item, 'background', 'z-[4]'))}
+        {objZones.map((zone) => renderZoneLabel(zone, 'objects', 'z-[5]'))}
+        {objObjects.map((item) => renderObjectMarker(item, 'objects', 'z-[6]'))}
+        {objConstructions.map((item) => renderConstructionMarker(item, 'objects', 'z-[7]'))}
       </div>
+
+      {ctxMenu && (
+        <div
+          className="absolute z-[80] min-w-[11rem] rounded border border-border bg-panel shadow-xl py-1 text-sm"
+          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          <p className="px-3 py-1 text-[10px] uppercase tracking-wide text-ink-faint">
+            {t('settlement.moveToLayer')}
+          </p>
+          {(['background', 'objects'] as const).map((layer) => {
+            const current = ctxMenu.currentLayer === layer
+            return (
+              <button
+                key={layer}
+                type="button"
+                disabled={current}
+                className={`w-full px-3 py-1.5 text-left transition-colors ${
+                  current
+                    ? 'text-ink-faint cursor-default'
+                    : 'text-ink hover:bg-void/80'
+                }`}
+                onClick={() => {
+                  onMoveToLayer?.({ kind: ctxMenu.kind, id: ctxMenu.id }, layer)
+                  setCtxMenu(null)
+                }}
+              >
+                {layer === 'background'
+                  ? t('settlement.layerBackground')
+                  : t('settlement.layerObjects')}
+                {current ? ` (${t('settlement.layerCurrent')})` : ''}
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

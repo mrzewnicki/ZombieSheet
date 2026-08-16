@@ -25,6 +25,11 @@ import {
   isSettlementConstructionCategory,
 } from '@/config/settlementConstructions'
 import { DEFAULT_SETTLEMENT_ZONE_COLOR } from '@/utils/settlementZones'
+import {
+  DEFAULT_BACKGROUND_LAYER,
+  DEFAULT_CONSTRUCTION_LAYER,
+  normalizeMapLayer,
+} from '@/utils/settlementMapLayers'
 export const SETTLEMENT_DOC_ID = 'main'
 export const SETTLEMENT_COLLECTION = 'settlement'
 
@@ -83,6 +88,7 @@ function normalizeConstruction(raw: unknown): SettlementConstructionInstance | n
   if (!id || !catalogKey) return null
   const iconColor = parseHexColor(src.iconColor)
   const bgColor = parseHexColor(src.bgColor)
+  const layer = normalizeMapLayer(src.layer, DEFAULT_CONSTRUCTION_LAYER)
   return {
     id,
     catalogKey,
@@ -92,6 +98,7 @@ function normalizeConstruction(raw: unknown): SettlementConstructionInstance | n
     notes: typeof src.notes === 'string' ? src.notes : '',
     ...(iconColor ? { iconColor } : {}),
     ...(bgColor ? { bgColor } : {}),
+    ...(layer !== DEFAULT_CONSTRUCTION_LAYER ? { layer } : {}),
   }
 }
 
@@ -103,6 +110,7 @@ function normalizeMapObject(raw: unknown): SettlementMapObjectInstance | null {
   if (!id || !catalogKey || !isSettlementMapObjectKey(catalogKey)) return null
   const iconColor = parseHexColor(src.iconColor)
   const bgColor = parseHexColor(src.bgColor)
+  const layer = normalizeMapLayer(src.layer, DEFAULT_BACKGROUND_LAYER)
   return {
     id,
     catalogKey,
@@ -112,6 +120,7 @@ function normalizeMapObject(raw: unknown): SettlementMapObjectInstance | null {
     notes: typeof src.notes === 'string' ? src.notes : '',
     ...(iconColor ? { iconColor } : {}),
     ...(bgColor ? { bgColor } : {}),
+    ...(layer !== DEFAULT_BACKGROUND_LAYER ? { layer } : {}),
   }
 }
 
@@ -155,6 +164,7 @@ function normalizeZone(raw: unknown): SettlementZone | null {
   const color = parseHexColor(src.color) || DEFAULT_SETTLEMENT_ZONE_COLOR
   const iconColor = parseHexColor(src.iconColor)
   const icon = typeof src.icon === 'string' && src.icon.trim() ? src.icon.trim() : undefined
+  const layer = normalizeMapLayer(src.layer, DEFAULT_BACKGROUND_LAYER)
   return {
     id,
     name: typeof src.name === 'string' ? src.name : '',
@@ -162,6 +172,7 @@ function normalizeZone(raw: unknown): SettlementZone | null {
     color,
     ...(icon ? { icon } : {}),
     ...(iconColor ? { iconColor } : {}),
+    ...(layer !== DEFAULT_BACKGROUND_LAYER ? { layer } : {}),
   }
 }
 
@@ -305,6 +316,7 @@ export function settlementPayload(settlement: Settlement, uid?: string) {
       notes: c.notes.trim(),
       ...(c.iconColor ? { iconColor: c.iconColor } : {}),
       ...(c.bgColor ? { bgColor: c.bgColor } : {}),
+      ...(c.layer && c.layer !== DEFAULT_CONSTRUCTION_LAYER ? { layer: c.layer } : {}),
     })),
     objects: settlement.objects.map((o) => ({
       id: o.id,
@@ -315,6 +327,7 @@ export function settlementPayload(settlement: Settlement, uid?: string) {
       notes: o.notes.trim(),
       ...(o.iconColor ? { iconColor: o.iconColor } : {}),
       ...(o.bgColor ? { bgColor: o.bgColor } : {}),
+      ...(o.layer && o.layer !== DEFAULT_BACKGROUND_LAYER ? { layer: o.layer } : {}),
     })),
     customConstructions: settlement.customConstructions.map((c) => ({
       id: c.id,
@@ -335,6 +348,7 @@ export function settlementPayload(settlement: Settlement, uid?: string) {
       color: parseHexColor(z.color) || DEFAULT_SETTLEMENT_ZONE_COLOR,
       ...(z.icon?.trim() ? { icon: z.icon.trim() } : {}),
       ...(z.iconColor ? { iconColor: z.iconColor } : {}),
+      ...(z.layer && z.layer !== DEFAULT_BACKGROUND_LAYER ? { layer: z.layer } : {}),
     })),
     connections: pruneSettlementConnections(settlement.connections, settlement.constructions).map((c) => ({
       id: c.id,
