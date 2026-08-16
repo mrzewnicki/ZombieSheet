@@ -22,7 +22,13 @@ import SettlementNpcsPanel from '@/components/settlement/SettlementNpcsPanel'
 import SettlementTraitsPanel from '@/components/settlement/SettlementTraitsPanel'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import RichTextEditor from '@/components/ui/RichTextEditor'
 import Spinner from '@/components/ui/Spinner'
+import SaveIcon from '@/components/icons/SaveIcon'
+import ReactMarkdown from 'react-markdown'
+import rehypeRaw from 'rehype-raw'
+import rehypeSanitize from 'rehype-sanitize'
+import remarkGfm from 'remark-gfm'
 import { useAuth } from '@/contexts/AuthContext'
 import { LayoutContext } from '@/contexts/LayoutContext'
 import { useCampaignNpcs } from '@/hooks/useCampaignNpcs'
@@ -79,6 +85,8 @@ export default function SettlementPage({
   const [linkFromId, setLinkFromId] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'osada' | 'npc'>('osada')
+  const [editDesc, setEditDesc] = useState(false)
+  const [descriptionDraft, setDescriptionDraft] = useState('')
   const creatingRef = useRef(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const settlementRef = useRef<Settlement | null>(null)
@@ -386,32 +394,78 @@ export default function SettlementPage({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1 space-y-2">
           {canEdit ? (
-            <>
-              <Input
-                value={settlement.name}
-                onChange={(e) => patch({ name: e.target.value })}
-                placeholder={t('settlement.namePlaceholder')}
-                className="font-heading text-lg"
-              />
-              <textarea
-                value={settlement.description}
-                onChange={(e) => patch({ description: e.target.value })}
-                placeholder={t('settlement.descriptionPlaceholder')}
-                rows={2}
-                className="w-full rounded border border-border bg-surface px-3 py-2 text-sm text-ink resize-y"
-              />
-            </>
+            <Input
+              value={settlement.name}
+              onChange={(e) => patch({ name: e.target.value })}
+              placeholder={t('settlement.namePlaceholder')}
+              className="font-heading text-lg"
+            />
           ) : (
-            <>
-              <h2 className="font-heading text-lg text-blood-light tracking-wide">
-                {settlement.name.trim() || t('settlement.title')}
-              </h2>
-              {settlement.description && (
-                <p className="text-sm text-ink-muted whitespace-pre-wrap">{settlement.description}</p>
-              )}
-            </>
+            <h2 className="font-heading text-lg text-blood-light tracking-wide">
+              {settlement.name.trim() || t('settlement.title')}
+            </h2>
           )}
-          <p className="text-xs text-ink-faint">{t('settlement.sharedHint')}</p>
+
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-xs text-ink-muted uppercase tracking-widest">
+                {t('settlement.descriptionLabel')}
+              </p>
+              {canEdit && !editDesc && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDescriptionDraft(settlement.description)
+                    setEditDesc(true)
+                  }}
+                  className="text-xs text-ink-faint hover:text-ink"
+                >
+                  {t('common.edit')}
+                </button>
+              )}
+            </div>
+
+            {editDesc ? (
+              <div className="space-y-3">
+                <RichTextEditor
+                  value={descriptionDraft}
+                  onChange={setDescriptionDraft}
+                  placeholder={t('settlement.descriptionPlaceholder')}
+                  rows={4}
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      patch({ description: descriptionDraft })
+                      setEditDesc(false)
+                    }}
+                    icon={<SaveIcon />}
+                  >
+                    {t('common.save')}
+                  </Button>
+                  <Button variant="ghost" onClick={() => setEditDesc(false)}>
+                    {t('common.cancel')}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-surface border border-border rounded-lg px-4 py-3 min-h-[80px]">
+                {settlement.description ? (
+                  <div className="prose-hero text-sm">
+                    <ReactMarkdown
+                      rehypePlugins={[rehypeRaw, rehypeSanitize]}
+                      remarkPlugins={[remarkGfm]}
+                    >
+                      {settlement.description}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className="text-ink-faint text-sm italic">—</p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         <div className="text-right shrink-0 space-y-1">
           {saving && <p className="text-[10px] font-mono text-ink-faint">{t('settlement.saving')}</p>}

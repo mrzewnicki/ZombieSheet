@@ -710,7 +710,7 @@ export default function MutationsTab() {
                     <img
                       src={contaminationIconSrc(track)}
                       alt=""
-                      className="w-6 h-6 object-contain shrink-0"
+                      className="w-10 h-10 object-contain shrink-0"
                       aria-hidden
                     />
                     {t(`vitals.tracks.${track}`)}

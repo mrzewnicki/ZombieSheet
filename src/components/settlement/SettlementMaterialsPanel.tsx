@@ -30,7 +30,7 @@ export default function SettlementMaterialsPanel({ materials, canEdit, onChange 
           return (
             <div
               key={mat.key}
-              className="group relative rounded-md border border-border bg-elevated/40 px-2 py-1.5 flex items-center gap-2"
+              className="group relative rounded-md border border-border bg-elevated/40 px-1.5 py-0.5 flex items-center gap-1.5"
               title={`${t(mat.descriptionKey)} · ${t('settlement.materialValue')}: ${mat.value}`}
             >
               <span className="w-7 h-7 shrink-0 rounded border border-border bg-void/60 flex items-center justify-center text-blood-light">

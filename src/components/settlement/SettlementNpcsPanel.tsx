@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FaUser } from 'react-icons/fa'
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
@@ -22,8 +22,6 @@ import {
   settlementNpcFromCampaign,
 } from '@/utils/settlement'
 
-type AddMode = 'pick' | 'create'
-
 interface Props {
   gameId: string
   npcs: SettlementNpc[]
@@ -31,6 +29,12 @@ interface Props {
   constructions: SettlementConstructionInstance[]
   canEdit: boolean
   onChange: (npcs: SettlementNpc[]) => void
+}
+
+function npcMatchesQuery(npc: CampaignNpc, q: string): boolean {
+  if (!q) return true
+  const hay = `${npc.name} ${npc.role}`.toLocaleLowerCase('pl')
+  return hay.includes(q)
 }
 
 export default function SettlementNpcsPanel({
@@ -43,11 +47,14 @@ export default function SettlementNpcsPanel({
 }: Props) {
   const { t, i18n } = useTranslation()
   const fileRef = useRef<HTMLInputElement>(null)
+  const addBoxRef = useRef<HTMLDivElement>(null)
+  const listId = useId()
   const [cropSrc, setCropSrc] = useState<string | null>(null)
   const [cropNpcId, setCropNpcId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
-  const [addMode, setAddMode] = useState<AddMode>('pick')
-  const [pickNpcId, setPickNpcId] = useState('')
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const [highlight, setHighlight] = useState(0)
 
   const roleSuggestionsRaw = t('settlement.npcRoleSuggestions', { returnObjects: true })
   const roleSuggestions = Array.isArray(roleSuggestionsRaw)
@@ -55,6 +62,24 @@ export default function SettlementNpcsPanel({
     : []
 
   const availableCampaign = availableCampaignNpcsForSettlement(campaignNpcs, npcs)
+  const queryNorm = query.trim().toLocaleLowerCase('pl')
+  const filteredCampaign = useMemo(
+    () => availableCampaign.filter((npc) => npcMatchesQuery(npc, queryNorm)),
+    [availableCampaign, queryNorm],
+  )
+
+  useEffect(() => {
+    setHighlight(0)
+  }, [queryNorm, open])
+
+  useEffect(() => {
+    if (!open) return
+    function onDocMouseDown(e: MouseEvent) {
+      if (!addBoxRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDocMouseDown)
+    return () => document.removeEventListener('mousedown', onDocMouseDown)
+  }, [open])
 
   function constructionLabel(id: string): string {
     const item = constructions.find((c) => c.id === id)
@@ -72,18 +97,57 @@ export default function SettlementNpcsPanel({
     onChange(npcs.filter((npc) => npc.id !== id))
   }
 
-  function addNew() {
-    onChange([...npcs, newSettlementNpc()])
-    setAddMode('pick')
+  function resetAddForm() {
+    setQuery('')
+    setOpen(false)
+    setHighlight(0)
   }
 
-  function addFromCampaign() {
-    if (!pickNpcId) return
-    const campaign = campaignNpcs.find((n) => n.id === pickNpcId)
+  function addNew(name = query.trim()) {
+    const npc = newSettlementNpc()
+    if (name) npc.name = name
+    onChange([...npcs, npc])
+    resetAddForm()
+  }
+
+  function addFromCampaign(campaignId: string) {
+    const campaign = availableCampaign.find((n) => n.id === campaignId)
     if (!campaign) return
-    if (npcs.some((n) => n.campaignNpcId === campaign.id)) return
     onChange([...npcs, settlementNpcFromCampaign(campaign)])
-    setPickNpcId('')
+    resetAddForm()
+  }
+
+  function submitAdd() {
+    addNew()
+  }
+
+  function onAddKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setOpen(true)
+      if (filteredCampaign.length === 0) return
+      setHighlight((h) => Math.min(h + 1, filteredCampaign.length - 1))
+      return
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setOpen(true)
+      setHighlight((h) => Math.max(h - 1, 0))
+      return
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (open && filteredCampaign.length > 0) {
+        addFromCampaign(filteredCampaign[highlight].id)
+        return
+      }
+      addNew()
+      return
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      setOpen(false)
+    }
   }
 
   function openCrop(npcId: string) {
@@ -135,69 +199,93 @@ export default function SettlementNpcsPanel({
       </div>
 
       {canEdit && (
-        <div className="rounded-lg border border-border bg-elevated/30 p-3 space-y-2">
-          <div className="flex gap-1">
-            <button
-              type="button"
-              onClick={() => setAddMode('pick')}
-              className={`flex-1 text-[10px] font-mono uppercase tracking-wider px-2 py-1.5 rounded border transition-colors ${
-                addMode === 'pick'
-                  ? 'border-blood-light text-blood-light bg-blood/10'
-                  : 'border-border text-ink-faint hover:text-ink'
-              }`}
-            >
-              {t('settlement.npcModePick')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setAddMode('create')}
-              className={`flex-1 text-[10px] font-mono uppercase tracking-wider px-2 py-1.5 rounded border transition-colors ${
-                addMode === 'create'
-                  ? 'border-blood-light text-blood-light bg-blood/10'
-                  : 'border-border text-ink-faint hover:text-ink'
-              }`}
-            >
-              {t('settlement.npcModeCreate')}
-            </button>
-          </div>
-
-          {addMode === 'pick' ? (
-            availableCampaign.length === 0 ? (
-              <p className="text-xs text-ink-faint">
-                {campaignNpcs.length === 0
-                  ? t('settlement.npcNoCampaign')
-                  : t('settlement.npcAllLinked')}
-              </p>
-            ) : (
-              <div className="flex flex-col sm:flex-row gap-2">
-                <select
-                  value={pickNpcId}
-                  onChange={(e) => setPickNpcId(e.target.value)}
-                  className="flex-1 rounded border border-border bg-surface px-2 py-1.5 text-sm text-ink"
+        <div ref={addBoxRef} className="relative rounded-lg border border-border bg-elevated/30 p-3 space-y-2">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative min-w-0 flex-1">
+              <input
+                type="text"
+                role="combobox"
+                aria-expanded={open}
+                aria-controls={listId}
+                aria-autocomplete="list"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value)
+                  setOpen(true)
+                }}
+                onFocus={() => setOpen(true)}
+                onKeyDown={onAddKeyDown}
+                placeholder={t('settlement.npcAddPlaceholder')}
+                className="w-full rounded border border-border bg-surface px-2.5 py-1.5 text-sm text-ink focus:outline-none focus:border-blood/50"
+              />
+              {open && (
+                <ul
+                  id={listId}
+                  role="listbox"
+                  className="absolute z-20 left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto rounded border border-border bg-surface py-1 shadow-xl shadow-void/40"
                 >
-                  <option value="">{t('settlement.npcPickPlaceholder')}</option>
-                  {availableCampaign.map((npc) => (
-                    <option key={npc.id} value={npc.id}>
-                      {npc.name.trim() || t('settlement.npcUnnamed')}
-                      {npc.role.trim() ? ` — ${npc.role.trim()}` : ''}
-                    </option>
+                  {filteredCampaign.map((npc, idx) => (
+                    <li
+                      key={npc.id}
+                      role="option"
+                      aria-selected={idx === highlight}
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        addFromCampaign(npc.id)
+                      }}
+                      onMouseEnter={() => setHighlight(idx)}
+                      className={`flex items-center gap-2 px-3 py-2 cursor-pointer border-b border-border/50 last:border-b-0 transition-colors ${
+                        idx === highlight
+                          ? 'bg-elevated text-ink border-l-2 border-l-blood/70 pl-[calc(0.75rem-2px)]'
+                          : 'border-l-2 border-l-transparent text-ink-muted hover:bg-elevated/60 hover:text-ink'
+                      }`}
+                    >
+                      <span className="w-6 h-6 rounded border border-border overflow-hidden bg-void shrink-0 flex items-center justify-center">
+                        {npc.imageURL ? (
+                          <img src={npc.imageURL} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <FaUser className="w-3 h-3 text-ink-faint" aria-hidden />
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-sm">
+                        {npc.name.trim() || t('settlement.npcUnnamed')}
+                      </span>
+                      {npc.role.trim() && (
+                        <span className="shrink-0 text-[10px] font-mono uppercase tracking-wider text-ink-faint">
+                          {npc.role.trim()}
+                        </span>
+                      )}
+                    </li>
                   ))}
-                </select>
-                <Button
-                  variant="outline"
-                  className="text-xs shrink-0"
-                  disabled={!pickNpcId}
-                  onClick={addFromCampaign}
-                >
-                  {t('settlement.npcAddFromCampaign')}
-                </Button>
-              </div>
-            )
-          ) : (
-            <Button variant="outline" className="text-xs" onClick={addNew}>
-              {t('settlement.addNpc')}
+                  {query.trim() ? (
+                    <li
+                      role="option"
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        addNew(query.trim())
+                      }}
+                      className={`px-3 py-2 cursor-pointer text-sm text-blood-light hover:bg-elevated/60 ${
+                        filteredCampaign.length > 0 ? 'border-t border-border/60' : ''
+                      }`}
+                    >
+                      {t('settlement.npcCreateHint', { name: query.trim() })}
+                    </li>
+                  ) : filteredCampaign.length === 0 ? (
+                    <li className="px-3 py-2 text-sm text-ink-faint">
+                      {campaignNpcs.length === 0
+                        ? t('settlement.npcNoCampaign')
+                        : availableCampaign.length === 0
+                          ? t('settlement.npcAllLinked')
+                          : t('settlement.npcTypeToFilter')}
+                    </li>
+                  ) : null}
+                </ul>
+              )}
+            </div>
+            <Button variant="outline" className="text-xs shrink-0" onClick={submitAdd}>
+              {t('settlement.npcAdd')}
             </Button>
-          )}
+          </div>
         </div>
       )}
 
