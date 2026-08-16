@@ -703,10 +703,11 @@ export default function SettlementMap({
 
   function renderZoneLabel(zone: (typeof zones)[number], layer: SettlementMapLayer, zClass: string) {
     const c = zoneCentroid(zone.points)
-    const label = zone.name.trim() || t('settlement.zoneUnnamed')
+    const label = zone.name.trim()
     const selected = selectedZoneId === zone.id
     const showIcon = Boolean(zone.icon?.trim())
     const onLayer = layerActive(layer)
+    if (!label && !showIcon) return null
     return (
       <div
         key={`zone-label-${zone.id}`}
@@ -744,18 +745,20 @@ export default function SettlementMap({
             </span>
           </span>
         )}
-        <span
-          className="leading-tight text-center text-ink rounded bg-void/95 border border-border/60 shadow-sm shadow-void/60 line-clamp-2"
-          style={{
-            fontSize: markerLabel,
-            paddingLeft: labelPadX,
-            paddingRight: labelPadX,
-            paddingTop: labelPadY,
-            paddingBottom: labelPadY,
-          }}
-        >
-          {label}
-        </span>
+        {label ? (
+          <span
+            className="leading-tight text-center text-ink rounded bg-void/95 border border-border/60 shadow-sm shadow-void/60 line-clamp-2"
+            style={{
+              fontSize: markerLabel,
+              paddingLeft: labelPadX,
+              paddingRight: labelPadX,
+              paddingTop: labelPadY,
+              paddingBottom: labelPadY,
+            }}
+          >
+            {label}
+          </span>
+        ) : null}
       </div>
     )
   }
@@ -1147,7 +1150,7 @@ export default function SettlementMap({
 
       {ctxMenu && (
         <div
-          className="absolute z-[80] min-w-[11rem] rounded border border-border bg-panel shadow-xl py-1 text-sm"
+          className="absolute z-[200] min-w-[11rem] rounded border border-border bg-surface shadow-xl shadow-void/60 py-1 text-sm"
           style={{ left: ctxMenu.x, top: ctxMenu.y }}
           onClick={(e) => e.stopPropagation()}
           onContextMenu={(e) => e.preventDefault()}
@@ -1165,7 +1168,7 @@ export default function SettlementMap({
                 className={`w-full px-3 py-1.5 text-left transition-colors ${
                   current
                     ? 'text-ink-faint cursor-default'
-                    : 'text-ink hover:bg-void/80'
+                    : 'text-ink hover:bg-elevated'
                 }`}
                 onClick={() => {
                   onMoveToLayer?.({ kind: ctxMenu.kind, id: ctxMenu.id }, layer)

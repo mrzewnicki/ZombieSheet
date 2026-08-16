@@ -645,7 +645,6 @@
     "zoneFinish": "Close zone",
     "zoneDrawHint": "Click points on the map. Click the first point or “Close zone” to fill the area.",
     "zoneEditHint": "Drag vertices. Click an edge to add a point.",
-    "zoneUnnamed": "Zone",
     "zoneName": "Zone name",
     "zoneNamePlaceholder": "e.g. Market, Woods…",
     "zoneColor": "Zone color",

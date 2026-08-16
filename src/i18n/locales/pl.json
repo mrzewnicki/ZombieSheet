@@ -645,7 +645,6 @@
     "zoneFinish": "Zamknij strefę",
     "zoneDrawHint": "Klikaj punkty na mapie. Klik w pierwszy punkt lub „Zamknij strefę”, aby wypełnić obszar.",
     "zoneEditHint": "Przeciągaj wierzchołki. Kliknij krawędź (styczną), aby dodać punkt.",
-    "zoneUnnamed": "Strefa",
     "zoneName": "Nazwa strefy",
     "zoneNamePlaceholder": "np. Rynek, Las…",
     "zoneColor": "Kolor strefy",

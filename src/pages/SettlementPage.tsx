@@ -1279,9 +1279,9 @@ export default function SettlementPage({
             </>
           ) : selectedZone ? (
             <>
-              <p className="text-sm text-ink font-medium">
-                {selectedZone.name.trim() || t('settlement.zoneUnnamed')}
-              </p>
+              {selectedZone.name.trim() ? (
+                <p className="text-sm text-ink font-medium">{selectedZone.name.trim()}</p>
+              ) : null}
               <p className="text-xs text-ink-muted">
                 {t('settlement.zonePoints', { count: selectedZone.points.length })}
               </p>
