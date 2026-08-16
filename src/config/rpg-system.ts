@@ -117,10 +117,11 @@ export const SKILL_CATEGORIES: SkillCategoryDef[] = [
     skills: [
       { key: 'zastraszanie',       labelKey: 'skills.zastraszanie',       category: 'spoleczne', docUrl: `${UMIEJETNOSCI}?s=zastraszanie` },
       { key: 'przekonywanie',      labelKey: 'skills.przekonywanie',      category: 'spoleczne', docUrl: `${UMIEJETNOSCI}?s=przekonywanie` },
-      { key: 'manipulacja',        labelKey: 'skills.manipulacja',        category: 'spoleczne', docUrl: `${UMIEJETNOSCI}?s=manipulacja` },
+      { key: 'oszustwo',           labelKey: 'skills.oszustwo',           category: 'spoleczne', docUrl: `${UMIEJETNOSCI}?s=oszustwo` },
       { key: 'dowodzenie',         labelKey: 'skills.dowodzenie',         category: 'spoleczne', docUrl: `${UMIEJETNOSCI}?s=dowodzenie` },
       { key: 'handel',             labelKey: 'skills.handel',             category: 'spoleczne', docUrl: `${UMIEJETNOSCI}?s=handel` },
       { key: 'wyczucie',           labelKey: 'skills.wyczucie',           category: 'spoleczne', docUrl: `${UMIEJETNOSCI}?s=wyczucie` },
+      { key: 'hazard',             labelKey: 'skills.hazard',             category: 'spoleczne', docUrl: `${UMIEJETNOSCI}?s=hazard` },
     ],
   },
   {
@@ -141,11 +142,12 @@ export const SKILL_CATEGORIES: SkillCategoryDef[] = [
     labelKey: 'skills.categories.okultyzm',
     skills: [
       { key: 'zwyczaje_ocalałych', labelKey: 'skills.zwyczaje_ocalałych', category: 'okultyzm', docUrl: `${UMIEJETNOSCI}?s=zwyczaje` },
-      { key: 'rytualy',            labelKey: 'skills.rytualy',            category: 'okultyzm', docUrl: `${UMIEJETNOSCI}?s=rytu%C3%A5%C2%82y` },
+      { key: 'rytualy',            labelKey: 'skills.rytualy',            category: 'okultyzm', docUrl: `${UMIEJETNOSCI}?s=rytua%C5%82y` },
       { key: 'deathnet',           labelKey: 'skills.deathnet',           category: 'okultyzm', docUrl: `${UMIEJETNOSCI}?s=deathnet` },
-      { key: 'livecore',           labelKey: 'skills.livecore',           category: 'okultyzm', docUrl: `${UMIEJETNOSCI}?s=livecore` },
+      { key: 'anomalie',           labelKey: 'skills.anomalie',           category: 'okultyzm', docUrl: `${UMIEJETNOSCI}?s=anomalie` },
       { key: 'zombie',             labelKey: 'skills.zombie',             category: 'okultyzm', docUrl: `${UMIEJETNOSCI}?s=zombie` },
       { key: 'mutacje',            labelKey: 'skills.mutacje',            category: 'okultyzm', docUrl: `${UMIEJETNOSCI}?s=mutacje` },
+      { key: 'snienie',            labelKey: 'skills.snienie',            category: 'okultyzm', docUrl: `${UMIEJETNOSCI}?s=%C5%9Bnienie` },
     ],
   },
 ]
@@ -155,7 +157,41 @@ export const SKILL_CATEGORIES: SkillCategoryDef[] = [
  * or skills). Existing hero documents whose sheetVersion differs will show an
  * upgrade banner in HeroSheet.
  */
-export const SHEET_VERSION = 3
+export const SHEET_VERSION = 6
+
+/** Skill keys renamed between sheet versions. Applied during migration. */
+export const SKILL_KEY_RENAMES: Record<string, string> = {
+  manipulacja: 'oszustwo',
+}
+
+export const VITALS_DOC_URL =
+  'https://mrzewnicki.github.io/MarkdownViewer/#/zombie/system/%C5%BBycie%20Zm%C4%99czenie%20i%20Stres'
+
+export const MUTATIONS_DOC_URL =
+  'https://mrzewnicki.github.io/MarkdownViewer/#/zombie/system/Mutacje%20i%20Ska%C5%BCenie'
+
+export type HeroRace = 'czlowiek' | 'zwierze' | 'zombie' | 'zmutowane_zwierze'
+
+export interface RaceDef {
+  key: HeroRace
+  /** i18n key under vitals.races.* */
+  labelKey: string
+  /** Flat bonus added to max HP. */
+  hpBonus: number
+}
+
+export const RACES: RaceDef[] = [
+  { key: 'czlowiek',           labelKey: 'vitals.races.czlowiek',           hpBonus: 3 },
+  { key: 'zwierze',            labelKey: 'vitals.races.zwierze',            hpBonus: 3 },
+  { key: 'zombie',             labelKey: 'vitals.races.zombie',             hpBonus: 5 },
+  { key: 'zmutowane_zwierze',  labelKey: 'vitals.races.zmutowane_zwierze',  hpBonus: 5 },
+]
+
+export const DEFAULT_RACE: HeroRace = 'czlowiek'
+
+export function raceHpBonus(race: HeroRace): number {
+  return RACES.find((r) => r.key === race)?.hpBonus ?? raceHpBonus(DEFAULT_RACE)
+}
 
 /** All attribute keys pre-initialised to 0. Used when creating a new hero. */
 export const DEFAULT_ATTRIBUTES: Record<string, number> = Object.fromEntries(

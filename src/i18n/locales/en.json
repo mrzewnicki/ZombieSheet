@@ -84,7 +84,10 @@
       "versionTitle": "Sheet version",
       "currentVersion": "Current version:",
       "latestVersion": "Latest system version:",
-      "migrateBackupHint": "Migration saves a backup of attributes and skills before applying changes.",
+      "migrateBackupHint": "Migration saves a backup of attributes, skills, race and vitals before applying changes.",
+      "raceHint": "Affects maximum hit points (racial modifier).",
+      "mutationPointsMaxHint": "The max MP pool formula is still TBD in the system rules — set it manually.",
+      "contaminationHint": "Track sum: {{total}} / max {{max}}. Exceeding max starts Transformation. Header ± grows LiveCore or shrinks the highest track.",
       "migrateError": "Migration failed. Check your connection and try again.",
       "dangerZone": "Danger zone",
       "deleteHint": "Permanently delete this character. This action cannot be undone."
@@ -132,6 +135,43 @@
     "searchAttribute": "Search attribute…",
     "searchSkill": "Search skill…",
     "throwWithCount": "Roll {{count}} dice"
+  },
+  "vitals": {
+    "title": "Life, fatigue and stress",
+    "tooltip": "Hit points, fatigue threshold and stress threshold. Maxima come from attributes (plus race for HP).",
+    "readMore": "read more →",
+    "race": "Race",
+    "hp": "Hit points",
+    "fatigue": "Fatigue",
+    "stress": "Stress",
+    "mutationPoints": "Mutation points",
+    "mutationPointsMax": "Max MP",
+    "contamination": "Contamination",
+    "short": {
+      "hp": "HP",
+      "fatigue": "FT",
+      "stress": "ST",
+      "mutationPoints": "MP",
+      "contamination": "CN"
+    },
+    "tracks": {
+      "deathNet": "DeathNet",
+      "liveCore": "LiveCore",
+      "anomalie": "Anomalies"
+    },
+    "formulas": {
+      "hp": "Max HP = (2×Stamina) + Strength + Race Modifier.",
+      "fatigue": "Max fatigue threshold = Stamina + Determination.",
+      "stress": "Max stress threshold = Composure + Determination.",
+      "mutationPoints": "Mutation Points (MP) pool. Set the maximum in Settings (system formula still TBD).",
+      "contamination": "Total contamination = DeathNet ({{deathNet}}) + LiveCore ({{liveCore}}) + Anomalies ({{anomalie}}). Max = Stamina + Composure + Determination."
+    },
+    "races": {
+      "czlowiek": "Human",
+      "zwierze": "Animal",
+      "zombie": "Zombie",
+      "zmutowane_zwierze": "Mutated animal"
+    }
   },
   "attributes": {
     "title": "Attributes",
@@ -204,10 +244,11 @@
     "elektrotechnika": "Electrical Engineering",
     "zastraszanie": "Intimidation",
     "przekonywanie": "Persuasion",
-    "manipulacja": "Manipulation",
+    "oszustwo": "Deception",
     "dowodzenie": "Leadership",
     "handel": "Trade",
     "wyczucie": "Read People",
+    "hazard": "Gambling",
     "sztuka_przetrwania": "Art of Survival",
     "zielarstwo": "Herbalism",
     "tresura": "Animal Training",
@@ -218,9 +259,10 @@
     "zwyczaje_ocalałych": "Survivor Customs",
     "rytualy": "Awakened Rituals",
     "deathnet": "DeathNet",
-    "livecore": "LiveCore",
+    "anomalie": "Anomalies",
     "zombie": "Zombie Lore",
-    "mutacje": "Mutations"
+    "mutacje": "Mutations",
+    "snienie": "Dreaming"
   },
   "images": {
     "title": "Gallery",
@@ -263,10 +305,11 @@
     "elektrotechnika": "Working with electrical systems, generators and electronics.",
     "zastraszanie": "Using fear, physical presence or threats to influence others.",
     "przekonywanie": "Convincing others through argument, facts and rhetoric.",
-    "manipulacja": "Deceiving, gaslighting and subtly controlling other people.",
+    "oszustwo": "Control through lies, emotional provocation and concealing true intentions.",
     "dowodzenie": "Leading groups, maintaining morale and coordinating actions.",
     "handel": "Negotiating prices, bartering goods and detecting counterfeits.",
     "wyczucie": "Reading intentions, detecting lies and judging character.",
+    "hazard": "Games of chance — dice, cards, bets; reading the table and sensing bluffs.",
     "zielarstwo": "Identifying plants, preparing herbal remedies and poisons.",
     "tresura": "Training animals to follow commands and perform tasks.",
     "hodowla": "Caring for, breeding and managing livestock and animals.",
@@ -275,10 +318,11 @@
     "tropienie": "Following tracks, reading trail signs and locating prey.",
     "zwyczaje_ocalałych": "Knowledge of customs, codes and social norms among survivor groups.",
     "rytualy": "Performing and understanding mystical Awakened practices.",
-    "deathnet": "Interfacing with the zombie hive-mind signal network.",
-    "livecore": "Understanding and interacting with the LiveCore life-force technology.",
+    "deathnet": "Knowledge of DeathNet history, experiments and technology.",
+    "anomalie": "Knowledge of zones tainted by radiation, toxins and strange phenomena beyond the virus and DeathNet.",
     "zombie": "Knowledge of zombie behaviour, variants, weaknesses and biology.",
-    "mutacje": "Understanding, controlling and developing personal mutations."
+    "mutacje": "Understanding, controlling and developing personal mutations.",
+    "snienie": "Walking the border of dream and waking — future visions and echoes of memory."
   },
   "inventory": {
     "title": "Inventory",

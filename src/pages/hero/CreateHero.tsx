@@ -4,8 +4,14 @@ import { useTranslation } from 'react-i18next'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/config/firebase'
 import { useAuth } from '@/contexts/AuthContext'
-import { DEFAULT_ATTRIBUTES, DEFAULT_SKILLS, SHEET_VERSION } from '@/config/rpg-system'
+import {
+  DEFAULT_ATTRIBUTES,
+  DEFAULT_RACE,
+  DEFAULT_SKILLS,
+  SHEET_VERSION,
+} from '@/config/rpg-system'
 import { useLayoutHeader } from '@/contexts/LayoutContext'
+import { defaultVitals } from '@/utils/vitals'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 
@@ -25,14 +31,17 @@ export default function CreateHero() {
     setLoading(true)
     setError('')
     try {
+      const attributes = { ...DEFAULT_ATTRIBUTES }
       const heroRef = await addDoc(collection(db, 'games', gameId, 'heroes'), {
         ownerId: user.uid,
         name: name.trim(),
         surname: surname.trim(),
         imageURL: '',
         description: '',
-        attributes: { ...DEFAULT_ATTRIBUTES },
+        race: DEFAULT_RACE,
+        attributes,
         skills: { ...DEFAULT_SKILLS },
+        vitals: defaultVitals(attributes, DEFAULT_RACE),
         sheetVersion: SHEET_VERSION,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),

@@ -84,7 +84,10 @@
       "versionTitle": "Wersja karty",
       "currentVersion": "Aktualna wersja:",
       "latestVersion": "Najnowsza wersja systemu:",
-      "migrateBackupHint": "Przed migracją zapisywana jest kopia atrybutów i umiejętności.",
+      "migrateBackupHint": "Przed migracją zapisywana jest kopia atrybutów, umiejętności, rasy i vitals.",
+      "raceHint": "Wpływa na maksimum punktów życia (modyfikator rasy).",
+      "mutationPointsMaxHint": "Formuła maksymalnej puli PM nie jest jeszcze ustalona w systemie — ustaw ją ręcznie.",
+      "contaminationHint": "Suma torów: {{total}} / max {{max}}. Przekroczenie max uruchamia Przemianę. W nagłówku ± zmienia LiveCore (wzrost) lub najwyższy tor (spadek).",
       "migrateError": "Migracja nie powiodła się. Sprawdź połączenie i spróbuj ponownie.",
       "dangerZone": "Strefa zagrożenia",
       "deleteHint": "Trwale usuwa tę postać. Tej operacji nie można cofnąć."
@@ -132,6 +135,43 @@
     "searchAttribute": "Szukaj cechy…",
     "searchSkill": "Szukaj umiejętności…",
     "throwWithCount": "Rzuć {{count}} kości"
+  },
+  "vitals": {
+    "title": "Życie, zmęczenie i stres",
+    "tooltip": "Punkty życia, próg zmęczenia i próg stresu. Maksima wynikają z cech (oraz rasy dla PZ).",
+    "readMore": "czytaj więcej →",
+    "race": "Rasa",
+    "hp": "Punkty życia",
+    "fatigue": "Zmęczenie",
+    "stress": "Stres",
+    "mutationPoints": "Punkty mutacji",
+    "mutationPointsMax": "Maksimum PM",
+    "contamination": "Skażenie",
+    "short": {
+      "hp": "PZ",
+      "fatigue": "ZM",
+      "stress": "ST",
+      "mutationPoints": "PM",
+      "contamination": "SK"
+    },
+    "tracks": {
+      "deathNet": "DeathNet",
+      "liveCore": "LiveCore",
+      "anomalie": "Anomalie"
+    },
+    "formulas": {
+      "hp": "Maksimum PZ = (2×Kondycja) + Siła + Modyfikator Rasy.",
+      "fatigue": "Maksymalny próg zmęczenia = Kondycja + Determinacja.",
+      "stress": "Maksymalny próg stresu = Opanowanie + Determinacja.",
+      "mutationPoints": "Pula Punktów Mutacji (PM). Maksimum ustala się w Ustawieniach (formuła systemu jeszcze otwarta).",
+      "contamination": "Skażenie całkowite = DeathNet ({{deathNet}}) + LiveCore ({{liveCore}}) + Anomalie ({{anomalie}}). Maksimum = Kondycja + Opanowanie + Determinacja."
+    },
+    "races": {
+      "czlowiek": "Człowiek",
+      "zwierze": "Zwierzę",
+      "zombie": "Zombie",
+      "zmutowane_zwierze": "Zmutowane zwierzę"
+    }
   },
   "attributes": {
     "title": "Cechy",
@@ -204,10 +244,11 @@
     "elektrotechnika": "Elektrotechnika",
     "zastraszanie": "Zastraszanie",
     "przekonywanie": "Przekonywanie",
-    "manipulacja": "Manipulacja",
+    "oszustwo": "Oszustwo",
     "dowodzenie": "Dowodzenie",
     "handel": "Handel",
     "wyczucie": "Wyczucie",
+    "hazard": "Hazard",
     "sztuka_przetrwania": "Sztuka Przetrwania",
     "zielarstwo": "Zielarstwo",
     "tresura": "Tresura",
@@ -218,9 +259,10 @@
     "zwyczaje_ocalałych": "Zwyczaje ocalałych",
     "rytualy": "Rytuały Przebudzonych",
     "deathnet": "DeathNet",
-    "livecore": "LiveCore",
+    "anomalie": "Anomalie",
     "zombie": "Zombie",
-    "mutacje": "Mutacje"
+    "mutacje": "Mutacje",
+    "snienie": "Śnienie"
   },
   "images": {
     "title": "Galeria",
@@ -263,10 +305,11 @@
     "elektrotechnika": "Praca z systemami elektrycznymi, generatorami i elektroniką.",
     "zastraszanie": "Używanie strachu, fizycznej obecności lub gróźb do wpływania na innych.",
     "przekonywanie": "Przekonywanie innych za pomocą argumentów, faktów i retoryki.",
-    "manipulacja": "Oszukiwanie, gaslighting i subtelne kontrolowanie innych ludzi.",
+    "oszustwo": "Kontrola poprzez kłamstwo, prowokację emocji i ukrywanie prawdziwych zamiarów.",
     "dowodzenie": "Prowadzenie grup, utrzymywanie morale i koordynowanie działań.",
     "handel": "Negocjowanie cen, wymiana towarów i wykrywanie fałszerstw.",
     "wyczucie": "Odczytywanie intencji, wykrywanie kłamstw i ocenianie charakteru.",
+    "hazard": "Gry o stawkę — kości, karty, zakłady; czytanie stołu i wyczuwanie blefu.",
     "zielarstwo": "Identyfikacja roślin, przyrządzanie ziołowych leków i trucizn.",
     "tresura": "Szkolenie zwierząt do wykonywania poleceń i zadań.",
     "hodowla": "Opieka, hodowla i zarządzanie inwentarzem i zwierzętami.",
@@ -275,10 +318,11 @@
     "tropienie": "Podążanie śladami, odczytywanie znaków szlaku i lokalizowanie ofiary.",
     "zwyczaje_ocalałych": "Wiedza o zwyczajach, kodeksach i normach społecznych wśród grup ocalałych.",
     "rytualy": "Przeprowadzanie i rozumienie mistycznych praktyk Przebudzonych.",
-    "deathnet": "Łączenie się z siecią sygnałową ula zombie.",
-    "livecore": "Rozumienie i interakcja z technologią siły życia LiveCore.",
+    "deathnet": "Znajomość historii, eksperymentów i technologii organizacji DeathNet.",
+    "anomalie": "Wiedza o strefach skażonych promieniowaniem, toksynami i dziwnymi zjawiskami poza wirusem i DeathNetem.",
     "zombie": "Wiedza o zachowaniu zombie, wariantach, słabościach i biologii.",
-    "mutacje": "Rozumienie, kontrolowanie i rozwijanie osobistych mutacji."
+    "mutacje": "Rozumienie, kontrolowanie i rozwijanie osobistych mutacji.",
+    "snienie": "Podróżowanie granicą snu i jawy — przepowiednie przyszłości i echa wspomnień."
   },
   "inventory": {
     "title": "Ekwipunek",

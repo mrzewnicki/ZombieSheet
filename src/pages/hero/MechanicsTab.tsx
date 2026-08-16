@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useMemo } from 'react'
 import { ATTRIBUTE_GROUPS, SKILL_CATEGORIES } from '@/config/rpg-system'
 import {
   DEFAULT_SKILL_CATEGORY_ORDER,
@@ -14,6 +14,12 @@ import AttributeGroup from '@/components/hero/AttributeGroup'
 import SkillCategory from '@/components/hero/SkillCategory'
 import ThrowDialog, { type ThrowParams, type ThrowDialogInitial } from '@/components/hero/ThrowDialog'
 import { rollDicePool } from '@/utils/diceRoll'
+import {
+  adjustVitalsForMaxChange,
+  computeVitalMaxes,
+  resolveHeroRace,
+  resolveHeroVitals,
+} from '@/utils/vitals'
 
 export default function MechanicsTab() {
   const { hero, gameId, heroId, canEdit } = useHeroOutletContext()
@@ -28,6 +34,12 @@ export default function MechanicsTab() {
 
   const isEditable = canEdit && editing
   const { pushContextMessage } = useChatContext()
+
+  const race = resolveHeroRace(hero.race)
+  const vitals = useMemo(
+    () => resolveHeroVitals(hero.vitals, hero.attributes, race),
+    [hero.vitals, hero.attributes, race],
+  )
 
   const handleThrow = useCallback((params: ThrowParams) => {
     const { rolls, result, diceCount } = rollDicePool(params.total)
@@ -88,7 +100,21 @@ export default function MechanicsTab() {
 
   async function handleAttrChange(key: string, value: number) {
     const label = t(`attributes.${key}`, { defaultValue: key })
-    await updateField(`attributes.${key}`, label, value, hero.attributes[key] ?? 0)
+    const oldAttrs = hero.attributes
+    const nextAttrs = { ...oldAttrs, [key]: value }
+    const oldMax = computeVitalMaxes(oldAttrs, race, vitals.mutationPointsMax)
+    const newMax = computeVitalMaxes(nextAttrs, race, vitals.mutationPointsMax)
+    const nextVitals = adjustVitalsForMaxChange(vitals, oldMax, newMax)
+
+    await updateField(`attributes.${key}`, label, value, oldAttrs[key] ?? 0)
+    if (
+      nextVitals.hp !== vitals.hp
+      || nextVitals.fatigue !== vitals.fatigue
+      || nextVitals.stress !== vitals.stress
+      || nextVitals.mutationPoints !== vitals.mutationPoints
+    ) {
+      await updateField('vitals', t('vitals.title'), nextVitals, vitals)
+    }
   }
 
   async function handleSkillChange(key: string, value: number) {

@@ -43,6 +43,34 @@ export function heroFullName(
   return [hero.name, hero.surname].filter(Boolean).join(' ') || fallback
 }
 
+import type { HeroRace } from '@/config/rpg-system'
+
+export type { HeroRace }
+
+export interface HeroContamination {
+  deathNet: number
+  liveCore: number
+  anomalie: number
+}
+
+export interface HeroVitals {
+  /** Remaining hit points (0 … maxHp). */
+  hp: number
+  /** Remaining fatigue pool (0 … maxFatigue). */
+  fatigue: number
+  /** Remaining stress pool (0 … maxStress). */
+  stress: number
+  /** Remaining mutation-point pool (0 … mutationPointsMax). */
+  mutationPoints: number
+  /**
+   * Max mutation-point pool. Formula is still TBD in system docs,
+   * so this is set manually (Settings).
+   */
+  mutationPointsMax: number
+  /** Permanent contamination tracks; total may exceed max (starts Przemiana). */
+  contamination: HeroContamination
+}
+
 export interface Hero {
   id: string
   ownerId: string
@@ -51,8 +79,12 @@ export interface Hero {
   nickname: string
   imageURL: string
   description: string
+  /** Species used for the max-HP racial bonus. */
+  race: HeroRace
   attributes: Record<string, number>
   skills: Record<string, number>
+  /** Current vital pools; maxima are derived from attributes (+ race for HP). */
+  vitals: HeroVitals
   sheetVersion: number
   createdAt: Timestamp
   updatedAt: Timestamp
@@ -156,6 +188,8 @@ export interface HeroSheetBackup {
   toVersion: number
   attributes: Record<string, number>
   skills: Record<string, number>
+  race?: HeroRace
+  vitals?: HeroVitals
   createdAt: Timestamp
 }
 

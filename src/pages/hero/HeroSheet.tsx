@@ -1,13 +1,22 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '@/config/firebase'
 import { useCanEdit } from '@/hooks/useCanEdit'
+import { useHeroField } from '@/hooks/useHeroField'
 import { SHEET_VERSION } from '@/config/rpg-system'
 import { needsSheetMigration, resolveHeroSheetVersion } from '@/utils/sheetVersion'
+import {
+  adjustContaminationTotal,
+  clampVital,
+  computeVitalMaxes,
+  resolveHeroRace,
+  resolveHeroVitals,
+} from '@/utils/vitals'
 import { heroFullName, type Hero } from '@/types'
 import { useLayoutHeader } from '@/contexts/LayoutContext'
+import HeroHeaderVitals from '@/components/hero/HeroHeaderVitals'
 import Spinner from '@/components/ui/Spinner'
 
 export default function HeroSheet() {
@@ -17,6 +26,7 @@ export default function HeroSheet() {
   const activeTab = pathname.split('/').pop() ?? ''
   const [hero, setHero] = useState<Hero | null>(null)
   const [loading, setLoading] = useState(true)
+  const { updateField } = useHeroField(gameId, heroId)
 
   const canEdit = useCanEdit(gameId, hero?.ownerId ?? '')
   const navRef = useRef<HTMLElement>(null)
@@ -56,6 +66,32 @@ export default function HeroSheet() {
   const heroVersion = resolveHeroSheetVersion(hero?.sheetVersion)
   const needsMigration = needsSheetMigration(hero?.sheetVersion)
 
+  const race = resolveHeroRace(hero?.race)
+  const vitals = useMemo(
+    () => resolveHeroVitals(hero?.vitals, hero?.attributes, race),
+    [hero?.vitals, hero?.attributes, race],
+  )
+  const vitalMaxes = useMemo(
+    () => computeVitalMaxes(hero?.attributes, race, vitals.mutationPointsMax),
+    [hero?.attributes, race, vitals.mutationPointsMax],
+  )
+
+  async function handlePoolChange(key: 'hp' | 'fatigue' | 'stress' | 'mutationPoints', value: number) {
+    if (!hero) return
+    const max = vitalMaxes[key]
+    const next = { ...vitals, [key]: clampVital(value, max) }
+    await updateField('vitals', t(`vitals.${key}`), next, vitals)
+  }
+
+  async function handleContaminationTotalChange(total: number) {
+    if (!hero) return
+    const next = {
+      ...vitals,
+      contamination: adjustContaminationTotal(vitals.contamination, total),
+    }
+    await updateField('vitals', t('vitals.contamination'), next, vitals)
+  }
+
   const tabs = [
     { key: 'personal',  label: t('hero.tabs.personal'),  icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm5 5c0 1-1 1-1 1H4s-1 0-1-1 1-4 5-4 5 3 5 4z"/></svg> },
     { key: 'mechanics', label: t('hero.tabs.mechanics'), icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M13 1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h10zM3 0a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V3a3 3 0 0 0-3-3H3z"/><path d="M5.5 4a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm8 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0 8a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm-8 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm4-4a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/></svg> },
@@ -76,7 +112,7 @@ export default function HeroSheet() {
   return (
     <>
       {/* Hero header */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="relative z-30 flex items-center gap-4 mb-6">
         <div className="w-14 h-14 rounded-lg border border-border overflow-hidden bg-void flex items-center justify-center shrink-0">
           {hero.imageURL ? (
             <img src={hero.imageURL} alt={heroName} className="w-full h-full object-cover" />
@@ -84,11 +120,11 @@ export default function HeroSheet() {
             <span className="text-ink-faint text-2xl">☠</span>
           )}
         </div>
-        <div>
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h1 className="font-heading text-2xl text-ink">{heroName}</h1>
+            <h1 className="font-heading text-2xl text-ink truncate">{heroName}</h1>
             <span
-              className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
+              className={`text-[10px] font-mono px-1.5 py-0.5 rounded border shrink-0 ${
                 needsMigration
                   ? 'text-amber-400 border-amber-400/40 bg-amber-400/10'
                   : 'text-ink-faint border-border'
@@ -105,6 +141,13 @@ export default function HeroSheet() {
             <p className="text-xs text-ink-faint mt-0.5">{t('common.readOnly')}</p>
           )}
         </div>
+        <HeroHeaderVitals
+          vitals={vitals}
+          max={vitalMaxes}
+          canEdit={canEdit}
+          onPoolChange={canEdit ? handlePoolChange : undefined}
+          onContaminationTotalChange={canEdit ? handleContaminationTotalChange : undefined}
+        />
       </div>
 
       {/* Outdated version hint — full action in Settings tab */}
