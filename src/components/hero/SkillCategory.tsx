@@ -8,6 +8,7 @@ interface Props {
   onSkillClick?: (key: string, label: string, value: number) => void
   readOnly?: boolean
   search?: string
+  className?: string
 }
 function Highlight({ text, query }: { text: string; query: string }) {
   if (!query) return <>{text}</>
@@ -22,7 +23,16 @@ function Highlight({ text, query }: { text: string; query: string }) {
   )
 }
 
-export default function SkillCategory({ category, values, onChange, onSkillClick, readOnly = false, search = '' }: Props) {  const { t } = useTranslation()
+export default function SkillCategory({
+  category,
+  values,
+  onChange,
+  onSkillClick,
+  readOnly = false,
+  search = '',
+  className = '',
+}: Props) {
+  const { t } = useTranslation()
 
   const visibleSkills = category.skills.filter((skill) =>
     !search || t(skill.labelKey).toLowerCase().includes(search.toLowerCase())
@@ -31,8 +41,8 @@ export default function SkillCategory({ category, values, onChange, onSkillClick
   const hasMatch = !search || visibleSkills.length > 0
 
   return (
-    <div className={`bg-surface border border-border rounded-lg transition-opacity duration-150 ${!hasMatch ? 'opacity-30' : ''}`}>
-      <div className="w-full flex items-center justify-between px-4 py-3 bg-elevated cursor-grab active:cursor-grabbing select-none">
+    <div className={`bg-surface border border-border rounded-lg transition-opacity duration-150 flex flex-col ${!hasMatch ? 'opacity-30' : ''} ${className}`}>
+      <div className="w-full flex items-center justify-between px-4 py-3 bg-elevated cursor-grab active:cursor-grabbing select-none shrink-0">
         <span className="font-heading text-sm text-ink tracking-wide">
           {t(category.labelKey)}
         </span>
@@ -43,7 +53,7 @@ export default function SkillCategory({ category, values, onChange, onSkillClick
         </div>
       </div>
 
-      <div className="divide-y divide-border">
+      <div className="divide-y divide-border flex-1 flex flex-col justify-evenly min-h-0">
         {category.skills.map((skill) => {
           const value = values[skill.key] ?? 0
           const label = t(skill.labelKey)

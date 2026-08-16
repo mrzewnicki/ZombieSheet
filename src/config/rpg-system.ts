@@ -170,6 +170,9 @@ export const VITALS_DOC_URL =
 export const MUTATIONS_DOC_URL =
   'https://mrzewnicki.github.io/MarkdownViewer/#/zombie/system/Mutacje%20i%20Ska%C5%BCenie'
 
+export const ARMOR_DOC_URL =
+  'https://mrzewnicki.github.io/MarkdownViewer/#/zombie/system/Ekwipunek/EkwipunekOchronny'
+
 export type HeroRace = 'czlowiek' | 'zwierze' | 'zombie' | 'zmutowane_zwierze'
 
 export interface RaceDef {

@@ -4,7 +4,13 @@ import {
   collection, addDoc, deleteDoc, updateDoc, doc,
 } from 'firebase/firestore'
 import { db } from '@/config/firebase'
-import type { ArmorItem, GearTraitDefinition } from '@/types'
+import {
+  ARMOR_CATEGORIES,
+  DEFAULT_ARMOR_CATEGORY,
+  canEquipArmor,
+  resolveArmorCategory,
+} from '@/config/armorSlots'
+import type { ArmorCategory, ArmorItem, GearTraitDefinition } from '@/types'
 import { EMPTY_GEAR_VISUAL, gearVisualPayload } from '@/utils/gearVisual'
 import { nextGearSortOrder } from '@/utils/gearListOrder'
 import Button from '@/components/ui/Button'
@@ -30,7 +36,13 @@ interface Props {
 }
 
 const EMPTY_FORM: ArmorFormData = {
-  name: '', description: '', armorValue: 0, traitIds: [], inUse: false, ...EMPTY_GEAR_VISUAL,
+  name: '',
+  description: '',
+  armorValue: 0,
+  category: DEFAULT_ARMOR_CATEGORY,
+  traitIds: [],
+  inUse: false,
+  ...EMPTY_GEAR_VISUAL,
 }
 
 type ArmorFormData = Omit<ArmorItem, 'id'>
@@ -59,6 +71,7 @@ function ArmorForm({
   traitCatalog: GearTraitDefinition[]
 }) {
   const { t } = useTranslation()
+  const category = resolveArmorCategory(data)
 
   return (
     <div className="bg-surface border border-blood/25 rounded-lg p-4 space-y-4">
@@ -93,6 +106,24 @@ function ArmorForm({
                 />
               </div>
             </div>
+
+            <label className="block space-y-1">
+              <span className="text-xs text-ink-muted">{t('inventory.armor.category')}</span>
+              <select
+                value={category}
+                onChange={(e) => onChange({
+                  ...data,
+                  category: e.target.value as ArmorCategory,
+                })}
+                className="w-full bg-void border border-border rounded px-3 py-2 text-sm text-ink font-mono focus:outline-none focus:border-blood/50"
+              >
+                {ARMOR_CATEGORIES.map((key) => (
+                  <option key={key} value={key}>
+                    {t(`inventory.armor.categories.${key}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
 
             <label className="flex items-center gap-2 cursor-pointer w-fit">
               <input
@@ -165,16 +196,26 @@ export default function ArmorList({ gameId, heroId, items, traitCatalog, readOnl
   const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ArmorItem | null>(null)
+  const [slotError, setSlotError] = useState<string | null>(null)
 
   const armorRef = collection(db, 'games', gameId, 'heroes', heroId, 'armor')
 
   async function handleAdd() {
     if (!form.name.trim()) return
+    const category = resolveArmorCategory(form)
+      if (form.inUse && !canEquipArmor(items, '__new__', category, traitCatalog)) {
+        setSlotError(t('inventory.armor.slotFull', {
+          category: t(`inventory.armor.categories.${category}`),
+        }))
+        return
+      }
     setSaving(true)
+    setSlotError(null)
     try {
       const { traitIds, traitValues, ...formRest } = form
       await addDoc(armorRef, {
         ...formRest,
+        category,
         armorValue: Number(form.armorValue) || 0,
         ...traitFieldsForCreate(traitIds, traitValues),
         ...gearVisualPayload(form),
@@ -188,10 +229,19 @@ export default function ArmorList({ gameId, heroId, items, traitCatalog, readOnl
   }
 
   async function handleUpdate(item: ArmorItem) {
+    const category = resolveArmorCategory(item)
+    if (item.inUse && !canEquipArmor(items, item.id, category, traitCatalog)) {
+      setSlotError(t('inventory.armor.slotFull', {
+        category: t(`inventory.armor.categories.${category}`),
+      }))
+      return
+    }
+    setSlotError(null)
     await updateDoc(doc(armorRef, item.id), {
       name: item.name,
       description: item.description,
       armorValue: item.armorValue,
+      category,
       inUse: Boolean(item.inUse),
       ...traitFieldsForUpdate(item.traitIds, item.traitValues),
       ...gearVisualPayload(item),
@@ -200,6 +250,14 @@ export default function ArmorList({ gameId, heroId, items, traitCatalog, readOnl
   }
 
   async function handleInUseChange(item: ArmorItem, inUse: boolean) {
+    if (inUse && !canEquipArmor(items, item.id, undefined, traitCatalog)) {
+      const category = resolveArmorCategory(item)
+      setSlotError(t('inventory.armor.slotFull', {
+        category: t(`inventory.armor.categories.${category}`),
+      }))
+      return
+    }
+    setSlotError(null)
     await updateDoc(doc(armorRef, item.id), { inUse })
   }
 
@@ -214,6 +272,10 @@ export default function ArmorList({ gameId, heroId, items, traitCatalog, readOnl
 
   return (
     <div className="space-y-3">
+      {slotError && (
+        <p className="text-xs text-blood leading-relaxed">{slotError}</p>
+      )}
+
       {items.length === 0 && !showForm && (
         <p className="text-ink-faint text-sm py-4 text-center">{t('inventory.armor.noItems')}</p>
       )}
@@ -249,6 +311,9 @@ export default function ArmorList({ gameId, heroId, items, traitCatalog, readOnl
             deleteLabel={t('common.delete')}
             chips={(
               <>
+                <GearStatChip>
+                  {t(`inventory.armor.categories.${resolveArmorCategory(item)}`)}
+                </GearStatChip>
                 <GearStatChip>{t('inventory.list.armorChip', { value: item.armorValue })}</GearStatChip>
                 <GearTraitChips
                   traitIds={item.traitIds}
@@ -268,7 +333,7 @@ export default function ArmorList({ gameId, heroId, items, traitCatalog, readOnl
             data={form}
             onChange={setForm}
             onSubmit={handleAdd}
-            onCancel={() => { setShowForm(false); setForm(EMPTY_FORM) }}
+            onCancel={() => { setShowForm(false); setForm(EMPTY_FORM); setSlotError(null) }}
             submitLabel={t('common.add')}
             saving={saving}
             gameId={gameId}
@@ -315,13 +380,20 @@ function EditableRow({
   onCancel: () => void
 }) {
   const { t } = useTranslation()
-  const [draft, setDraft] = useState(item)
+  const [draft, setDraft] = useState({
+    ...item,
+    category: resolveArmorCategory(item),
+  })
 
   return (
     <ArmorForm
       mode="edit"
       data={draft}
-      onChange={(data) => setDraft({ ...data, id: item.id })}
+      onChange={(data) => setDraft({
+        ...data,
+        id: item.id,
+        category: resolveArmorCategory(data),
+      })}
       onSubmit={() => onSave(draft)}
       onCancel={onCancel}
       submitLabel={t('common.save')}

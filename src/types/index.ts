@@ -152,6 +152,11 @@ export interface InventoryItem extends GearVisualFields {
 
 export type WeaponType = 'range' | 'melee'
 
+export type ArmorCategory = 'clothing' | 'supplementary' | 'main'
+
+/** Signed deltas applied to base armor slot limits (e.g. { clothing: 1 }). */
+export type ArmorSlotModifiers = Partial<Record<ArmorCategory, number>>
+
 export type GearTraitPolarity = 'positive' | 'negative'
 
 export type GearTraitScopeCategory = 'weapon' | 'armor' | 'gear'
@@ -164,6 +169,11 @@ export interface GearTraitDefinition {
   polarity: GearTraitPolarity
   description: string
   category: GearTraitCategory
+  /**
+   * Optional slot deltas while an item with this trait is in use.
+   * Positive = more slots, negative = fewer (atuty / wady).
+   */
+  armorSlotModifiers?: ArmorSlotModifiers
 }
 
 /** Per-item trait values keyed by catalog trait id (1–10). */
@@ -187,6 +197,8 @@ export interface ArmorItem extends GearVisualFields {
   name: string
   description: string
   armorValue: number
+  /** Protective category (clothing / supplementary / main). Missing → clothing. */
+  category?: ArmorCategory
   traitIds?: string[]
   traitValues?: GearTraitValues
   sortOrder?: number

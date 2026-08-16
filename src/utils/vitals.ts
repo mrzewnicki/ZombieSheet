@@ -33,6 +33,14 @@ function attr(attributes: Record<string, number> | undefined, key: string): numb
   return typeof value === 'number' && Number.isFinite(value) ? value : 0
 }
 
+/** Initiative = Opanowanie + Wyszukiwanie. */
+export function computeInitiative(
+  attributes: Record<string, number> | undefined,
+  skills: Record<string, number> | undefined,
+): number {
+  return attr(attributes, 'opanowanie') + attr(skills, 'wyszukiwanie')
+}
+
 function nonNegInt(value: unknown, fallback = 0): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
   return Math.max(0, Math.trunc(value))

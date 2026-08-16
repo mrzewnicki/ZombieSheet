@@ -76,6 +76,7 @@
       "personal": "Personal",
       "mechanics": "Mechanics",
       "inventory": "Inventory",
+      "combat": "Combat",
       "mutations": "Mutations & Contamination",
       "images": "Images",
       "history": "History",
@@ -207,7 +208,7 @@
     "activationCost": "Activation cost",
     "activationCostPlaceholder": "e.g. 2 MP or Contamination by rank…",
     "activationByRank": "Activation effect by rank",
-    "currentEffect": "Current rank effect",
+    "rankEffect": "Rank {{rank}} effect — {{rankName}}",
     "resonance": "Resonance",
     "resonancePlaceholder": "Narrative resonance for this mutation…",
     "hibernating": "Hibernating (after Resonance)",
@@ -477,6 +478,13 @@
       "noItems": "No armor.",
       "namePlaceholder": "E.g. Kevlar vest",
       "armorValue": "Armor",
+      "category": "Category",
+      "categories": {
+        "clothing": "Clothing / Padding",
+        "supplementary": "Supplementary armor",
+        "main": "Main armor"
+      },
+      "slotFull": "No free slot: {{category}}. Unequip another item in this category first.",
       "editItem": "Edit armor",
       "inUseTotal": "Armor in use: {{value}}"
     },
@@ -484,6 +492,38 @@
       "title": "Equipment",
       "editItem": "Edit item"
     }
+  },
+  "combat": {
+    "title": "Combat",
+    "subtitle": "Weapons and protection on the figure. Click a slot to pick an item from inventory.",
+    "weaponsSection": "Weapons in use",
+    "armorSection": "Protection",
+    "noWeapons": "No weapons in use.",
+    "emptySlot": "Empty slot",
+    "slotUsage": "{{used}} / {{limit}}",
+    "figureHint": "Click a slot to change gear",
+    "figureReadOnly": "Equipment preview",
+    "weaponSlots": {
+      "0": "Weapon (R)",
+      "1": "Weapon (L)"
+    },
+    "pickerWeaponTitle": "{{slot}}",
+    "pickerArmorTitle": "{{category}}",
+    "pickerHint": "Pick an inventory item or unequip the current one.",
+    "pickerEmpty": "No matching items in inventory.",
+    "unequip": "Unequip",
+    "swapError": "Could not change equipment.",
+    "weaponOverflow": "Extra weapons in use ({{count}})",
+    "skillsSection": "Skills — Combat",
+    "tooltipNoDescription": "No description.",
+    "initiative": "Initiative: {{value}}",
+    "initiativeFormula": "Composure + Scavenging",
+    "mutationsSection": "Active mutations — quick use",
+    "mutationsHint": "Active mutations from the Mutations sheet. Expand a slot to see rank effects and toggle hibernation.",
+    "mutationsEmpty": "No active mutations.",
+    "mutationUnnamed": "Unnamed",
+    "mutationNoEffect": "No effect for this rank.",
+    "mutationHibernateError": "Could not update mutation hibernation."
   },
   "history": {
     "title": "Change history",
@@ -565,8 +605,10 @@
     "emptyCategory": "No traits in this category.",
     "fields": {
       "description": "Description",
-      "polarity": "Polarity"
-    }
+      "polarity": "Polarity",
+      "armorSlotModifiers": "Protection slot modifiers"
+    },
+    "armorSlotModifiersHint": "Applies while an item with this trait is in use. Positive values raise limits (merit), negative lower them (flaw)."
   },
   "footer": {
     "about": "About"

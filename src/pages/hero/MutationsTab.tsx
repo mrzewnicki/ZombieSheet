@@ -26,13 +26,13 @@ import { useHeroOutletContext } from '@/hooks/useHeroOutletContext'
 import type {
   HeroContamination,
   HeroMutation,
-  MutationActivationByRank,
   MutationCharacter,
   MutationKind,
   MutationOrigin,
   MutationRank,
   MutationTraitLine,
 } from '@/types'
+import { normalizeMutation } from '@/utils/mutations'
 import {
   computeVitalMaxes,
   contaminationTotal,
@@ -355,7 +355,13 @@ function MutationCard({
 }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const effect = item.character === 'aktywna' ? item.activationByRank[item.rank] : ''
+  const currentEffect = item.character === 'aktywna'
+    ? item.activationByRank[item.rank]?.trim() ?? ''
+    : ''
+  const previousRank = item.rank > 1 ? ((item.rank - 1) as MutationRank) : null
+  const previousEffect = previousRank != null
+    ? item.activationByRank[previousRank]?.trim() ?? ''
+    : ''
 
   return (
     <div className={`bg-surface border rounded-lg overflow-hidden ${
@@ -446,10 +452,28 @@ function MutationCard({
                   {item.activationCost}
                 </p>
               )}
-              {effect && (
+              {previousEffect && previousRank != null && (
                 <p className="text-sm text-ink-muted leading-relaxed whitespace-pre-wrap">
-                  <span className="text-ink">{t('mutations.currentEffect')}: </span>
-                  {effect}
+                  <span className="text-ink">
+                    {t('mutations.rankEffect', {
+                      rank: previousRank,
+                      rankName: t(`mutations.ranks.${previousRank}`),
+                    })}
+                    :{' '}
+                  </span>
+                  {previousEffect}
+                </p>
+              )}
+              {currentEffect && (
+                <p className="text-sm text-ink-muted leading-relaxed whitespace-pre-wrap">
+                  <span className="text-ink">
+                    {t('mutations.rankEffect', {
+                      rank: item.rank,
+                      rankName: t(`mutations.ranks.${item.rank}`),
+                    })}
+                    :{' '}
+                  </span>
+                  {currentEffect}
                 </p>
               )}
             </>
@@ -479,39 +503,6 @@ function MutationCard({
       )}
     </div>
   )
-}
-
-function normalizeMutation(id: string, raw: Record<string, unknown>): HeroMutation {
-  const activationByRank = (raw.activationByRank ?? {}) as Partial<MutationActivationByRank>
-  return {
-    id,
-    name: typeof raw.name === 'string' ? raw.name : '',
-    origin: MUTATION_ORIGINS.includes(raw.origin as MutationOrigin)
-      ? raw.origin as MutationOrigin
-      : 'liveCore',
-    kind: MUTATION_KINDS.includes(raw.kind as MutationKind)
-      ? raw.kind as MutationKind
-      : 'fizyczna',
-    character: MUTATION_CHARACTERS.includes(raw.character as MutationCharacter)
-      ? raw.character as MutationCharacter
-      : 'pasywna',
-    rank: MUTATION_RANKS.includes(raw.rank as MutationRank)
-      ? raw.rank as MutationRank
-      : 1,
-    description: typeof raw.description === 'string' ? raw.description : '',
-    atuty: Array.isArray(raw.atuty) ? raw.atuty as MutationTraitLine[] : [],
-    wady: Array.isArray(raw.wady) ? raw.wady as MutationTraitLine[] : [],
-    activationCost: typeof raw.activationCost === 'string' ? raw.activationCost : '',
-    activationByRank: {
-      1: activationByRank[1] ?? '',
-      2: activationByRank[2] ?? '',
-      3: activationByRank[3] ?? '',
-      4: activationByRank[4] ?? '',
-    },
-    resonance: typeof raw.resonance === 'string' ? raw.resonance : '',
-    hibernating: Boolean(raw.hibernating),
-    sortOrder: typeof raw.sortOrder === 'number' ? raw.sortOrder : undefined,
-  }
 }
 
 function toPayload(data: MutationFormData) {

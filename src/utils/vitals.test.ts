@@ -7,6 +7,7 @@ import {
   computeMaxFatigue,
   computeMaxHp,
   computeMaxStress,
+  computeInitiative,
   computeVitalMaxes,
   contaminationTotal,
   defaultVitals,
@@ -37,6 +38,17 @@ describe('computeMaxFatigue / computeMaxStress / computeMaxContamination', () =>
 
   it('sums kondycja + opanowanie + determinacja for contamination', () => {
     expect(computeMaxContamination({ kondycja: 2, opanowanie: 3, determinacja: 1 })).toBe(6)
+  })
+})
+
+describe('computeInitiative', () => {
+  it('sums opanowanie + wyszukiwanie', () => {
+    expect(computeInitiative({ opanowanie: 3 }, { wyszukiwanie: 2 })).toBe(5)
+  })
+
+  it('treats missing values as 0', () => {
+    expect(computeInitiative({}, {})).toBe(0)
+    expect(computeInitiative({ opanowanie: 4 }, undefined)).toBe(4)
   })
 })
 

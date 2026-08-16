@@ -9,6 +9,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/config/firebase'
 import type {
+  ArmorSlotModifiers,
   GearTraitCategory,
   GearTraitDefinition,
   GearTraitPolarity,
@@ -17,6 +18,7 @@ import {
   findGearTraitByName,
   GEAR_TRAITS_COLLECTION,
 } from '@/utils/gearTraits'
+import { armorSlotModifiersEqual, armorSlotModifiersPayload } from '@/config/armorSlots'
 import { unassignTraitFromAllItems } from '@/utils/traitAssignments'
 
 export const GEAR_TRAIT_CHANGES_COLLECTION = 'gearTraitChanges'
@@ -188,6 +190,8 @@ export async function saveTraitCatalogDescription(
     description: string
     author: ChangeAuthor
     descriptionLabel: string
+    armorSlotModifiers?: ArmorSlotModifiers
+    armorSlotModifiersLabel?: string
   },
 ): Promise<void> {
   const name = params.traitName.trim()
@@ -196,6 +200,9 @@ export async function saveTraitCatalogDescription(
   const existing = findGearTraitByName(catalog, name, params.category)
   const description = params.description
   const clearing = isTraitDescriptionEmpty(description)
+  const modifiersPayload = armorSlotModifiersPayload(params.armorSlotModifiers)
+  const modifiersChanged = params.armorSlotModifiers !== undefined
+    && !armorSlotModifiersEqual(existing?.armorSlotModifiers, params.armorSlotModifiers)
 
   if (existing) {
     if (clearing) {
@@ -203,33 +210,56 @@ export async function saveTraitCatalogDescription(
       return
     }
 
-    if (existing.description === description) return
+    const descriptionChanged = existing.description !== description
+    if (!descriptionChanged && !modifiersChanged) return
 
-    await updateDoc(doc(db, 'games', gameId, GEAR_TRAITS_COLLECTION, existing.id), {
-      description,
-    })
-    await logGearTraitChange({
-      gameId,
-      traitId: existing.id,
-      traitName: existing.name,
-      category: params.category,
-      field: 'description',
-      label: params.descriptionLabel,
-      oldValue: existing.description,
-      newValue: description,
-      author: params.author,
-    })
+    const patch: Record<string, unknown> = {}
+    if (descriptionChanged) patch.description = description
+    if (modifiersChanged) {
+      patch.armorSlotModifiers = modifiersPayload ?? null
+    }
+
+    await updateDoc(doc(db, 'games', gameId, GEAR_TRAITS_COLLECTION, existing.id), patch)
+    if (descriptionChanged) {
+      await logGearTraitChange({
+        gameId,
+        traitId: existing.id,
+        traitName: existing.name,
+        category: existing.category,
+        field: 'description',
+        label: params.descriptionLabel,
+        oldValue: existing.description,
+        newValue: description,
+        author: params.author,
+      })
+    }
+    if (modifiersChanged) {
+      await logGearTraitChange({
+        gameId,
+        traitId: existing.id,
+        traitName: existing.name,
+        category: existing.category,
+        field: 'armorSlotModifiers',
+        label: params.armorSlotModifiersLabel ?? 'armorSlotModifiers',
+        oldValue: existing.armorSlotModifiers ?? null,
+        newValue: modifiersPayload,
+        author: params.author,
+      })
+    }
     return
   }
 
   if (clearing) return
 
-  const ref = await addDoc(collection(db, 'games', gameId, GEAR_TRAITS_COLLECTION), {
+  const createData: Record<string, unknown> = {
     name,
     polarity: params.polarity,
     description,
     category: params.category,
-  })
+  }
+  if (modifiersPayload) createData.armorSlotModifiers = modifiersPayload
+
+  const ref = await addDoc(collection(db, 'games', gameId, GEAR_TRAITS_COLLECTION), createData)
 
   await logGearTraitChange({
     gameId,
@@ -242,6 +272,19 @@ export async function saveTraitCatalogDescription(
     newValue: description,
     author: params.author,
   })
+  if (modifiersPayload) {
+    await logGearTraitChange({
+      gameId,
+      traitId: ref.id,
+      traitName: name,
+      category: params.category,
+      field: 'armorSlotModifiers',
+      label: params.armorSlotModifiersLabel ?? 'armorSlotModifiers',
+      oldValue: null,
+      newValue: modifiersPayload,
+      author: params.author,
+    })
+  }
 }
 
 export async function updateTraitRowPolarity(

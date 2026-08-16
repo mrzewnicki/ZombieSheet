@@ -259,27 +259,27 @@ export default function GearListRow({
               />
             </label>
           )}
-          {!readOnly && (
-            <>
-              <button
-                type="button"
-                onClick={onEdit}
-                title={editLabel}
-                aria-label={editLabel}
-                className="w-7 h-7 flex items-center justify-center text-ink-faint hover:text-ink rounded hover:bg-elevated transition-colors"
-              >
-                <EditIcon />
-              </button>
-              <button
-                type="button"
-                onClick={onDelete}
-                title={deleteLabel}
-                aria-label={deleteLabel}
-                className="w-7 h-7 flex items-center justify-center text-ink-faint hover:text-blood rounded hover:bg-elevated transition-colors"
-              >
-                <DeleteIcon />
-              </button>
-            </>
+          {!readOnly && onEdit && (
+            <button
+              type="button"
+              onClick={onEdit}
+              title={editLabel}
+              aria-label={editLabel}
+              className="w-7 h-7 flex items-center justify-center text-ink-faint hover:text-ink rounded hover:bg-elevated transition-colors"
+            >
+              <EditIcon />
+            </button>
+          )}
+          {!readOnly && onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              title={deleteLabel}
+              aria-label={deleteLabel}
+              className="w-7 h-7 flex items-center justify-center text-ink-faint hover:text-blood rounded hover:bg-elevated transition-colors"
+            >
+              <DeleteIcon />
+            </button>
           )}
         </div>
       )}

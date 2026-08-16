@@ -76,6 +76,7 @@
       "personal": "Osobiste",
       "mechanics": "Mechanika",
       "inventory": "Ekwipunek",
+      "combat": "Walka",
       "mutations": "Mutacje i Skażenie",
       "images": "Obrazy",
       "history": "Historia",
@@ -207,7 +208,7 @@
     "activationCost": "Koszt aktywacji",
     "activationCostPlaceholder": "np. 2 PM lub Skażenie wg rangi…",
     "activationByRank": "Efekt aktywacji per ranga",
-    "currentEffect": "Efekt bieżącej rangi",
+    "rankEffect": "Efekt rangi {{rank}} — {{rankName}}",
     "resonance": "Rezonans",
     "resonancePlaceholder": "Fabularny rezonans tej mutacji…",
     "hibernating": "W hibernacji (po Rezonansie)",
@@ -477,6 +478,13 @@
       "noItems": "Brak pancerzy.",
       "namePlaceholder": "Np. Kamizelka kevlarowa",
       "armorValue": "Pancerz",
+      "category": "Kategoria",
+      "categories": {
+        "clothing": "Odzież / Amortyzacja",
+        "supplementary": "Pancerz uzupełniający",
+        "main": "Pancerz główny"
+      },
+      "slotFull": "Brak wolnego slotu: {{category}}. Najpierw zdejmij inny pancerz z tej kategorii.",
       "editItem": "Edytuj pancerz",
       "inUseTotal": "Pancerz w użyciu: {{value}}"
     },
@@ -484,6 +492,38 @@
       "title": "Ekwipunek",
       "editItem": "Edytuj przedmiot"
     }
+  },
+  "combat": {
+    "title": "Walka",
+    "subtitle": "Broń i ochrona na sylwetce. Kliknij slot, aby wybrać przedmiot z ekwipunku.",
+    "weaponsSection": "Broń w użyciu",
+    "armorSection": "Ochrona",
+    "noWeapons": "Brak broni w użyciu.",
+    "emptySlot": "Wolny slot",
+    "slotUsage": "{{used}} / {{limit}}",
+    "figureHint": "Kliknij slot, aby zmienić wyposażenie",
+    "figureReadOnly": "Podgląd wyposażenia",
+    "weaponSlots": {
+      "0": "Broń (P)",
+      "1": "Broń (L)"
+    },
+    "pickerWeaponTitle": "{{slot}}",
+    "pickerArmorTitle": "{{category}}",
+    "pickerHint": "Wybierz przedmiot z ekwipunku albo zdejmij aktualny.",
+    "pickerEmpty": "Brak pasujących przedmiotów w ekwipunku.",
+    "unequip": "Zdejmij",
+    "swapError": "Nie udało się zmienić wyposażenia.",
+    "weaponOverflow": "Dodatkowa broń w użyciu ({{count}})",
+    "skillsSection": "Umiejętności — Walka",
+    "tooltipNoDescription": "Brak opisu.",
+    "initiative": "Inicjatywa: {{value}}",
+    "initiativeFormula": "Opanowanie + Wyszukiwanie",
+    "mutationsSection": "Mutacje aktywne — szybkie użycie",
+    "mutationsHint": "Mutacje aktywne z karty Mutacje. Rozwiń slot, aby zobaczyć efekty rang i oznaczyć hibernację.",
+    "mutationsEmpty": "Brak mutacji aktywnych.",
+    "mutationUnnamed": "Bez nazwy",
+    "mutationNoEffect": "Brak efektu dla tej rangi.",
+    "mutationHibernateError": "Nie udało się zmienić hibernacji mutacji."
   },
   "history": {
     "title": "Historia zmian",
@@ -565,8 +605,10 @@
     "emptyCategory": "Brak właściwości w tej kategorii.",
     "fields": {
       "description": "Opis",
-      "polarity": "Efekt"
-    }
+      "polarity": "Efekt",
+      "armorSlotModifiers": "Modyfikatory slotów ochrony"
+    },
+    "armorSlotModifiersHint": "Działa, gdy przedmiot z tą właściwością jest w użyciu. Dodatnie zwiększają limity (atut), ujemne zmniejszają (wada)."
   },
   "footer": {
     "about": "O aplikacji"

@@ -1,6 +1,8 @@
 import { addDoc, collection, deleteField, doc, updateDoc, type FieldValue } from 'firebase/firestore'
 import { db } from '@/config/firebase'
 import type {
+  ArmorCategory,
+  ArmorSlotModifiers,
   GearTraitCategory,
   GearTraitDefinition,
   GearTraitPolarity,
@@ -37,11 +39,27 @@ export function normalizeGearTraitCategory(value: unknown): GearTraitCategory {
   return DEFAULT_GEAR_TRAIT_CATEGORY
 }
 
+export function normalizeArmorSlotModifiers(
+  value: unknown,
+): ArmorSlotModifiers | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const raw = value as Record<string, unknown>
+  const result: ArmorSlotModifiers = {}
+  for (const key of ['clothing', 'supplementary', 'main'] as ArmorCategory[]) {
+    const n = raw[key]
+    if (typeof n === 'number' && Number.isFinite(n) && n !== 0) {
+      result[key] = Math.trunc(n)
+    }
+  }
+  return Object.keys(result).length > 0 ? result : undefined
+}
+
 export function normalizeGearTraitDefinition(
   id: string,
   data: Record<string, unknown>,
   fallbackCategory: GearTraitCategory = DEFAULT_GEAR_TRAIT_CATEGORY,
 ): GearTraitDefinition {
+  const armorSlotModifiers = normalizeArmorSlotModifiers(data.armorSlotModifiers)
   return {
     id,
     name: String(data.name ?? ''),
@@ -50,6 +68,7 @@ export function normalizeGearTraitDefinition(
     category: data.category != null
       ? normalizeGearTraitCategory(data.category)
       : fallbackCategory,
+    ...(armorSlotModifiers ? { armorSlotModifiers } : {}),
   }
 }
 

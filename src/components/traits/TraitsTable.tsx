@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { GearTraitCategory, GearTraitPolarity } from '@/types'
+import type { ArmorCategory, ArmorSlotModifiers, GearTraitCategory, GearTraitPolarity } from '@/types'
 import {
   createTraitCatalogPlaceholder,
   groupTraitsForTable,
@@ -13,6 +13,7 @@ import {
   type TraitTableRow,
 } from '@/utils/gearTraitCatalog'
 import type { GearTraitDefinition } from '@/types'
+import { ARMOR_CATEGORIES } from '@/config/armorSlots'
 import { gearTraitPolarityClasses } from '@/utils/gearTraits'
 import RichTextEditor from '@/components/ui/RichTextEditor'
 import Button from '@/components/ui/Button'
@@ -243,6 +244,7 @@ export default function TraitsTable({ gameId, catalog, authorUid, authorName }: 
   const [categorySearches, setCategorySearches] = useState(EMPTY_CATEGORY_SEARCHES)
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null)
   const [editDescription, setEditDescription] = useState('')
+  const [editSlotModifiers, setEditSlotModifiers] = useState<ArmorSlotModifiers>({})
   const [saving, setSaving] = useState(false)
   const [polaritySaving, setPolaritySaving] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -291,13 +293,32 @@ export default function TraitsTable({ gameId, catalog, authorUid, authorName }: 
     const trait = row.byCategory[category]
     setEditTarget({ row, category })
     setEditDescription(trait?.description ?? '')
+    setEditSlotModifiers({ ...(trait?.armorSlotModifiers ?? {}) })
     setError('')
   }
 
   function closeEditor() {
     setEditTarget(null)
     setEditDescription('')
+    setEditSlotModifiers({})
     setError('')
+  }
+
+  function setSlotModifier(category: ArmorCategory, raw: string) {
+    setEditSlotModifiers((prev) => {
+      const next = { ...prev }
+      if (raw.trim() === '' || raw === '-' || raw === '+') {
+        delete next[category]
+        return next
+      }
+      const n = Number(raw)
+      if (!Number.isFinite(n) || n === 0) {
+        delete next[category]
+      } else {
+        next[category] = Math.trunc(n)
+      }
+      return next
+    })
   }
 
   function buildRemoveConfirmMessage(
@@ -401,6 +422,8 @@ export default function TraitsTable({ gameId, catalog, authorUid, authorName }: 
         description: editDescription,
         author,
         descriptionLabel: t('traitsCatalog.fields.description'),
+        armorSlotModifiers: editSlotModifiers,
+        armorSlotModifiersLabel: t('traitsCatalog.fields.armorSlotModifiers'),
       })
       closeEditor()
     } catch {
@@ -556,6 +579,27 @@ export default function TraitsTable({ gameId, catalog, authorUid, authorName }: 
               rows={6}
               autoFocus
             />
+
+            <div className="space-y-2">
+              <p className="text-xs text-ink-muted">
+                {t('traitsCatalog.fields.armorSlotModifiers')}
+              </p>
+              <p className="text-xs text-ink-faint leading-relaxed">
+                {t('traitsCatalog.armorSlotModifiersHint')}
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {ARMOR_CATEGORIES.map((category) => (
+                  <Input
+                    key={category}
+                    label={t(`inventory.armor.categories.${category}`)}
+                    type="number"
+                    value={editSlotModifiers[category] ?? ''}
+                    onChange={(e) => setSlotModifier(category, e.target.value)}
+                    placeholder="0"
+                  />
+                ))}
+              </div>
+            </div>
 
             {error && <p className="text-sm text-blood">{error}</p>}
 
