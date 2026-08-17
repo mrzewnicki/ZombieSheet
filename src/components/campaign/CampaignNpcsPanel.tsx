@@ -88,6 +88,7 @@ export default function CampaignNpcsPanel({ gameId, npcs, canEdit }: Props) {
       && original.role === draft.role
       && original.notes === draft.notes
       && original.imageURL === draft.imageURL
+      && (original.icon ?? '') === (draft.icon ?? '')
     ) {
       return
     }

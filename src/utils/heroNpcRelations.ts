@@ -1,4 +1,4 @@
-import type { CampaignNpc, HeroNpcRelation, HeroNpcStance } from '@/types'
+import type { CampaignNpc, HeroNpcNodePos, HeroNpcRelation, HeroNpcStance } from '@/types'
 
 export const HERO_NPC_NODE_ID = '__hero__'
 
@@ -128,6 +128,80 @@ export function npcIdsInRelations(relations: HeroNpcRelation[]): string[] {
   return [...ids]
 }
 
+export function normalizeNpcNodes(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const id of raw) {
+    if (typeof id !== 'string' || !id || id === HERO_NPC_NODE_ID) continue
+    if (seen.has(id)) continue
+    seen.add(id)
+    out.push(id)
+  }
+  return out
+}
+
+export function pruneNpcNodes(
+  ids: string[],
+  npcs: Pick<CampaignNpc, 'id'>[],
+): string[] {
+  const exist = new Set(npcs.map((n) => n.id))
+  return ids.filter((id) => exist.has(id))
+}
+
+export function graphNpcIds(
+  relations: HeroNpcRelation[],
+  extraNodeIds: string[] = [],
+): string[] {
+  const ids = new Set(npcIdsInRelations(relations))
+  for (const id of extraNodeIds) {
+    if (id && id !== HERO_NPC_NODE_ID) ids.add(id)
+  }
+  return [...ids]
+}
+
+export function clampGraphCoord(value: number): number {
+  if (!Number.isFinite(value)) return 50
+  return Math.min(96, Math.max(4, value))
+}
+
+export function normalizeNpcPositions(raw: unknown): Record<string, HeroNpcNodePos> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  const out: Record<string, HeroNpcNodePos> = {}
+  for (const [id, val] of Object.entries(raw as Record<string, unknown>)) {
+    if (!id || !val || typeof val !== 'object' || Array.isArray(val)) continue
+    const src = val as Record<string, unknown>
+    if (typeof src.x !== 'number' || typeof src.y !== 'number') continue
+    if (!Number.isFinite(src.x) || !Number.isFinite(src.y)) continue
+    out[id] = { x: clampGraphCoord(src.x), y: clampGraphCoord(src.y) }
+  }
+  return out
+}
+
+export function pruneNpcPositions(
+  positions: Record<string, HeroNpcNodePos>,
+  npcIds: string[],
+): Record<string, HeroNpcNodePos> {
+  const allowed = new Set(npcIds)
+  allowed.add(HERO_NPC_NODE_ID)
+  const out: Record<string, HeroNpcNodePos> = {}
+  for (const [id, pos] of Object.entries(positions)) {
+    if (!allowed.has(id)) continue
+    out[id] = pos
+  }
+  return out
+}
+
+export function npcPositionsPayload(
+  positions: Record<string, HeroNpcNodePos>,
+): Record<string, HeroNpcNodePos> {
+  const out: Record<string, HeroNpcNodePos> = {}
+  for (const [id, pos] of Object.entries(positions)) {
+    out[id] = { x: clampGraphCoord(pos.x), y: clampGraphCoord(pos.y) }
+  }
+  return out
+}
+
 export function heroNpcRelationPayload(relations: HeroNpcRelation[]): HeroNpcRelation[] {
   return relations.map((r) => ({
     id: r.id,
@@ -145,114 +219,83 @@ export interface GraphNodePos {
   depth: number
 }
 
+function stableAngle(id: string): number {
+  let h = 2166136261
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return ((h >>> 0) / 0xffffffff) * Math.PI * 2
+}
+
 /**
- * Radial BFS layout from the hero. Nodes only connected among NPCs are
- * placed on outer rings of their own components.
+ * Place graph nodes. Saved positions always win.
+ * Auto-placement ignores edges, so linking two nodes never moves them.
  */
 export function layoutHeroNpcGraph(
   relations: HeroNpcRelation[],
   viewBox = 100,
+  extraNodeIds: string[] = [],
+  savedPositions: Record<string, HeroNpcNodePos> = {},
 ): Map<string, GraphNodePos> {
   const cx = viewBox / 2
   const cy = viewBox / 2
-  const adj = new Map<string, Set<string>>()
-
-  function addEdge(a: string, b: string) {
-    if (!adj.has(a)) adj.set(a, new Set())
-    if (!adj.has(b)) adj.set(b, new Set())
-    adj.get(a)!.add(b)
-    adj.get(b)!.add(a)
-  }
-
-  for (const r of relations) {
-    addEdge(r.fromId, r.toId)
-  }
-
-  if (!adj.has(HERO_NPC_NODE_ID)) {
-    adj.set(HERO_NPC_NODE_ID, new Set())
-  }
-
+  const npcIds = graphNpcIds(relations, extraNodeIds)
   const positions = new Map<string, GraphNodePos>()
-  positions.set(HERO_NPC_NODE_ID, { id: HERO_NPC_NODE_ID, x: cx, y: cy, depth: 0 })
 
-  const depthOf = new Map<string, number>()
-  depthOf.set(HERO_NPC_NODE_ID, 0)
-  const queue = [HERO_NPC_NODE_ID]
-  const visited = new Set<string>([HERO_NPC_NODE_ID])
+  const heroSaved = savedPositions[HERO_NPC_NODE_ID]
+  positions.set(HERO_NPC_NODE_ID, {
+    id: HERO_NPC_NODE_ID,
+    x: heroSaved?.x ?? cx,
+    y: heroSaved?.y ?? cy,
+    depth: 0,
+  })
 
-  while (queue.length > 0) {
-    const cur = queue.shift()!
-    const depth = depthOf.get(cur) ?? 0
-    for (const next of adj.get(cur) ?? []) {
-      if (visited.has(next)) continue
-      visited.add(next)
-      depthOf.set(next, depth + 1)
-      queue.push(next)
+  const unsaved: string[] = []
+  for (const id of npcIds) {
+    const saved = savedPositions[id]
+    if (saved) {
+      positions.set(id, { id, x: saved.x, y: saved.y, depth: 1 })
+    } else {
+      unsaved.push(id)
     }
   }
 
-  const byDepth = new Map<number, string[]>()
-  for (const [id, depth] of depthOf) {
-    if (id === HERO_NPC_NODE_ID) continue
-    const list = byDepth.get(depth) ?? []
-    list.push(id)
-    byDepth.set(depth, list)
-  }
+  if (unsaved.length === 0) return positions
 
-  const maxDepth = Math.max(0, ...byDepth.keys())
-  for (const [depth, ids] of byDepth) {
-    const n = ids.length
-    const radius = maxDepth <= 1
-      ? 34
-      : 18 + (depth / maxDepth) * 30
-    ids.forEach((id, i) => {
-      const angle = n === 1
+  const anySavedNpc = npcIds.some((id) => Boolean(savedPositions[id]))
+  const radius = 34
+  unsaved.sort()
+  unsaved.forEach((id, i) => {
+    const n = unsaved.length
+    const angle = anySavedNpc
+      ? stableAngle(id)
+      : n === 1
         ? -Math.PI / 2
         : (i / n) * Math.PI * 2 - Math.PI / 2
-      positions.set(id, {
-        id,
-        x: cx + Math.cos(angle) * radius,
-        y: cy + Math.sin(angle) * radius,
-        depth,
-      })
+    positions.set(id, {
+      id,
+      x: clampGraphCoord(cx + Math.cos(angle) * radius),
+      y: clampGraphCoord(cy + Math.sin(angle) * radius),
+      depth: 1,
     })
-  }
-
-  // Orphan components (no path to hero): fan them on the outer rim.
-  const orphans = [...adj.keys()].filter((id) => !visited.has(id))
-  if (orphans.length > 0) {
-    // BFS each orphan component from its first node
-    const placed = new Set(positions.keys())
-    let orphanIndex = 0
-    for (const start of orphans) {
-      if (placed.has(start)) continue
-      const comp: string[] = []
-      const q = [start]
-      const seen = new Set<string>([start])
-      while (q.length) {
-        const cur = q.shift()!
-        comp.push(cur)
-        for (const next of adj.get(cur) ?? []) {
-          if (seen.has(next) || placed.has(next)) continue
-          seen.add(next)
-          q.push(next)
-        }
-      }
-      const baseAngle = (orphanIndex / Math.max(1, orphans.length)) * Math.PI * 2
-      orphanIndex += 1
-      comp.forEach((id, i) => {
-        const radius = 38
-        const angle = baseAngle + (i - (comp.length - 1) / 2) * 0.35
-        positions.set(id, {
-          id,
-          x: cx + Math.cos(angle) * radius,
-          y: cy + Math.sin(angle) * radius,
-          depth: 99,
-        })
-        placed.add(id)
-      })
-    }
-  }
+  })
 
   return positions
+}
+
+/** Fill auto-layout slots for graph nodes that do not yet have a saved position. */
+export function fillMissingNpcPositions(
+  relations: HeroNpcRelation[],
+  extraNodeIds: string[],
+  savedPositions: Record<string, HeroNpcNodePos>,
+  viewBox = 100,
+): Record<string, HeroNpcNodePos> {
+  const laid = layoutHeroNpcGraph(relations, viewBox, extraNodeIds, savedPositions)
+  const next = { ...savedPositions }
+  for (const [id, pos] of laid) {
+    if (next[id]) continue
+    next[id] = { x: pos.x, y: pos.y }
+  }
+  return npcPositionsPayload(next)
 }

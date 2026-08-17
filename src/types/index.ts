@@ -130,6 +130,10 @@ export interface Hero {
   vitals: HeroVitals
   /** Relationship graph edges (hero↔NPC and NPC↔NPC). */
   npcRelations?: HeroNpcRelation[]
+  /** NPC ids placed on this hero's graph even without a relation. */
+  npcNodes?: string[]
+  /** Manual graph layout, percent coords 0–100. Key is `__hero__` or NPC id. */
+  npcPositions?: Record<string, HeroNpcNodePos>
   sheetVersion: number
   createdAt: Timestamp
   updatedAt: Timestamp
@@ -137,6 +141,11 @@ export interface Hero {
 
 /** Labeled relationship graph on the hero sheet (hero ↔ NPC and NPC ↔ NPC). */
 export type HeroNpcStance = 'ally' | 'enemy' | 'neutral'
+
+export interface HeroNpcNodePos {
+  x: number
+  y: number
+}
 
 export interface HeroNpcRelation {
   id: string
@@ -155,6 +164,8 @@ export interface CampaignNpc {
   name: string
   role: string
   imageURL: string
+  /** Optional Game-Icons / RPG Awesome icon when there is no portrait. */
+  icon?: string
   notes: string
   /** Creator uid — players may edit their own; GM edits all. */
   createdByUid?: string

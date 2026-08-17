@@ -8,6 +8,7 @@ export function newCampaignNpc(createdByUid: string): CampaignNpc {
     name: '',
     role: '',
     imageURL: '',
+    icon: '',
     notes: '',
     createdByUid,
   }
@@ -23,6 +24,7 @@ export function normalizeCampaignNpc(
     name: typeof src.name === 'string' ? src.name : '',
     role: typeof src.role === 'string' ? src.role : '',
     imageURL: typeof src.imageURL === 'string' ? src.imageURL : '',
+    icon: typeof src.icon === 'string' ? src.icon : '',
     notes: typeof src.notes === 'string' ? src.notes : '',
     createdByUid: typeof src.createdByUid === 'string' ? src.createdByUid : undefined,
   }
@@ -42,6 +44,7 @@ export function campaignNpcPayload(
     name: npc.name.trim(),
     role: npc.role.trim(),
     imageURL: npc.imageURL.trim(),
+    icon: npc.icon?.trim() ?? '',
     notes: npc.notes.trim(),
     createdByUid,
   }

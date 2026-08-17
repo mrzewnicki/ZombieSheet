@@ -134,9 +134,14 @@
       "relationLabelPlaceholder": "e.g. friend, debt, mentor…",
       "connect": "Connect",
       "createAndConnect": "Create and connect",
+      "create": "Create",
+      "nodesFieldLabel": "NPCs on graph",
+      "positionsFieldLabel": "NPC graph layout",
       "removeRelation": "Remove link",
+      "removeFromBoard": "Remove from board",
       "allLinked": "All available NPCs are already on the graph.",
       "allLinkedFrom": "No free targets from this node — everyone is already linked.",
+      "connectModeHint": "Click two characters to add a connection.",
       "connectFrom": "New link from: {{name}}",
       "edgeTitle": "Connection",
       "nodeLinks": "Links",
@@ -150,7 +155,9 @@
       "legendHero": "Character",
       "legendAlly": "Ally",
       "legendEnemy": "Enemy",
-      "legendNeutral": "Neutral"
+      "legendNeutral": "Neutral",
+      "graphZoom": "Graph zoom",
+      "graphZoomReset": "Reset view"
     }
   },
   "mechanics": {
@@ -831,6 +838,8 @@
     "uploadImage": "Add art",
     "changeImage": "Change art",
     "clearImage": "Clear art",
+    "imageUrlPlaceholder": "https://…",
+    "icon": "Icon",
     "manageLink": "NPC panel (GM)",
     "relationsHint": "Build NPC relations on the hero sheet → Relations.",
     "roleSuggestions": [

@@ -134,9 +134,14 @@
       "relationLabelPlaceholder": "np. przyjaciel, dług, mentor…",
       "connect": "Połącz",
       "createAndConnect": "Utwórz i połącz",
+      "create": "Utwórz",
+      "nodesFieldLabel": "NPC na grafie",
+      "positionsFieldLabel": "Układ grafu NPC",
       "removeRelation": "Usuń połączenie",
+      "removeFromBoard": "Usuń z planszy",
       "allLinked": "Wszyscy dostępni NPC są już na grafie.",
       "allLinkedFrom": "Brak wolnych celów z tego węzła — wszyscy są już połączeni.",
+      "connectModeHint": "Kliknij dwie postacie, aby je połączyć.",
       "connectFrom": "Nowe połączenie od: {{name}}",
       "edgeTitle": "Połączenie",
       "nodeLinks": "Połączenia",
@@ -150,7 +155,9 @@
       "legendHero": "Postać",
       "legendAlly": "Sojusznik",
       "legendEnemy": "Wróg",
-      "legendNeutral": "Neutralny"
+      "legendNeutral": "Neutralny",
+      "graphZoom": "Zoom grafu",
+      "graphZoomReset": "Resetuj widok"
     }
   },
   "mechanics": {
@@ -831,6 +838,8 @@
     "uploadImage": "Dodaj art",
     "changeImage": "Zmień art",
     "clearImage": "Usuń art",
+    "imageUrlPlaceholder": "https://…",
+    "icon": "Ikona",
     "manageLink": "Panel NPC (MG)",
     "relationsHint": "Relacje z NPC budujesz na karcie postaci → Relacje.",
     "roleSuggestions": [
