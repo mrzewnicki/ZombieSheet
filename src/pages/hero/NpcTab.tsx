@@ -449,19 +449,18 @@ export default function NpcTab() {
           onCancel={handleArtCropCancel}
         />
       )}
-      {(saving || error || isGm) && (
-        <div className="flex flex-col items-end text-right space-y-1">
-          {saving && <p className="text-[10px] font-mono text-ink-faint">{t('settlement.saving')}</p>}
-          {error && <p className="text-xs text-blood max-w-[14rem]">{error}</p>}
-          {isGm && (
-            <Link
-              to={`/game/${gameId}/npcs`}
-              className="block text-[10px] font-mono text-blood-light hover:underline"
-            >
-              {t('campaignNpcs.manageLink')} →
-            </Link>
-          )}
+      {isGm && (
+        <div className="flex justify-end">
+          <Link
+            to={`/game/${gameId}/npcs`}
+            className="block text-[10px] font-mono text-blood-light hover:underline"
+          >
+            {t('campaignNpcs.manageLink')} →
+          </Link>
         </div>
+      )}
+      {error && (
+        <p className="text-xs text-blood text-right max-w-[14rem] ml-auto">{error}</p>
       )}
 
       <div className="space-y-3">
@@ -487,6 +486,7 @@ export default function NpcTab() {
                 : t('hero.npc.connectModeHint')
               : undefined
           }
+          saving={saving}
           cornerActions={canEdit ? (
             <>
               <div className="flex gap-1">

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { FaUser } from 'react-icons/fa'
 import { useTranslation } from 'react-i18next'
 import GearIcon from '@/components/hero/GearIcon'
+import Spinner from '@/components/ui/Spinner'
 import type { CampaignNpc, Hero, HeroNpcNodePos, HeroNpcRelation } from '@/types'
 import { heroFullName } from '@/types'
 import { hasRenderableGearIcon } from '@/utils/gearIcons'
@@ -30,6 +31,7 @@ interface Props {
   linkFromId?: string | null
   onLinkPick?: (id: string) => void
   hint?: string
+  saving?: boolean
   cornerActions?: ReactNode
   detailPanel?: ReactNode
 }
@@ -60,6 +62,7 @@ export default function HeroNpcGraph({
   linkFromId = null,
   onLinkPick,
   hint,
+  saving = false,
   cornerActions,
   detailPanel,
 }: Props) {
@@ -531,6 +534,16 @@ export default function HeroNpcGraph({
             onPointerDown={(e) => e.stopPropagation()}
           >
             {cornerActions}
+          </div>
+        )}
+        {saving && (
+          <div
+            data-graph-overlay=""
+            className="absolute bottom-2 left-2 z-30 pointer-events-none"
+            aria-live="polite"
+            aria-label={t('settlement.saving')}
+          >
+            <Spinner size="sm" />
           </div>
         )}
         {hint && (
