@@ -23,5 +23,14 @@ export default defineConfig(({ command }) => ({
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
     },
+    proxy: {
+      // Bypass Storage CORS in local dev so we can decode audio for waveforms.
+      '/__fb_storage': {
+        target: 'https://firebasestorage.googleapis.com',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/__fb_storage/, ''),
+      },
+    },
   },
 }))

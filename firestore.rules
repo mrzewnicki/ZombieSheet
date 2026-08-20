@@ -166,6 +166,31 @@ service cloud.firestore {
                   || resource.data.createdByUid == uid()));
       }
 
+      // Session music library / playback (GM controls; members listen)
+      match /musicTracks/{trackId} {
+        allow read: if isMember(gameId) || isGameMaster(gameId);
+        allow create, update, delete: if isGameMaster(gameId);
+      }
+      match /musicPlaylists/{playlistId} {
+        allow read: if isMember(gameId) || isGameMaster(gameId);
+        allow create, update, delete: if isGameMaster(gameId);
+      }
+      match /musicPlayback/{channel} {
+        allow read: if isMember(gameId) || isGameMaster(gameId);
+        allow create, update, delete: if isGameMaster(gameId);
+      }
+      match /musicChannels/{channel} {
+        allow read: if isMember(gameId) || isGameMaster(gameId);
+        allow create, update, delete: if isGameMaster(gameId);
+      }
+      match /musicPresence/{presenceUid} {
+        allow read: if isMember(gameId) || isGameMaster(gameId);
+        allow create, update: if (isMember(gameId) || isGameMaster(gameId))
+          && presenceUid == uid();
+        allow delete: if (isMember(gameId) || isGameMaster(gameId))
+          && presenceUid == uid();
+      }
+
       // Shared gear trait catalog (reusable across all item types in this game).
       match /gearTraits/{traitId} {
         allow read: if isAuthed();

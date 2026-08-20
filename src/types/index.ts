@@ -437,3 +437,72 @@ export interface Settlement {
   updatedBy?: string
 }
 
+/** Parallel mix buses for session audio. */
+export type MusicChannel = 'ambient' | 'music' | 'effects'
+
+export type MusicPlaybackStatus = 'idle' | 'playing' | 'paused'
+
+export type MusicPlaybackSource = 'track' | 'playlist'
+
+export type MusicLoopMode = 'off' | 'track' | 'playlist'
+
+export interface MusicTrack {
+  id: string
+  name: string
+  storagePath: string
+  contentType: string
+  sizeBytes: number
+  durationMs?: number
+  /** Normalized amplitude peaks (0–1) along the track for timeline UI. */
+  waveformPeaks?: number[]
+  /** Whole-track RMS loudness (0–1), used for level matching. */
+  loudnessRms?: number
+  /** Loop for single-track playback: off | track. */
+  loopMode: Exclude<MusicLoopMode, 'playlist'>
+  createdBy: string
+  createdAt?: Timestamp
+}
+
+export interface MusicPlaylist {
+  id: string
+  name: string
+  trackIds: string[]
+  /** Loop when this playlist is the playback source: off | playlist (no per-track loop). */
+  loopMode: Exclude<MusicLoopMode, 'track'>
+  createdBy: string
+  createdAt?: Timestamp
+}
+
+export interface MusicPlaybackState {
+  channel: MusicChannel
+  status: MusicPlaybackStatus
+  source: MusicPlaybackSource
+  trackId: string
+  playlistId?: string
+  playlistIndex?: number
+  loopMode: MusicLoopMode
+  /** GM mix level for the current item (0–1). */
+  trackVolume: number
+  positionMs: number
+  startedAt?: Timestamp | null
+  updatedBy?: string
+  updatedAt?: Timestamp
+}
+
+/**
+ * Per-channel mix settings.
+ * `loudnessTarget` (0–1): match all tracks to this RMS; 0 = matching off.
+ */
+export interface MusicChannelSettings {
+  channel: MusicChannel
+  loudnessTarget: number
+  updatedBy?: string
+  updatedAt?: Timestamp
+}
+
+export interface MusicPresence {
+  uid: string
+  lastSeen?: Timestamp
+  displayName?: string
+}
+
