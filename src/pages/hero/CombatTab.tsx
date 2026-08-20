@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { collection, doc, onSnapshot, updateDoc } from 'firebase/firestore'
+import { collection, doc, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore'
 import { db } from '@/config/firebase'
 import {
   ARMOR_CATEGORIES,
@@ -10,15 +10,16 @@ import {
   resolveArmorCategory,
   sumArmorInUse,
 } from '@/config/armorSlots'
-import { ARMOR_DOC_URL, SKILL_CATEGORIES } from '@/config/rpg-system'
+import { ARMOR_DOC_URL } from '@/config/rpg-system'
 import CombatFigure, {
   WEAPON_HAND_SLOTS,
   type CombatSlotRef,
 } from '@/components/hero/CombatFigure'
 import CombatMutationSlots from '@/components/hero/CombatMutationSlots'
 import CombatSlotPicker from '@/components/hero/CombatSlotPicker'
-import SkillCategory from '@/components/hero/SkillCategory'
+import CombatSkillsPanel from '@/components/hero/CombatSkillsPanel'
 import ThrowDialog, { type ThrowDialogInitial, type ThrowParams } from '@/components/hero/ThrowDialog'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import Spinner from '@/components/ui/Spinner'
 import { useChatContext } from '@/contexts/ChatContext'
 import { useGearTraitCatalog } from '@/hooks/useGearTraitCatalog'
@@ -31,7 +32,7 @@ import { sortGearListItems } from '@/utils/gearListOrder'
 import { normalizeMutation } from '@/utils/mutations'
 import { computeInitiative } from '@/utils/vitals'
 
-const WALKA_SKILLS = SKILL_CATEGORIES.find((c) => c.key === 'walka')!
+import { normalizeCombatSkillKeys } from '@/utils/combatSkills'
 
 export default function CombatTab() {
   const { hero, gameId, heroId, canEdit } = useHeroOutletContext()
@@ -46,6 +47,7 @@ export default function CombatTab() {
   const [activeSlot, setActiveSlot] = useState<CombatSlotRef | null>(null)
   const [busy, setBusy] = useState(false)
   const [mutationBusyId, setMutationBusyId] = useState<string | null>(null)
+  const [mutationDeleteTarget, setMutationDeleteTarget] = useState<HeroMutation | null>(null)
   const [throwDialog, setThrowDialog] = useState<ThrowDialogInitial | null>(null)
   const { traits: traitCatalog, loading: traitsLoading } = useGearTraitCatalog(gameId)
 
@@ -202,6 +204,12 @@ export default function CombatTab() {
     await updateField(`skills.${key}`, label, value, hero.skills[key] ?? 0)
   }
 
+  async function handleCombatSkillKeysChange(next: string[], prev: string[]) {
+    await updateField('combatSkillKeys', t('combat.skillsFieldLabel'), next, prev)
+  }
+
+  const combatSkillKeys = normalizeCombatSkillKeys(hero.combatSkillKeys)
+
   async function setInUse(
     kind: 'weapon' | 'armor',
     id: string,
@@ -280,6 +288,22 @@ export default function CombatTab() {
     }
   }
 
+  async function handleRemoveMutation() {
+    if (!canEdit || !mutationDeleteTarget) return
+    setMutationBusyId(mutationDeleteTarget.id)
+    setSlotError(null)
+    try {
+      await deleteDoc(
+        doc(db, 'games', gameId, 'heroes', heroId, 'mutations', mutationDeleteTarget.id),
+      )
+      setMutationDeleteTarget(null)
+    } catch {
+      setSlotError(t('combat.mutationDeleteError'))
+    } finally {
+      setMutationBusyId(null)
+    }
+  }
+
   if (loading.weapons || loading.armor || loading.mutations || traitsLoading) {
     return <div className="flex justify-center py-8"><Spinner /></div>
   }
@@ -338,13 +362,14 @@ export default function CombatTab() {
           />
         </div>
 
-        <SkillCategory
+        <CombatSkillsPanel
           className="relative z-0 flex-1 min-w-0 w-full min-h-0 lg:h-auto"
-          category={WALKA_SKILLS}
+          combatSkillKeys={combatSkillKeys}
           values={hero.skills}
-          onChange={canEdit ? handleSkillChange : undefined}
+          canEdit={canEdit}
+          onSkillChange={handleSkillChange}
           onSkillClick={(key) => setThrowDialog({ skillKey: key })}
-          readOnly={!canEdit}
+          onSaveKeys={handleCombatSkillKeysChange}
         />
       </div>
 
@@ -361,6 +386,16 @@ export default function CombatTab() {
         canEdit={canEdit}
         busyId={mutationBusyId}
         onToggleHibernating={(item) => void handleToggleMutationHibernation(item)}
+        onRemove={(item) => setMutationDeleteTarget(item)}
+      />
+
+      <ConfirmDialog
+        open={mutationDeleteTarget !== null}
+        message={t('mutations.deleteConfirm', { name: mutationDeleteTarget?.name ?? '' })}
+        onConfirm={() => void handleRemoveMutation()}
+        onCancel={() => setMutationDeleteTarget(null)}
+        confirmLoading={mutationBusyId === mutationDeleteTarget?.id}
+        dangerous
       />
 
       <CombatSlotPicker

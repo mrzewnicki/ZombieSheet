@@ -463,6 +463,11 @@ export default function NpcTab() {
         <p className="text-xs text-blood text-right max-w-[14rem] ml-auto">{error}</p>
       )}
 
+      <div className="space-y-1">
+        <p className="text-xs text-ink-faint">{t('hero.npc.perCharacterHint')}</p>
+        <p className="text-xs text-ink-faint">{t('hero.npc.hint')}</p>
+      </div>
+
       <div className="space-y-3">
         <HeroNpcGraph
           hero={hero}

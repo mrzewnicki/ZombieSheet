@@ -7,6 +7,8 @@ import SignIn from '@/pages/SignIn'
 import Dashboard from '@/pages/Dashboard'
 import CreateGame from '@/pages/CreateGame'
 import GameLobby from '@/pages/GameLobby'
+import GameGmPanel from '@/pages/GameGmPanel'
+import GameMusic from '@/pages/GameMusic'
 import GameTraits from '@/pages/GameTraits'
 import SettlementPage from '@/pages/SettlementPage'
 import GameNpcs from '@/pages/GameNpcs'
@@ -44,6 +46,8 @@ export default function App() {
               {/* Game-scoped routes — GameShell provides chat sidebar when feature is enabled */}
               <Route path="/game/:gameId" element={<GameShell />}>
                 <Route index element={<GameLobby />} />
+                <Route path="gm" element={<GameGmPanel />} />
+                <Route path="music" element={<GameMusic />} />
                 <Route path="traits" element={<GameTraits />} />
                 <Route path="npcs" element={<GameNpcs />} />
                 <Route path="settlement" element={<SettlementPage />} />

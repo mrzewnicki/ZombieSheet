@@ -1,14 +1,19 @@
 import { useTranslation } from 'react-i18next'
-import type { SkillCategoryDef } from '@/config/rpg-system'
+import type { SkillCategoryDef, SkillDef } from '@/config/rpg-system'
 
 interface Props {
   category: SkillCategoryDef
+  skillsOverride?: SkillDef[]
+  titleKey?: string
   values: Record<string, number>
   onChange?: (key: string, value: number) => void
   onSkillClick?: (key: string, label: string, value: number) => void
   readOnly?: boolean
   search?: string
   className?: string
+  showDragHandle?: boolean
+  headerAction?: React.ReactNode
+  emptyMessage?: string
 }
 function Highlight({ text, query }: { text: string; query: string }) {
   if (!query) return <>{text}</>
@@ -25,16 +30,22 @@ function Highlight({ text, query }: { text: string; query: string }) {
 
 export default function SkillCategory({
   category,
+  skillsOverride,
+  titleKey,
   values,
   onChange,
   onSkillClick,
   readOnly = false,
   search = '',
   className = '',
+  showDragHandle = true,
+  headerAction,
+  emptyMessage,
 }: Props) {
   const { t } = useTranslation()
+  const skills = skillsOverride ?? category.skills
 
-  const visibleSkills = category.skills.filter((skill) =>
+  const visibleSkills = skills.filter((skill) =>
     !search || t(skill.labelKey).toLowerCase().includes(search.toLowerCase())
   )
 
@@ -42,19 +53,26 @@ export default function SkillCategory({
 
   return (
     <div className={`bg-surface border border-border rounded-lg transition-opacity duration-150 flex flex-col ${!hasMatch ? 'opacity-30' : ''} ${className}`}>
-      <div className="w-full flex items-center justify-between px-4 py-3 bg-elevated cursor-grab active:cursor-grabbing select-none shrink-0">
+      <div className={`w-full flex items-center justify-between px-4 py-3 bg-elevated select-none shrink-0 ${
+        showDragHandle ? 'cursor-grab active:cursor-grabbing' : ''
+      }`}>
         <span className="font-heading text-sm text-ink tracking-wide">
-          {t(category.labelKey)}
+          {t(titleKey ?? category.labelKey)}
         </span>
         <div className="flex items-center gap-2">
-          <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor" className="text-ink-faint opacity-40">
-            <path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
-          </svg>
+          {headerAction}
+          {showDragHandle && (
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor" className="text-ink-faint opacity-40">
+              <path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+            </svg>
+          )}
         </div>
       </div>
 
       <div className="divide-y divide-border flex-1 flex flex-col justify-evenly min-h-0">
-        {category.skills.map((skill) => {
+        {skills.length === 0 && emptyMessage ? (
+          <p className="px-4 py-6 text-xs text-ink-faint text-center">{emptyMessage}</p>
+        ) : skills.map((skill) => {
           const value = values[skill.key] ?? 0
           const label = t(skill.labelKey)
           const tooltip = t(`skillTooltips.${skill.key}`, { defaultValue: '' })

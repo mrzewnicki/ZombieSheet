@@ -128,6 +128,8 @@ export interface Hero {
   skills: Record<string, number>
   /** Current vital pools; maxima are derived from attributes (+ race for HP). */
   vitals: HeroVitals
+  /** Skill keys pinned on the Combat tab (defaults to Walka category). */
+  combatSkillKeys?: string[]
   /** Relationship graph edges (hero↔NPC and NPC↔NPC). */
   npcRelations?: HeroNpcRelation[]
   /** NPC ids placed on this hero's graph even without a relation. */

@@ -977,6 +977,7 @@ export default function SettlementPage({
 
   return (
     <div className="space-y-8 max-w-5xl">
+      <p className="text-xs text-ink-faint">{t('settlement.sharedHint')}</p>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1 space-y-2">
           {canEdit ? (

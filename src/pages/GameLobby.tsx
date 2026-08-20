@@ -28,9 +28,7 @@ export default function GameLobby() {
   const [members, setMembers] = useState<GameMember[]>([])
   const [heroes, setHeroes] = useState<Hero[]>([])
   const [loading, setLoading] = useState(true)
-  const [copied, setCopied] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const [regenerating, setRegenerating] = useState(false)
   const [editingNick, setEditingNick] = useState<string | null>(null)
   const [nickDraft, setNickDraft] = useState('')
 
@@ -66,22 +64,6 @@ export default function GameLobby() {
 
     return () => { unsubGame(); unsubMembers(); unsubHeroes() }
   }, [gameId])
-
-  function getInviteUrl() {
-    return `${window.location.origin}${import.meta.env.BASE_URL}game/${gameId}/invite/${game?.inviteToken}`
-  }
-
-  async function copyLink() {
-    await navigator.clipboard.writeText(getInviteUrl())
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  async function regenerateToken() {
-    setRegenerating(true)
-    await updateDoc(doc(db, 'games', gameId), { inviteToken: crypto.randomUUID() })
-    setRegenerating(false)
-  }
 
   async function handleDelete() {
     await deleteDoc(doc(db, 'games', gameId))
@@ -198,25 +180,6 @@ export default function GameLobby() {
           </div>
         </section>
 
-        {/* Invite link — GM only */}
-        {isGm && (
-          <section>
-            <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-3">
-              {t('game.invite')}
-            </h2>
-            <p className="text-xs text-ink-faint mb-2">{t('game.inviteHint')}</p>
-            <div className="flex gap-2 flex-wrap">
-              <Button variant="outline" onClick={copyLink} className="text-xs">
-                {copied ? t('common.copied') : t('game.copyLink')}
-              </Button>
-              <Button variant="ghost" onClick={regenerateToken} loading={regenerating} className="text-xs">
-                {t('game.regenerateLink')}
-              </Button>
-            </div>
-            <p className="mt-2 font-mono text-ink-faint text-[11px] break-all">{getInviteUrl()}</p>
-          </section>
-        )}
-
         {/* Heroes */}
         <section>
           <div className="flex items-center justify-between mb-3">
@@ -247,37 +210,24 @@ export default function GameLobby() {
 
         {/* Shared game tools */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <Link
-            to={`/game/${gameId}/traits`}
-            className="rounded-lg border border-border bg-elevated/40 px-4 py-4 hover:border-border-light hover:bg-elevated/60 transition-colors group"
-          >
-            <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-2 group-hover:text-blood">
-              {t('traitsCatalog.title')}
-            </h2>
-            <p className="text-ink-faint text-sm leading-relaxed">{t('traitsCatalog.lobbyHint')}</p>
-            <p className="mt-3 text-[10px] font-mono uppercase tracking-wider text-ink-muted group-hover:text-blood-light">
-              {t('traitsCatalog.open')} →
-            </p>
-          </Link>
-
-          <Link
-            to={`/game/${gameId}/npcs`}
-            className="rounded-lg border border-border bg-elevated/40 px-4 py-4 hover:border-border-light hover:bg-elevated/60 transition-colors group"
-          >
-            <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-2 group-hover:text-blood">
-              {isGm ? t('campaignNpcs.gmPanelTitle') : t('campaignNpcs.title')}
-            </h2>
-            <p className="text-ink-faint text-sm leading-relaxed">
-              {isGm ? t('campaignNpcs.gmLobbyHint') : t('campaignNpcs.lobbyHint')}
-            </p>
-            <p className="mt-3 text-[10px] font-mono uppercase tracking-wider text-ink-muted group-hover:text-blood-light">
-              {isGm ? t('campaignNpcs.gmOpen') : t('campaignNpcs.open')} →
-            </p>
-          </Link>
+          {isGm && (
+            <Link
+              to={`/game/${gameId}/gm`}
+              className="rounded-lg border border-border bg-elevated/40 px-4 py-4 hover:border-border-light hover:bg-elevated/60 transition-colors group"
+            >
+              <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-2 group-hover:text-blood">
+                {t('gmPanel.title')}
+              </h2>
+              <p className="text-ink-faint text-sm leading-relaxed">{t('gmPanel.lobbyHint')}</p>
+              <p className="mt-3 text-[10px] font-mono uppercase tracking-wider text-ink-muted group-hover:text-blood-light">
+                {t('gmPanel.open')} →
+              </p>
+            </Link>
+          )}
 
           <Link
             to={`/game/${gameId}/settlement`}
-            className="rounded-lg border border-border bg-elevated/40 px-4 py-4 hover:border-border-light hover:bg-elevated/60 transition-colors group sm:col-span-2 lg:col-span-1"
+            className="rounded-lg border border-border bg-elevated/40 px-4 py-4 hover:border-border-light hover:bg-elevated/60 transition-colors group"
           >
             <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-2 group-hover:text-blood">
               {t('settlement.title')}

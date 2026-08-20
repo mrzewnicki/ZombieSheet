@@ -119,6 +119,7 @@
     "migrateConfirm": "Migrate sheet from v{{current}} to v{{latest}}? A backup of your current attributes and skills will be saved first.",
     "npc": {
       "title": "NPC relations",
+      "perCharacterHint": "The relationship graph belongs to this character — each hero has their own links and layout.",
       "hint": "Build a full relationship tree: select the hero or an NPC, then connect to anyone — not only the hero. Click an edge to edit its label.",
       "fieldLabel": "NPC relations",
       "graphEmpty": "No links yet — select a node and add a relation.",
@@ -558,7 +559,16 @@
     "unequip": "Unequip",
     "swapError": "Could not change equipment.",
     "weaponOverflow": "Extra weapons in use ({{count}})",
-    "skillsSection": "Skills — Combat",
+    "skillsSection": "Pinned skills",
+    "skillsFieldLabel": "Combat tab skills",
+    "customizeSkills": "Customize skill list",
+    "customizeHint": "Choose skills shown on the Combat tab. Reorder with the arrows.",
+    "pinnedOrder": "List order",
+    "moveSkillUp": "Move up",
+    "moveSkillDown": "Move down",
+    "removeSkill": "Remove from list",
+    "resetSkills": "Reset to default (Combat)",
+    "noSkillsPinned": "No skills pinned — click the gear icon to choose.",
     "tooltipNoDescription": "No description.",
     "initiative": "Initiative: {{value}}",
     "initiativeFormula": "Composure + Scavenging",
@@ -567,7 +577,8 @@
     "mutationsEmpty": "No active mutations.",
     "mutationUnnamed": "Unnamed",
     "mutationNoEffect": "No effect for this rank.",
-    "mutationHibernateError": "Could not update mutation hibernation."
+    "mutationHibernateError": "Could not update mutation hibernation.",
+    "mutationDeleteError": "Could not delete the mutation."
   },
   "history": {
     "title": "Change history",
@@ -815,6 +826,19 @@
         "description": "Fabrics, leather, canvas, wool, synthetics and kevlar for clothing and soft armor."
       }
     }
+  },
+  "gmPanel": {
+    "title": "GM panel",
+    "open": "Open GM panel",
+    "lobbyHint": "Game master tools: campaign NPCs, invites, and quick access to shared game resources.",
+    "pageHint": "Game master panel — manage the campaign, invite players, and edit shared resources.",
+    "unauthorized": "The GM panel is only available to the game master."
+  },
+  "music": {
+    "title": "Music",
+    "lobbyHint": "Session soundtracks and ambient — GM playlist control.",
+    "pageHint": "Campaign music panel. Features coming soon.",
+    "unauthorized": "The music panel is only available to the game master."
   },
   "campaignNpcs": {
     "title": "Campaign NPCs",

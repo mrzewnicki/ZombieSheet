@@ -119,6 +119,7 @@
     "migrateConfirm": "Zmigrować kartę z v{{current}} do v{{latest}}? Najpierw zostanie zapisana kopia bieżących atrybutów i umiejętności.",
     "npc": {
       "title": "Relacje z NPC",
+      "perCharacterHint": "Graf relacji należy do tej postaci — każdy bohater ma własne połączenia i układ.",
       "hint": "Buduj pełne drzewo relacji: zaznacz postać lub NPC, potem połącz z kimkolwiek — nie tylko z bohaterem. Kliknij krawędź, aby edytować etykietę.",
       "fieldLabel": "Relacje NPC",
       "graphEmpty": "Brak połączeń — zaznacz węzeł i dodaj relację.",
@@ -558,7 +559,16 @@
     "unequip": "Zdejmij",
     "swapError": "Nie udało się zmienić wyposażenia.",
     "weaponOverflow": "Dodatkowa broń w użyciu ({{count}})",
-    "skillsSection": "Umiejętności — Walka",
+    "skillsSection": "Wybrane umiejętności",
+    "skillsFieldLabel": "Umiejętności na karcie Walka",
+    "customizeSkills": "Dostosuj listę umiejętności",
+    "customizeHint": "Zaznacz umiejętności widoczne na karcie Walka. Kolejność możesz zmienić strzałkami.",
+    "pinnedOrder": "Kolejność na liście",
+    "moveSkillUp": "Przesuń wyżej",
+    "moveSkillDown": "Przesuń niżej",
+    "removeSkill": "Usuń z listy",
+    "resetSkills": "Przywróć domyślne (Walka)",
+    "noSkillsPinned": "Brak umiejętności — kliknij ikonę koła zębatego, aby wybrać.",
     "tooltipNoDescription": "Brak opisu.",
     "initiative": "Inicjatywa: {{value}}",
     "initiativeFormula": "Opanowanie + Wyszukiwanie",
@@ -567,7 +577,8 @@
     "mutationsEmpty": "Brak mutacji aktywnych.",
     "mutationUnnamed": "Bez nazwy",
     "mutationNoEffect": "Brak efektu dla tej rangi.",
-    "mutationHibernateError": "Nie udało się zmienić hibernacji mutacji."
+    "mutationHibernateError": "Nie udało się zmienić hibernacji mutacji.",
+    "mutationDeleteError": "Nie udało się usunąć mutacji."
   },
   "history": {
     "title": "Historia zmian",
@@ -815,6 +826,19 @@
         "description": "Tkaniny, skóra, płótno, wełna, włókna syntetyczne i kevlar. Do odzieży, pancerzy miękkich i oplotów."
       }
     }
+  },
+  "gmPanel": {
+    "title": "Panel MG",
+    "open": "Otwórz panel MG",
+    "lobbyHint": "Narzędzia prowadzącego: NPC kampanii, zaproszenia i szybki dostęp do zasobów gry.",
+    "pageHint": "Panel prowadzącego — zarządzaj kampanią, zapraszaj graczy i edytuj wspólne zasoby.",
+    "unauthorized": "Panel MG jest dostępny tylko dla prowadzącego gry."
+  },
+  "music": {
+    "title": "Muzyka",
+    "lobbyHint": "Ścieżki dźwiękowe i ambient sesji — zarządzanie playlistą MG.",
+    "pageHint": "Panel muzyki kampanii. Funkcje pojawią się wkrótce.",
+    "unauthorized": "Panel muzyki jest dostępny tylko dla prowadzącego gry."
   },
   "campaignNpcs": {
     "title": "NPC kampanii",

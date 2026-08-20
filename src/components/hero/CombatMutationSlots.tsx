@@ -10,6 +10,7 @@ interface Props {
   items: HeroMutation[]
   canEdit: boolean
   onToggleHibernating: (item: HeroMutation) => void
+  onRemove?: (item: HeroMutation) => void
   busyId?: string | null
 }
 
@@ -56,11 +57,13 @@ function MutationQuickSlot({
   canEdit,
   busy,
   onToggleHibernating,
+  onRemove,
 }: {
   item: HeroMutation
   canEdit: boolean
   busy: boolean
   onToggleHibernating: () => void
+  onRemove?: () => void
 }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -118,16 +121,28 @@ function MutationQuickSlot({
             </p>
           )}
           {canEdit && (
-            <Button
-              variant="outline"
-              className="text-xs"
-              disabled={busy}
-              onClick={onToggleHibernating}
-            >
-              {item.hibernating
-                ? t('mutations.clearHibernation')
-                : t('mutations.setHibernation')}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                className="text-xs"
+                disabled={busy}
+                onClick={onToggleHibernating}
+              >
+                {item.hibernating
+                  ? t('mutations.clearHibernation')
+                  : t('mutations.setHibernation')}
+              </Button>
+              {onRemove && (
+                <Button
+                  variant="danger"
+                  className="text-xs"
+                  disabled={busy}
+                  onClick={onRemove}
+                >
+                  {t('common.delete')}
+                </Button>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -139,6 +154,7 @@ export default function CombatMutationSlots({
   items,
   canEdit,
   onToggleHibernating,
+  onRemove,
   busyId = null,
 }: Props) {
   const { t } = useTranslation()
@@ -163,6 +179,7 @@ export default function CombatMutationSlots({
               canEdit={canEdit}
               busy={busyId === item.id}
               onToggleHibernating={() => onToggleHibernating(item)}
+              onRemove={onRemove ? () => onRemove(item) : undefined}
             />
           ))}
         </div>
