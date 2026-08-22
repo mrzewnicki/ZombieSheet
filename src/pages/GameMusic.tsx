@@ -8,13 +8,14 @@ import {
   setDoc,
 } from 'firebase/firestore'
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage'
-import { FaArrowRight, FaPlay, FaRedo, FaStepBackward, FaStepForward, FaStop, FaSync } from 'react-icons/fa'
+import { FaArrowRight, FaPause, FaPlay, FaRedo, FaStepBackward, FaStepForward, FaSync } from 'react-icons/fa'
 import { db, storage } from '@/config/firebase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useMusicSync } from '@/contexts/MusicSyncContext'
 import { useLayoutHeader } from '@/contexts/LayoutContext'
 import { useGameRole } from '@/hooks/useGameRole'
 import Button from '@/components/ui/Button'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import Input from '@/components/ui/Input'
 import Spinner from '@/components/ui/Spinner'
 import type {
@@ -115,6 +116,10 @@ export default function GameMusic() {
   const waveformAttemptedRef = useRef(new Set<string>())
   const [playMenuTrackId, setPlayMenuTrackId] = useState<string | null>(null)
   const [playMenuPlaylistId, setPlayMenuPlaylistId] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<
+    { kind: 'track' | 'playlist'; id: string } | null
+  >(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   const [channelSource, setChannelSource] = useState<Record<MusicChannel, {
     mode: 'track' | 'playlist'
@@ -134,8 +139,17 @@ export default function GameMusic() {
       setPlayMenuTrackId(null)
       setPlayMenuPlaylistId(null)
     }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      setPlayMenuTrackId(null)
+      setPlayMenuPlaylistId(null)
+    }
     document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
   }, [playMenuTrackId, playMenuPlaylistId])
 
   useLayoutHeader({
@@ -298,6 +312,8 @@ export default function GameMusic() {
             ...rejected,
           ].filter(Boolean).join('\n'),
         )
+      } else if (uploaded > 0) {
+        setUploadNotice(t('music.uploadSuccess', { count: uploaded }))
       }
     } catch {
       setUploadNotice(t('music.uploadError'))
@@ -357,45 +373,38 @@ export default function GameMusic() {
 
   async function handleDeleteTrack(track: MusicTrack) {
     if (!user) return
-    setBusy(true)
     setError(null)
-    try {
-      for (const channel of MUSIC_CHANNELS) {
-        if (playback[channel].trackId === track.id) {
-          await writePlayback(channel, {
-            ...playback[channel],
-            status: 'idle',
-            trackId: '',
-            positionMs: 0,
-            startedAt: null,
-          }, { clearStartedAt: true })
-        }
+    for (const channel of MUSIC_CHANNELS) {
+      if (playback[channel].trackId === track.id) {
+        await writePlayback(channel, {
+          ...playback[channel],
+          status: 'idle',
+          trackId: '',
+          positionMs: 0,
+          startedAt: null,
+        }, { clearStartedAt: true })
       }
-      for (const playlist of playlists) {
-        if (!playlist.trackIds.includes(track.id)) continue
-        await setDoc(
-          doc(db, 'games', gameId, MUSIC_PLAYLISTS_COLLECTION, playlist.id),
-          {
-            ...musicPlaylistPayload({
-              ...playlist,
-              trackIds: playlist.trackIds.filter((id) => id !== track.id),
-            }),
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true },
-        )
-      }
-      try {
-        await deleteObject(ref(storage, track.storagePath))
-      } catch {
-        /* file may already be gone */
-      }
-      await deleteDoc(doc(db, 'games', gameId, MUSIC_TRACKS_COLLECTION, track.id))
-    } catch {
-      setError(t('music.deleteError'))
-    } finally {
-      setBusy(false)
     }
+    for (const playlist of playlists) {
+      if (!playlist.trackIds.includes(track.id)) continue
+      await setDoc(
+        doc(db, 'games', gameId, MUSIC_PLAYLISTS_COLLECTION, playlist.id),
+        {
+          ...musicPlaylistPayload({
+            ...playlist,
+            trackIds: playlist.trackIds.filter((id) => id !== track.id),
+          }),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      )
+    }
+    try {
+      await deleteObject(ref(storage, track.storagePath))
+    } catch {
+      /* file may already be gone */
+    }
+    await deleteDoc(doc(db, 'games', gameId, MUSIC_TRACKS_COLLECTION, track.id))
   }
 
   function startEditPlaylist(playlist: MusicPlaylist | null) {
@@ -444,18 +453,57 @@ export default function GameMusic() {
   }
 
   async function deletePlaylist(id: string) {
-    setBusy(true)
+    setError(null)
+    await deleteDoc(doc(db, 'games', gameId, MUSIC_PLAYLISTS_COLLECTION, id))
+    if (editingPlaylistId === id) {
+      setEditingPlaylistId(null)
+    }
+  }
+
+  async function runConfirmDelete() {
+    if (!confirmDelete) return
+    setConfirmLoading(true)
     setError(null)
     try {
-      await deleteDoc(doc(db, 'games', gameId, MUSIC_PLAYLISTS_COLLECTION, id))
-      if (editingPlaylistId === id) {
-        setEditingPlaylistId(null)
+      if (confirmDelete.kind === 'track') {
+        const track = tracks.find((item) => item.id === confirmDelete.id)
+        if (track) await handleDeleteTrack(track)
+      } else {
+        await deletePlaylist(confirmDelete.id)
       }
+      setConfirmDelete(null)
     } catch {
-      setError(t('music.playlistSaveError'))
+      setError(
+        confirmDelete.kind === 'track'
+          ? t('music.deleteError')
+          : t('music.playlistDeleteError'),
+      )
+      setConfirmDelete(null)
     } finally {
-      setBusy(false)
+      setConfirmLoading(false)
     }
+  }
+
+  function sourceDraftDiffers(
+    src: { mode: 'track' | 'playlist'; trackId: string; playlistId: string },
+    state: MusicPlaybackState,
+  ): boolean {
+    if (state.status !== 'playing' && state.status !== 'paused') return false
+    if (src.mode === 'playlist') {
+      return state.source !== 'playlist' || state.playlistId !== src.playlistId
+    }
+    return state.source !== 'track' || state.trackId !== src.trackId
+  }
+
+  function draftMatchesLive(
+    src: { mode: 'track' | 'playlist'; trackId: string; playlistId: string },
+    state: MusicPlaybackState,
+  ): boolean {
+    if (!state.trackId) return false
+    if (src.mode === 'playlist') {
+      return state.source === 'playlist' && state.playlistId === src.playlistId
+    }
+    return state.source === 'track' && state.trackId === src.trackId
   }
 
   async function playTrackOnChannel(channel: MusicChannel, track: MusicTrack) {
@@ -523,8 +571,20 @@ export default function GameMusic() {
   async function playChannel(channel: MusicChannel) {
     if (!user) return
     const src = channelSource[channel]
+    const current = playback[channel]
     setError(null)
     try {
+      // Resume paused playback when source draft still matches live
+      if (current.status === 'paused' && current.trackId && draftMatchesLive(src, current)) {
+        await writePlayback(channel, {
+          ...current,
+          status: 'playing',
+          positionMs: computePositionMs(current),
+          startedAt: null,
+        }, { setStartedAt: true })
+        return
+      }
+
       let trackId = src.trackId
       let playlistId: string | undefined
       let playlistIndex: number | undefined
@@ -550,7 +610,6 @@ export default function GameMusic() {
         loopMode = track?.loopMode ?? 'off'
       }
 
-      const current = playback[channel]
       await writePlayback(channel, {
         channel,
         status: 'playing',
@@ -563,6 +622,22 @@ export default function GameMusic() {
         positionMs: 0,
         startedAt: null,
       }, { setStartedAt: true })
+    } catch {
+      setError(t('music.playbackError'))
+    }
+  }
+
+  async function pauseChannel(channel: MusicChannel) {
+    if (!user) return
+    const state = playback[channel]
+    if (state.status !== 'playing' || !state.trackId) return
+    try {
+      await writePlayback(channel, {
+        ...state,
+        status: 'paused',
+        positionMs: computePositionMs(state),
+        startedAt: null,
+      }, { clearStartedAt: true })
     } catch {
       setError(t('music.playbackError'))
     }
@@ -629,23 +704,6 @@ export default function GameMusic() {
         positionMs: 0,
         startedAt: null,
       }, { setStartedAt: true })
-    } catch {
-      setError(t('music.playbackError'))
-    }
-  }
-
-  async function stopChannel(channel: MusicChannel) {
-    if (!user) return
-    try {
-      await writePlayback(channel, {
-        ...playback[channel],
-        status: 'idle',
-        trackId: '',
-        playlistId: undefined,
-        playlistIndex: undefined,
-        positionMs: 0,
-        startedAt: null,
-      }, { clearStartedAt: true })
     } catch {
       setError(t('music.playbackError'))
     }
@@ -728,13 +786,68 @@ export default function GameMusic() {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      {error && <p className="text-sm text-blood">{error}</p>}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="audio/mpeg,audio/webm,audio/mp4,audio/x-m4a,audio/aac,.mp3,.webm,.m4a"
+        multiple
+        className="hidden"
+        onChange={(e) => void handleUpload(e.target.files)}
+      />
+      <input
+        ref={waveformFileRef}
+        type="file"
+        accept="audio/mpeg,audio/webm,audio/mp4,audio/x-m4a,audio/aac,.mp3,.webm,.m4a"
+        className="hidden"
+        onChange={(e) => void handleWaveformFile(e.target.files)}
+      />
 
-      <div className="flex flex-wrap gap-1 border-b border-border pb-2">
+      {error && (
+        <p role="alert" className="text-sm text-blood">
+          {error}
+        </p>
+      )}
+
+      <div
+        role="tablist"
+        aria-label={t('music.title')}
+        className="flex flex-wrap gap-1 border-b border-border pb-2"
+        onKeyDown={(e) => {
+          const order = tabs.map((item) => item.key)
+          const idx = order.indexOf(tab)
+          if (idx < 0) return
+          let next = idx
+          if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+            e.preventDefault()
+            next = (idx + 1) % order.length
+          } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            e.preventDefault()
+            next = (idx - 1 + order.length) % order.length
+          } else if (e.key === 'Home') {
+            e.preventDefault()
+            next = 0
+          } else if (e.key === 'End') {
+            e.preventDefault()
+            next = order.length - 1
+          } else {
+            return
+          }
+          const nextKey = order[next]
+          setTab(nextKey)
+          requestAnimationFrame(() => {
+            document.getElementById(`music-tab-${nextKey}`)?.focus()
+          })
+        }}
+      >
         {tabs.map((item) => (
           <button
             key={item.key}
+            id={`music-tab-${item.key}`}
             type="button"
+            role="tab"
+            aria-selected={tab === item.key}
+            aria-controls={`music-panel-${item.key}`}
+            tabIndex={tab === item.key ? 0 : -1}
             onClick={() => setTab(item.key)}
             className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider rounded transition-colors ${
               tab === item.key
@@ -747,23 +860,33 @@ export default function GameMusic() {
         ))}
       </div>
 
+      <ConfirmDialog
+        open={confirmDelete != null}
+        dangerous
+        confirmLoading={confirmLoading}
+        message={
+          confirmDelete?.kind === 'track'
+            ? t('music.deleteTrackConfirm', {
+                name: tracks.find((item) => item.id === confirmDelete.id)?.name ?? '',
+              })
+            : t('music.deletePlaylistConfirm', {
+                name: playlists.find((item) => item.id === confirmDelete?.id)?.name ?? '',
+              })
+        }
+        onCancel={() => {
+          if (confirmLoading) return
+          setConfirmDelete(null)
+        }}
+        onConfirm={() => void runConfirmDelete()}
+      />
+
       {tab === 'library' && (
-        <section className="space-y-4">
-          <input
-            ref={fileRef}
-            type="file"
-            accept="audio/mpeg,audio/webm,audio/mp4,audio/x-m4a,audio/aac,.mp3,.webm,.m4a"
-            multiple
-            className="hidden"
-            onChange={(e) => void handleUpload(e.target.files)}
-          />
-          <input
-            ref={waveformFileRef}
-            type="file"
-            accept="audio/mpeg,audio/webm,audio/mp4,audio/x-m4a,audio/aac,.mp3,.webm,.m4a"
-            className="hidden"
-            onChange={(e) => void handleWaveformFile(e.target.files)}
-          />
+        <section
+          id="music-panel-library"
+          role="tabpanel"
+          aria-labelledby="music-tab-library"
+          className="space-y-4"
+        >
           <button
             type="button"
             disabled={uploading}
@@ -899,8 +1022,8 @@ export default function GameMusic() {
                     <Button
                       variant="danger"
                       className="text-xs"
-                      disabled={busy}
-                      onClick={() => void handleDeleteTrack(track)}
+                      disabled={confirmLoading}
+                      onClick={() => setConfirmDelete({ kind: 'track', id: track.id })}
                     >
                       {t('common.delete')}
                     </Button>
@@ -913,7 +1036,12 @@ export default function GameMusic() {
       )}
 
       {tab === 'playlists' && (
-        <section className="space-y-4">
+        <section
+          id="music-panel-playlists"
+          role="tabpanel"
+          aria-labelledby="music-tab-playlists"
+          className="space-y-4"
+        >
           <Button
             variant="outline"
             className="text-xs"
@@ -997,6 +1125,7 @@ export default function GameMusic() {
                       </span>
                       <button
                         type="button"
+                        aria-label={t('music.moveUp')}
                         className="w-6 h-6 rounded bg-elevated text-ink-faint"
                         disabled={index === 0}
                         onClick={() => {
@@ -1011,6 +1140,7 @@ export default function GameMusic() {
                       </button>
                       <button
                         type="button"
+                        aria-label={t('music.moveDown')}
                         className="w-6 h-6 rounded bg-elevated text-ink-faint"
                         disabled={index === draftTrackIds.length - 1}
                         onClick={() => {
@@ -1134,8 +1264,8 @@ export default function GameMusic() {
                     <Button
                       variant="danger"
                       className="text-xs"
-                      disabled={busy}
-                      onClick={() => void deletePlaylist(playlist.id)}
+                      disabled={confirmLoading}
+                      onClick={() => setConfirmDelete({ kind: 'playlist', id: playlist.id })}
                     >
                       {t('common.delete')}
                     </Button>
@@ -1148,7 +1278,12 @@ export default function GameMusic() {
       )}
 
       {tab === 'mixer' && (
-        <section className="space-y-4">
+        <section
+          id="music-panel-mixer"
+          role="tabpanel"
+          aria-labelledby="music-tab-mixer"
+          className="space-y-4"
+        >
           {MUSIC_CHANNELS.map((channel) => {
             const state = playback[channel]
             const src = channelSource[channel]
@@ -1181,7 +1316,7 @@ export default function GameMusic() {
                   {t(CHANNEL_LABEL_KEY[channel])}
                 </h3>
 
-                {currentTrack && (
+                {(state.status === 'playing' || state.status === 'paused') && currentTrack && (
                   <div className="min-w-0 space-y-0.5">
                     <p className="text-xs text-ink-muted truncate">
                       {currentTrack.name}
@@ -1264,6 +1399,11 @@ export default function GameMusic() {
                         </optgroup>
                       )}
                     </select>
+                    {sourceDraftDiffers(src, state) ? (
+                      <p className="text-[10px] text-amber-600/90">
+                        {t('music.sourcePending')}
+                      </p>
+                    ) : null}
                   </label>
 
                   {(src.mode === 'track' && src.trackId) || (src.mode === 'playlist' && src.playlistId) ? (
@@ -1277,7 +1417,8 @@ export default function GameMusic() {
                 </div>
 
                 <div className="flex items-center gap-1">
-                  {state.source === 'playlist' && state.status === 'playing' && (
+                  {state.source === 'playlist'
+                    && (state.status === 'playing' || state.status === 'paused') && (
                     <button
                       type="button"
                       aria-label={t('music.prevTrack')}
@@ -1291,23 +1432,26 @@ export default function GameMusic() {
                   {state.status === 'playing' ? (
                     <button
                       type="button"
-                      aria-label={t('music.stop')}
-                      onClick={() => void stopChannel(channel)}
+                      aria-label={t('music.pause')}
+                      onClick={() => void pauseChannel(channel)}
                       className="inline-flex items-center justify-center w-8 h-8 rounded text-xs bg-blood/80 hover:bg-blood text-white border border-blood transition-colors"
                     >
-                      <FaStop className="w-3 h-3" aria-hidden />
+                      <FaPause className="w-3 h-3" aria-hidden />
                     </button>
                   ) : (
                     <button
                       type="button"
-                      aria-label={t('music.play')}
+                      aria-label={
+                        state.status === 'paused' ? t('music.resume') : t('music.play')
+                      }
                       onClick={() => void playChannel(channel)}
                       className="inline-flex items-center justify-center w-8 h-8 rounded text-xs bg-emerald-700/80 hover:bg-emerald-600 text-white border border-emerald-700 transition-colors"
                     >
                       <FaPlay className="w-3 h-3" aria-hidden />
                     </button>
                   )}
-                  {state.source === 'playlist' && state.status === 'playing' && (
+                  {state.source === 'playlist'
+                    && (state.status === 'playing' || state.status === 'paused') && (
                     <button
                       type="button"
                       aria-label={t('music.nextTrack')}
@@ -1325,6 +1469,7 @@ export default function GameMusic() {
                     peaks={currentTrack?.waveformPeaks}
                     positionMs={duration > 0 ? Math.min(position, duration) : 0}
                     durationMs={duration}
+                    ariaLabel={t('music.seek')}
                     onSeek={(ms) => {
                       if (!state.trackId || duration <= 0) return
                       void seekChannel(channel, ms)
@@ -1356,6 +1501,7 @@ export default function GameMusic() {
                     onChange={(e) => void setTrackVolume(channel, Number(e.target.value))}
                     className="w-full accent-blood"
                   />
+                  <p className="text-[10px] text-ink-faint">{t('music.trackVolumeHint')}</p>
                 </label>
 
                 <label className="block space-y-1">
@@ -1371,6 +1517,7 @@ export default function GameMusic() {
                     onChange={(e) => setLocalVolume(channel, Number(e.target.value))}
                     className="w-full accent-blood"
                   />
+                  <p className="text-[10px] text-ink-faint">{t('music.localVolumeHint')}</p>
                 </label>
 
                 <label className="block space-y-1">
@@ -1390,7 +1537,7 @@ export default function GameMusic() {
                     onChange={(e) => void setLoudnessTarget(channel, Number(e.target.value))}
                     className="w-full accent-blood"
                   />
-                  <p className="text-[10px] text-ink-faint">{t('music.loudnessHint')}</p>
+                  <p className="text-[10px] text-ink-faint">{t('music.loudnessTargetHint')}</p>
                 </label>
               </div>
             )

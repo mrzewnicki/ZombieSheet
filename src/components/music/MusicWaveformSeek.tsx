@@ -7,12 +7,14 @@ export default function MusicWaveformSeek({
   durationMs,
   onSeek,
   loading,
+  ariaLabel = 'Seek',
 }: {
   peaks?: number[]
   positionMs: number
   durationMs: number
   onSeek: (positionMs: number) => void
   loading?: boolean
+  ariaLabel?: string
 }) {
   const trackRef = useRef<HTMLDivElement>(null)
   const dragging = useRef(false)
@@ -95,7 +97,7 @@ export default function MusicWaveformSeek({
         aria-valuemin={0}
         aria-valuemax={Math.max(0, durationMs)}
         aria-valuenow={empty ? 0 : Math.min(displayMs, durationMs)}
-        aria-label="Seek"
+        aria-label={ariaLabel}
         className={`relative h-16 w-full rounded border border-border bg-dark/60 touch-none select-none overflow-hidden ${
           empty ? 'cursor-default opacity-60' : 'cursor-pointer'
         }`}
