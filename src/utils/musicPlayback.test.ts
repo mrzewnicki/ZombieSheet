@@ -47,6 +47,28 @@ describe('computePositionMs', () => {
       ),
     ).toBe(5000)
   })
+
+  it('clamps to duration when not looping', () => {
+    const startedAt = { toMillis: () => 0 }
+    expect(
+      computePositionMs(
+        { status: 'playing', positionMs: 0, startedAt: startedAt as never, loopMode: 'off' },
+        12_000,
+        10_000,
+      ),
+    ).toBe(0)
+  })
+
+  it('wraps within duration when looping a track', () => {
+    const startedAt = { toMillis: () => 0 }
+    expect(
+      computePositionMs(
+        { status: 'playing', positionMs: 0, startedAt: startedAt as never, loopMode: 'track' },
+        12_500,
+        10_000,
+      ),
+    ).toBe(2_500)
+  })
 })
 
 describe('nextPlaylistIndex', () => {

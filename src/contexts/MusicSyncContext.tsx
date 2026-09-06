@@ -77,6 +77,8 @@ interface MusicSyncContextValue {
   needsAudioUnlock: boolean
   /** Call from a click/tap to unlock autoplay and resume playing channels. */
   unlockAudio: () => Promise<void>
+  /** Live playhead for UI — prefers the local audio element when bound. */
+  getChannelPositionMs: (channel: MusicChannel) => number
   isGm: boolean
   loading: boolean
 }
@@ -385,7 +387,8 @@ export default function MusicSyncProvider({
       const player = playersRef.current[channel]
       if (!player || state.status !== 'playing' || !state.trackId) continue
       try {
-        const targetSec = computePositionMs(state) / 1000
+        const track = tracksRef.current.find((t) => t.id === state.trackId)
+        const targetSec = computePositionMs(state, Date.now(), track?.durationMs) / 1000
         if (Number.isFinite(targetSec)) {
           try {
             player.audio.currentTime = targetSec
@@ -403,6 +406,26 @@ export default function MusicSyncProvider({
       }
     }
   }, [gameId])
+
+  const getChannelPositionMs = useCallback((channel: MusicChannel): number => {
+    const state = playbackRef.current[channel]
+    const track = tracksRef.current.find((t) => t.id === state.trackId)
+    const durationMs = track?.durationMs
+    const player = playersRef.current[channel]
+    if (
+      player
+      && player.boundTrackId === state.trackId
+      && (state.status === 'playing' || state.status === 'paused')
+      && Number.isFinite(player.audio.currentTime)
+    ) {
+      const fromAudio = Math.round(player.audio.currentTime * 1000)
+      if (typeof durationMs === 'number' && durationMs > 0) {
+        return Math.min(durationMs, Math.max(0, fromAudio))
+      }
+      return Math.max(0, fromAudio)
+    }
+    return computePositionMs(state, Date.now(), durationMs)
+  }, [])
 
   // Presence heartbeat
   useEffect(() => {
@@ -581,44 +604,45 @@ export default function MusicSyncProvider({
       const prevStatus = prevStatusRef.current[channel]
       const now = Date.now()
 
-      if (state.status === 'playing') {
-        if (prevStatus !== 'playing') {
-          if (shouldFadeInAfterSilence(lastActiveAtRef.current[channel], now)) {
-            fadeStartedAtRef.current[channel] = now
-            scheduleFadeTick()
-          } else {
-            delete fadeStartedAtRef.current[channel]
-          }
-        }
-        lastActiveAtRef.current[channel] = now
-      } else {
+      if (state.status !== 'playing') {
         delete fadeStartedAtRef.current[channel]
-      }
-      prevStatusRef.current[channel] = state.status
-
-      const fadeGain = getFadeGain(channel, now)
-      applyChannelVolume(
-        player,
-        channel,
-        localVolRef.current,
-        state,
-        tracksRef.current,
-        loudnessRef.current,
-        fadeGain,
-      )
-
-      if (state.status === 'idle' || !state.trackId) {
-        player.audio.pause()
-        player.audio.removeAttribute('src')
-        player.boundTrackId = null
+        prevStatusRef.current[channel] = state.status
+        applyChannelVolume(
+          player,
+          channel,
+          localVolRef.current,
+          state,
+          tracksRef.current,
+          loudnessRef.current,
+          1,
+        )
+        if (state.status === 'idle' || !state.trackId) {
+          player.audio.pause()
+          player.audio.removeAttribute('src')
+          player.boundTrackId = null
+        } else {
+          player.audio.pause()
+        }
         return
       }
 
+      if (!state.trackId) return
       const track = tracksRef.current.find((t) => t.id === state.trackId)
       if (!track) return
 
+      // Entering play after silence → fade in. Continuous play keeps full gain.
+      if (prevStatus !== 'playing') {
+        if (shouldFadeInAfterSilence(lastActiveAtRef.current[channel], now)) {
+          fadeStartedAtRef.current[channel] = now
+        } else {
+          delete fadeStartedAtRef.current[channel]
+        }
+      }
+      scheduleFadeTick()
+
       try {
-        if (player.boundTrackId !== track.id) {
+        const needsBind = player.boundTrackId !== track.id
+        if (needsBind) {
           const url = await resolveUrl(track.storagePath)
           if (cancelled) return
           player.audio.removeAttribute('crossorigin')
@@ -638,6 +662,20 @@ export default function MusicSyncProvider({
         }
 
         player.audio.loop = state.loopMode === 'track'
+
+        const targetSec = computePositionMs(state, Date.now(), track.durationMs) / 1000
+        if (Number.isFinite(targetSec)) {
+          const drift = Math.abs((player.audio.currentTime || 0) - targetSec)
+          // Always align after a new bind; otherwise only correct large drift.
+          if (needsBind || player.audio.paused || drift > 0.75) {
+            try {
+              player.audio.currentTime = targetSec
+            } catch {
+              /* ignore seek errors while loading */
+            }
+          }
+        }
+
         applyChannelVolume(
           player,
           channel,
@@ -648,34 +686,31 @@ export default function MusicSyncProvider({
           getFadeGain(channel),
         )
 
-        const targetSec = computePositionMs(state) / 1000
-        if (Number.isFinite(targetSec)) {
-          const drift = Math.abs((player.audio.currentTime || 0) - targetSec)
-          if (drift > 0.75 || player.audio.paused) {
-            try {
-              player.audio.currentTime = targetSec
-            } catch {
-              /* ignore seek errors while loading */
-            }
+        try {
+          await player.audio.play()
+          if (cancelled) return
+          lastActiveAtRef.current[channel] = Date.now()
+          prevStatusRef.current[channel] = 'playing'
+          if (!audioUnlockedRef.current) {
+            setAudioUnlocked(true)
+            saveAudioUnlocked(gameId)
+            audioUnlockedRef.current = true
           }
-        }
-
-        if (state.status === 'playing') {
-          try {
-            await player.audio.play()
-            if (!audioUnlockedRef.current) {
-              setAudioUnlocked(true)
-              saveAudioUnlocked(gameId)
-              audioUnlockedRef.current = true
-            }
-            setAudioBlocked(false)
-          } catch (err) {
-            if (isAutoplayBlockedError(err)) {
-              setAudioBlocked(true)
-            }
+          setAudioBlocked(false)
+          scheduleFadeTick()
+          applyChannelVolume(
+            player,
+            channel,
+            localVolRef.current,
+            state,
+            tracksRef.current,
+            loudnessRef.current,
+            getFadeGain(channel),
+          )
+        } catch (err) {
+          if (isAutoplayBlockedError(err)) {
+            setAudioBlocked(true)
           }
-        } else {
-          player.audio.pause()
         }
       } catch {
         /* network / decode */
@@ -692,8 +727,6 @@ export default function MusicSyncProvider({
   }, [
     playback,
     ensurePlayer,
-    loudnessTargets,
-    localVolumes,
     tracks,
     gameId,
     getFadeGain,
@@ -767,6 +800,7 @@ export default function MusicSyncProvider({
     setLocalMuted,
     needsAudioUnlock,
     unlockAudio,
+    getChannelPositionMs,
     isGm,
     loading,
   }), [
@@ -780,6 +814,7 @@ export default function MusicSyncProvider({
     setLocalMuted,
     needsAudioUnlock,
     unlockAudio,
+    getChannelPositionMs,
     isGm,
     loading,
   ])

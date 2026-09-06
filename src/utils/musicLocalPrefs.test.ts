@@ -52,22 +52,32 @@ describe('musicLocalPrefs', () => {
     })
   })
 
-  it('migrates legacy per-game prefs into user-scoped storage', () => {
+  it('clears a stuck muted flag on load', () => {
+    localStorage.setItem('musicLocalVol_v2_u1', JSON.stringify({
+      master: 1,
+      muted: true,
+      ambient: 0.5,
+      music: 0.5,
+      effects: 0.5,
+    }))
+    expect(loadLocalChannelVolumes('g1', 'u1')).toEqual({
+      master: 1,
+      muted: false,
+      ambient: 0.5,
+      music: 0.5,
+      effects: 0.5,
+    })
+  })
+
+  it('migrates legacy per-game prefs and restores master after mute-by-zero', () => {
     localStorage.setItem('musicLocalVol_g1_u1', JSON.stringify({
-      master: 0.3,
+      master: 0,
       ambient: 0.1,
       music: 0.2,
       effects: 0.4,
     }))
     expect(loadLocalChannelVolumes('g1', 'u1')).toEqual({
-      master: 0.3,
-      muted: false,
-      ambient: 0.1,
-      music: 0.2,
-      effects: 0.4,
-    })
-    expect(JSON.parse(localStorage.getItem('musicLocalVol_v2_u1')!)).toEqual({
-      master: 0.3,
+      master: 1,
       muted: false,
       ambient: 0.1,
       music: 0.2,

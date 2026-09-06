@@ -37,10 +37,9 @@ function parseVolumes(raw: string | null): LocalChannelVolumes | null {
     const parsed = JSON.parse(raw) as Record<string, unknown>
     const next = { ...DEFAULT_LOCAL }
     next.master = clamp(parsed.master, DEFAULT_LOCAL.master)
+    // Only honor an explicit muted flag. Never infer mute from master≈0 —
+    // that left users stuck silent after the mute button was removed.
     next.muted = parsed.muted === true
-      || (parsed.muted == null && next.master <= 0.001)
-    // If an older mute wrote master to 0, treat as muted at full preferred level.
-    if (next.muted && next.master <= 0.001) next.master = 1
     for (const channel of MUSIC_CHANNELS) {
       next[channel] = clamp(parsed[channel], DEFAULT_LOCAL[channel])
     }
@@ -54,13 +53,25 @@ export function loadLocalChannelVolumes(gameId: string, uid: string): LocalChann
   if (!uid) return { ...DEFAULT_LOCAL }
   try {
     const current = parseVolumes(localStorage.getItem(storageKey(uid)))
-    if (current) return current
+    if (current) {
+      // Mute control was removed from the UI — clear a stuck muted flag so
+      // playback is audible again; keep preferred master/channel levels.
+      if (current.muted) {
+        const fixed = { ...current, muted: false }
+        saveLocalChannelVolumes(gameId, uid, fixed)
+        return fixed
+      }
+      return current
+    }
 
     if (gameId) {
       const legacy = parseVolumes(localStorage.getItem(legacyStorageKey(gameId, uid)))
       if (legacy) {
-        saveLocalChannelVolumes(gameId, uid, legacy)
-        return legacy
+        const fixed = { ...legacy, muted: false }
+        // Old mute wrote master to 0; restore a usable level.
+        if (fixed.master <= 0.001) fixed.master = 1
+        saveLocalChannelVolumes(gameId, uid, fixed)
+        return fixed
       }
     }
     return { ...DEFAULT_LOCAL }

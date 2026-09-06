@@ -34,7 +34,6 @@ import {
   MUSIC_PLAYBACK_COLLECTION,
   MUSIC_PLAYLISTS_COLLECTION,
   MUSIC_TRACKS_COLLECTION,
-  computePositionMs,
   formatDurationMs,
   isAllowedMusicFile,
   musicChannelSettingsPayload,
@@ -92,9 +91,8 @@ export default function GameMusic() {
     playlists,
     playback,
     loudnessTargets,
-    localVolumes,
-    setLocalVolume,
     loading: musicLoading,
+    getChannelPositionMs,
   } = useMusicSync()
 
   const [tab, setTab] = useState<TabKey>('mixer')
@@ -579,7 +577,7 @@ export default function GameMusic() {
         await writePlayback(channel, {
           ...current,
           status: 'playing',
-          positionMs: computePositionMs(current),
+          positionMs: getChannelPositionMs(channel),
           startedAt: null,
         }, { setStartedAt: true })
         return
@@ -635,7 +633,7 @@ export default function GameMusic() {
       await writePlayback(channel, {
         ...state,
         status: 'paused',
-        positionMs: computePositionMs(state),
+        positionMs: getChannelPositionMs(channel),
         startedAt: null,
       }, { clearStartedAt: true })
     } catch {
@@ -1290,7 +1288,11 @@ export default function GameMusic() {
             const loudnessTarget = loudnessTargets[channel] ?? DEFAULT_LOUDNESS_TARGET
             const currentTrack = state.trackId ? trackById.get(state.trackId) : undefined
             const duration = currentTrack?.durationMs ?? 0
-            const position = computePositionMs(state, clock || Date.now())
+            // clock tick re-renders so we re-read the live audio playhead
+            void clock
+            const position = duration > 0
+              ? Math.min(duration, getChannelPositionMs(channel))
+              : getChannelPositionMs(channel)
             const activePlaylist =
               state.source === 'playlist' && state.playlistId
                 ? playlists.find((p) => p.id === state.playlistId)
@@ -1502,22 +1504,6 @@ export default function GameMusic() {
                     className="w-full accent-blood"
                   />
                   <p className="text-[10px] text-ink-faint">{t('music.trackVolumeHint')}</p>
-                </label>
-
-                <label className="block space-y-1">
-                  <span className="text-[10px] font-mono uppercase text-ink-faint">
-                    {t('music.localVolume')} ({Math.round(localVolumes[channel] * 100)}%)
-                  </span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={localVolumes[channel]}
-                    onChange={(e) => setLocalVolume(channel, Number(e.target.value))}
-                    className="w-full accent-blood"
-                  />
-                  <p className="text-[10px] text-ink-faint">{t('music.localVolumeHint')}</p>
                 </label>
 
                 <label className="block space-y-1">

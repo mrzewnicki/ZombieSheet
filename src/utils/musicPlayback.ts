@@ -194,13 +194,22 @@ export function normalizeMusicPlaybackState(
 
 /** Current playback position in ms based on status + startedAt. */
 export function computePositionMs(
-  state: Pick<MusicPlaybackState, 'status' | 'positionMs' | 'startedAt'>,
+  state: Pick<MusicPlaybackState, 'status' | 'positionMs' | 'startedAt'> & {
+    loopMode?: MusicLoopMode
+  },
   nowMs: number = Date.now(),
+  durationMs?: number,
 ): number {
   if (state.status !== 'playing') return Math.max(0, state.positionMs)
   const started = state.startedAt?.toMillis?.()
-  if (typeof started !== 'number') return Math.max(0, state.positionMs)
-  return Math.max(0, state.positionMs + (nowMs - started))
+  const raw = typeof started === 'number'
+    ? Math.max(0, state.positionMs + (nowMs - started))
+    : Math.max(0, state.positionMs)
+  if (!(typeof durationMs === 'number' && durationMs > 0)) return raw
+  if (state.loopMode === 'track') return raw % durationMs
+  // Past the end (stale "playing" clock) → 0 so we don't stick on the final frame silent.
+  if (raw >= durationMs) return 0
+  return raw
 }
 
 export function normalizeTrackLoopMode(value: unknown): Exclude<MusicLoopMode, 'playlist'> {
