@@ -1,4 +1,4 @@
-import React, { ReactNode, useContext } from 'react'
+import React, { ReactNode, useCallback, useContext } from 'react'
 import crackedTextureUrl from '@/assets/cracked-texture.jpg'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -20,6 +20,10 @@ export default function AppLayout({ children }: Props) {
   const fullWidth = ctx?.fullWidth ?? false
   const logoUrl = `${import.meta.env.BASE_URL}logo.png`
 
+  const headerCenterRef = useCallback((el: HTMLDivElement | null) => {
+    ctx?.setHeaderCenterEl(el)
+  }, [ctx])
+
   async function handleSignOut() {
     await signOut()
     navigate('/')
@@ -32,7 +36,7 @@ export default function AppLayout({ children }: Props) {
     >
       <header className="border-b border-border bg-void sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-4">
-          <Link to="/dashboard" className="flex items-center gap-1 group/logo">
+          <Link to="/dashboard" className="flex items-center gap-1 group/logo shrink-0">
             <img src={logoUrl} alt="ZombieSheet" className="h-8 w-8 object-contain" />
             <span className="font-heading text-xl text-blood-light group-hover/logo:text-blood transition-colors animate-flicker">
               Sheet
@@ -41,10 +45,10 @@ export default function AppLayout({ children }: Props) {
 
           {backTo && (
             <>
-              <span className="text-ink-faint">/</span>
+              <span className="text-ink-faint shrink-0">/</span>
               <button
                 onClick={() => navigate(backTo)}
-                className="text-ink-muted hover:text-ink text-sm transition-colors"
+                className="text-ink-muted hover:text-ink text-sm transition-colors shrink-0"
               >
                 {backLabel ?? t('common.back')}
               </button>
@@ -53,12 +57,14 @@ export default function AppLayout({ children }: Props) {
 
           {title && (
             <>
-              <span className="text-ink-faint">/</span>
-              <span className="text-ink text-sm truncate">{title}</span>
+              <span className="text-ink-faint shrink-0">/</span>
+              <span className="text-ink text-sm truncate shrink min-w-0 max-w-[10rem] sm:max-w-[14rem]">{title}</span>
             </>
           )}
 
-          <div className="ml-auto flex items-center gap-3">
+          <div ref={headerCenterRef} className="flex-1 min-w-0 flex items-center justify-center px-2" />
+
+          <div className="ml-auto flex items-center gap-3 shrink-0">
             {actions}
             {user && (
               <div className="flex items-center gap-2">

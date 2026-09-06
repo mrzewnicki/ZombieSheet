@@ -87,6 +87,39 @@
     letter-spacing: 0.02em;
   }
 
+  /* Compact volume range used in the header music helper */
+  .music-vol-slider {
+    @apply h-3 cursor-pointer appearance-none bg-transparent;
+    accent-color: theme('colors.blood.DEFAULT');
+  }
+  .music-vol-slider::-webkit-slider-runnable-track {
+    height: 2px;
+    border-radius: 9999px;
+    background: theme('colors.border.DEFAULT');
+  }
+  .music-vol-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 10px;
+    height: 10px;
+    margin-top: -4px;
+    border-radius: 9999px;
+    background: theme('colors.blood.DEFAULT');
+    border: 1px solid theme('colors.blood.dark');
+  }
+  .music-vol-slider::-moz-range-track {
+    height: 2px;
+    border-radius: 9999px;
+    background: theme('colors.border.DEFAULT');
+  }
+  .music-vol-slider::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+    border-radius: 9999px;
+    background: theme('colors.blood.DEFAULT');
+    border: 1px solid theme('colors.blood.dark');
+  }
+
   /* Markdown description renderer */
   .prose-hero {
     @apply text-sm text-ink leading-relaxed;

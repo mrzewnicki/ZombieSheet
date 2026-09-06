@@ -92,3 +92,13 @@ describe('m4a content type', () => {
     expect(musicTrackStoragePath('g1', 't1', 'audio/mp4')).toBe('games/g1/music/t1.m4a')
   })
 })
+
+describe('mov content type', () => {
+  it('maps mov files to video/quicktime storage path', async () => {
+    const { musicTrackStoragePath, resolveMusicContentType, isAllowedMusicFile } = await import('@/utils/musicPlayback')
+    const file = new File([new Uint8Array([1])], 'clip.mov', { type: 'video/quicktime' })
+    expect(isAllowedMusicFile(file)).toBe(true)
+    expect(resolveMusicContentType(file)).toBe('video/quicktime')
+    expect(musicTrackStoragePath('g1', 't1', 'video/quicktime')).toBe('games/g1/music/t1.mov')
+  })
+})

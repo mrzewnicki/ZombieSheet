@@ -854,10 +854,10 @@
       "playing": "Play",
       "paused": "Paused"
     },
-    "upload": "Upload mp3 / webm / m4a",
+    "upload": "Upload mp3 / webm / m4a / mov",
     "uploadDrop": "Drop files here or click to browse",
     "uploading": "Uploading…",
-    "uploadHint": "Multiple files at once. Max {{mb}} MB per file. Formats: mp3, webm, m4a.",
+    "uploadHint": "Multiple files at once. Max {{mb}} MB per file. Formats: mp3, webm, m4a, mov.",
     "waveformFromFile": "Waveform from file",
     "waveformHint": "Missing graph: restart npm run dev (Storage proxy) or pick a local file. Production needs bucket CORS.",
     "waveformReady": "waveform OK",
@@ -920,7 +920,15 @@
     "loudnessHint": "All tracks are matched to this level (louder ones are turned down). 0 = off. Needs track analysis (upload / waveform).",
     "loudnessError": "Could not save loudness match.",
     "playbackError": "Could not update playback.",
-    "eqError": "Could not save EQ."
+    "eqError": "Could not save EQ.",
+    "unlockTitle": "Session music is playing",
+    "unlockHint": "Browsers block sound until you allow it. Click once to hear the same tracks as everyone else with the game open.",
+    "unlockAction": "Enable session audio",
+    "muteLocal": "Mute on this device",
+    "unmuteLocal": "Unmute on this device",
+    "masterVolume": "Master volume",
+    "channelVolumes": "Channel volumes",
+    "channelsShort": "Channels"
   },
   "campaignNpcs": {
     "title": "Campaign NPCs",

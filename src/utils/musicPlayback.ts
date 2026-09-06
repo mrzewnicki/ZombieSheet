@@ -18,13 +18,14 @@ export const MUSIC_PLAYBACK_COLLECTION = 'musicPlayback'
 export const MUSIC_CHANNELS_COLLECTION = 'musicChannels'
 export const MUSIC_PRESENCE_COLLECTION = 'musicPresence'
 
-export const MUSIC_MAX_BYTES = 20 * 1024 * 1024
+export const MUSIC_MAX_BYTES = 25 * 1024 * 1024
 export const MUSIC_ALLOWED_MIME = [
   'audio/mpeg',
   'audio/webm',
   'audio/mp4',
   'audio/x-m4a',
   'audio/aac',
+  'video/quicktime',
 ] as const
 
 export function musicTrackStoragePath(
@@ -34,6 +35,7 @@ export function musicTrackStoragePath(
 ): string {
   let ext = 'mp3'
   if (contentType === 'audio/webm') ext = 'webm'
+  else if (contentType === 'video/quicktime') ext = 'mov'
   else if (
     contentType === 'audio/mp4'
     || contentType === 'audio/x-m4a'
@@ -48,7 +50,14 @@ export function musicFileRejectReason(file: File): 'size' | 'format' | null {
   if (file.size > MUSIC_MAX_BYTES) return 'size'
   if ((MUSIC_ALLOWED_MIME as readonly string[]).includes(file.type)) return null
   const lower = file.name.toLowerCase()
-  if (lower.endsWith('.mp3') || lower.endsWith('.webm') || lower.endsWith('.m4a')) return null
+  if (
+    lower.endsWith('.mp3')
+    || lower.endsWith('.webm')
+    || lower.endsWith('.m4a')
+    || lower.endsWith('.mov')
+  ) {
+    return null
+  }
   return 'format'
 }
 
@@ -59,6 +68,7 @@ export function isAllowedMusicFile(file: File): boolean {
 export function resolveMusicContentType(file: File): string {
   const lower = file.name.toLowerCase()
   if (file.type === 'audio/webm' || lower.endsWith('.webm')) return 'audio/webm'
+  if (file.type === 'video/quicktime' || lower.endsWith('.mov')) return 'video/quicktime'
   if (
     file.type === 'audio/mp4'
     || file.type === 'audio/x-m4a'

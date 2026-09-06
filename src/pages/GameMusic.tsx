@@ -287,7 +287,7 @@ export default function GameMusic() {
         await uploadBytes(ref(storage, storagePath), file, { contentType })
         // Touch download URL early so first play is faster
         void getDownloadURL(ref(storage, storagePath))
-        const name = file.name.replace(/\.(mp3|webm|m4a)$/i, '')
+        const name = file.name.replace(/\.(mp3|webm|m4a|mov)$/i, '')
         await setDoc(doc(db, 'games', gameId, MUSIC_TRACKS_COLLECTION, trackId), {
           ...musicTrackPayload({
             name,
@@ -789,7 +789,7 @@ export default function GameMusic() {
       <input
         ref={fileRef}
         type="file"
-        accept="audio/mpeg,audio/webm,audio/mp4,audio/x-m4a,audio/aac,.mp3,.webm,.m4a"
+        accept="audio/mpeg,audio/webm,audio/mp4,audio/x-m4a,audio/aac,video/quicktime,.mp3,.webm,.m4a,.mov"
         multiple
         className="hidden"
         onChange={(e) => void handleUpload(e.target.files)}
@@ -797,7 +797,7 @@ export default function GameMusic() {
       <input
         ref={waveformFileRef}
         type="file"
-        accept="audio/mpeg,audio/webm,audio/mp4,audio/x-m4a,audio/aac,.mp3,.webm,.m4a"
+        accept="audio/mpeg,audio/webm,audio/mp4,audio/x-m4a,audio/aac,video/quicktime,.mp3,.webm,.m4a,.mov"
         className="hidden"
         onChange={(e) => void handleWaveformFile(e.target.files)}
       />

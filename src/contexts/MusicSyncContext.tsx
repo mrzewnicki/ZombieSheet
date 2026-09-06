@@ -28,8 +28,13 @@ import type {
 import {
   loadLocalChannelVolumes,
   saveLocalChannelVolumes,
+  effectiveLocalVolume,
   type LocalChannelVolumes,
 } from '@/utils/musicLocalPrefs'
+import {
+  fadeInGain,
+  shouldFadeInAfterSilence,
+} from '@/utils/musicFade'
 import {
   DEFAULT_LOUDNESS_TARGET,
   MUSIC_CHANNELS,
@@ -66,8 +71,42 @@ interface MusicSyncContextValue {
   loudnessTargets: Record<MusicChannel, number>
   localVolumes: LocalChannelVolumes
   setLocalVolume: (channel: MusicChannel, value: number) => void
+  setLocalMasterVolume: (value: number) => void
+  setLocalMuted: (muted: boolean) => void
+  /** True when session audio needs a user gesture before browsers will play. */
+  needsAudioUnlock: boolean
+  /** Call from a click/tap to unlock autoplay and resume playing channels. */
+  unlockAudio: () => Promise<void>
   isGm: boolean
   loading: boolean
+}
+
+function unlockStorageKey(gameId: string): string {
+  return `musicAudioUnlocked_${gameId}`
+}
+
+function loadAudioUnlocked(gameId: string): boolean {
+  if (!gameId) return false
+  try {
+    return sessionStorage.getItem(unlockStorageKey(gameId)) === '1'
+  } catch {
+    return false
+  }
+}
+
+function saveAudioUnlocked(gameId: string): void {
+  if (!gameId) return
+  try {
+    sessionStorage.setItem(unlockStorageKey(gameId), '1')
+  } catch {
+    /* ignore */
+  }
+}
+
+function isAutoplayBlockedError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false
+  const name = 'name' in err ? String(err.name) : ''
+  return name === 'NotAllowedError' || name === 'NotSupportedError'
 }
 
 const MusicSyncContext = createContext<MusicSyncContextValue | null>(null)
@@ -85,9 +124,28 @@ function applyVolume(
   trackVolume: number,
   localVolume: number,
   matchGain: number,
+  fadeGain = 1,
 ) {
-  const vol = Math.max(0, Math.min(1, trackVolume * localVolume * matchGain))
+  const vol = Math.max(0, Math.min(1, trackVolume * localVolume * matchGain * fadeGain))
   player.audio.volume = vol
+}
+
+function applyChannelVolume(
+  player: ChannelPlayer,
+  channel: MusicChannel,
+  volumes: LocalChannelVolumes,
+  state: MusicPlaybackState,
+  tracks: MusicTrack[],
+  loudnessTargets: Record<MusicChannel, number>,
+  fadeGain = 1,
+) {
+  applyVolume(
+    player,
+    state.trackVolume,
+    effectiveLocalVolume(volumes, channel),
+    matchGainFor(channel, state, tracks, loudnessTargets),
+    fadeGain,
+  )
 }
 
 function matchGainFor(
@@ -141,6 +199,8 @@ export default function MusicSyncProvider({
   const [localVolumes, setLocalVolumes] = useState<LocalChannelVolumes>(() =>
     loadLocalChannelVolumes(gameId, user?.uid ?? ''),
   )
+  const [audioUnlocked, setAudioUnlocked] = useState(() => loadAudioUnlocked(gameId))
+  const [audioBlocked, setAudioBlocked] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const playersRef = useRef<Partial<Record<MusicChannel, ChannelPlayer>>>({})
@@ -150,17 +210,91 @@ export default function MusicSyncProvider({
   const localVolRef = useRef(localVolumes)
   const loudnessRef = useRef(loudnessTargets)
   const advancingRef = useRef<Partial<Record<MusicChannel, boolean>>>({})
+  const audioUnlockedRef = useRef(audioUnlocked)
+  /** Wall-clock ms when the channel last had status === 'playing'. */
+  const lastActiveAtRef = useRef<Partial<Record<MusicChannel, number>>>({})
+  /** Fade-in start time per channel; absent means full gain. */
+  const fadeStartedAtRef = useRef<Partial<Record<MusicChannel, number>>>({})
+  const prevStatusRef = useRef<Partial<Record<MusicChannel, MusicPlaybackState['status']>>>({})
+  const fadeRafRef = useRef<number | null>(null)
 
   playbackRef.current = playback
   tracksRef.current = tracks
   playlistsRef.current = playlists
   localVolRef.current = localVolumes
   loudnessRef.current = loudnessTargets
+  audioUnlockedRef.current = audioUnlocked
+
+  const getFadeGain = useCallback((channel: MusicChannel, now = Date.now()): number => {
+    const started = fadeStartedAtRef.current[channel]
+    if (started == null) return 1
+    const gain = fadeInGain(now - started)
+    if (gain >= 1) {
+      delete fadeStartedAtRef.current[channel]
+      return 1
+    }
+    return gain
+  }, [])
+
+  const applyLiveVolume = useCallback((channel: MusicChannel) => {
+    const player = playersRef.current[channel]
+    if (!player) return
+    applyChannelVolume(
+      player,
+      channel,
+      localVolRef.current,
+      playbackRef.current[channel],
+      tracksRef.current,
+      loudnessRef.current,
+      getFadeGain(channel),
+    )
+  }, [getFadeGain])
+
+  const scheduleFadeTick = useCallback(() => {
+    if (fadeRafRef.current != null) return
+    const tick = () => {
+      fadeRafRef.current = null
+      const now = Date.now()
+      for (const channel of MUSIC_CHANNELS) {
+        if (fadeStartedAtRef.current[channel] == null) continue
+        if (playbackRef.current[channel].status === 'playing') {
+          lastActiveAtRef.current[channel] = now
+        }
+        applyLiveVolume(channel)
+      }
+      if (Object.keys(fadeStartedAtRef.current).length > 0) {
+        fadeRafRef.current = requestAnimationFrame(tick)
+      }
+    }
+    fadeRafRef.current = requestAnimationFrame(tick)
+  }, [applyLiveVolume])
 
   useEffect(() => {
     if (!user) return
     setLocalVolumes(loadLocalChannelVolumes(gameId, user.uid))
   }, [gameId, user])
+
+  useEffect(() => {
+    setAudioUnlocked(loadAudioUnlocked(gameId))
+    setAudioBlocked(false)
+    lastActiveAtRef.current = {}
+    fadeStartedAtRef.current = {}
+    prevStatusRef.current = {}
+  }, [gameId])
+
+  useEffect(() => {
+    return () => {
+      if (fadeRafRef.current != null) {
+        cancelAnimationFrame(fadeRafRef.current)
+        fadeRafRef.current = null
+      }
+    }
+  }, [])
+
+  const anyChannelPlaying = MUSIC_CHANNELS.some(
+    (channel) => playback[channel].status === 'playing' && playback[channel].trackId,
+  )
+  const needsAudioUnlock = anyChannelPlaying && (!audioUnlocked || audioBlocked)
 
   const ensurePlayer = useCallback((channel: MusicChannel): ChannelPlayer => {
     let player = playersRef.current[channel]
@@ -175,19 +309,100 @@ export default function MusicSyncProvider({
     setLocalVolumes((prev) => {
       const next = { ...prev, [channel]: Math.min(1, Math.max(0, value)) }
       if (user) saveLocalChannelVolumes(gameId, user.uid, next)
+      localVolRef.current = next
       const player = playersRef.current[channel]
       if (player) {
-        const state = playbackRef.current[channel]
-        applyVolume(
+        applyChannelVolume(
           player,
-          state.trackVolume,
-          next[channel],
-          matchGainFor(channel, state, tracksRef.current, loudnessRef.current),
+          channel,
+          next,
+          playbackRef.current[channel],
+          tracksRef.current,
+          loudnessRef.current,
+          getFadeGain(channel),
         )
       }
       return next
     })
-  }, [gameId, user])
+  }, [gameId, getFadeGain, user])
+
+  const setLocalMasterVolume = useCallback((value: number) => {
+    setLocalVolumes((prev) => {
+      const next = {
+        ...prev,
+        master: Math.min(1, Math.max(0, value)),
+        muted: false,
+      }
+      if (user) saveLocalChannelVolumes(gameId, user.uid, next)
+      localVolRef.current = next
+      for (const channel of MUSIC_CHANNELS) {
+        const player = playersRef.current[channel]
+        if (!player) continue
+        applyChannelVolume(
+          player,
+          channel,
+          next,
+          playbackRef.current[channel],
+          tracksRef.current,
+          loudnessRef.current,
+          getFadeGain(channel),
+        )
+      }
+      return next
+    })
+  }, [gameId, getFadeGain, user])
+
+  const setLocalMuted = useCallback((muted: boolean) => {
+    setLocalVolumes((prev) => {
+      const next = { ...prev, muted }
+      if (user) saveLocalChannelVolumes(gameId, user.uid, next)
+      localVolRef.current = next
+      for (const channel of MUSIC_CHANNELS) {
+        const player = playersRef.current[channel]
+        if (!player) continue
+        applyChannelVolume(
+          player,
+          channel,
+          next,
+          playbackRef.current[channel],
+          tracksRef.current,
+          loudnessRef.current,
+          getFadeGain(channel),
+        )
+      }
+      return next
+    })
+  }, [gameId, getFadeGain, user])
+
+  const unlockAudio = useCallback(async () => {
+    saveAudioUnlocked(gameId)
+    setAudioUnlocked(true)
+    setAudioBlocked(false)
+    audioUnlockedRef.current = true
+
+    for (const channel of MUSIC_CHANNELS) {
+      const state = playbackRef.current[channel]
+      const player = playersRef.current[channel]
+      if (!player || state.status !== 'playing' || !state.trackId) continue
+      try {
+        const targetSec = computePositionMs(state) / 1000
+        if (Number.isFinite(targetSec)) {
+          try {
+            player.audio.currentTime = targetSec
+          } catch {
+            /* ignore seek while loading */
+          }
+        }
+        await player.audio.play()
+      } catch (err) {
+        if (isAutoplayBlockedError(err)) {
+          setAudioBlocked(true)
+          setAudioUnlocked(false)
+          audioUnlockedRef.current = false
+        }
+      }
+    }
+  }, [gameId])
 
   // Presence heartbeat
   useEffect(() => {
@@ -282,11 +497,14 @@ export default function MusicSyncProvider({
           if (player) {
             const state = playbackRef.current[channel]
             const nextTargets = { ...loudnessRef.current, [channel]: target }
-            applyVolume(
+            applyChannelVolume(
               player,
-              state.trackVolume,
-              localVolRef.current[channel],
-              matchGainFor(channel, state, tracksRef.current, nextTargets),
+              channel,
+              localVolRef.current,
+              state,
+              tracksRef.current,
+              nextTargets,
+              getFadeGain(channel),
             )
           }
         },
@@ -360,8 +578,34 @@ export default function MusicSyncProvider({
     async function syncChannel(channel: MusicChannel) {
       const state = playback[channel]
       const player = ensurePlayer(channel)
-      const match = matchGainFor(channel, state, tracksRef.current, loudnessRef.current)
-      applyVolume(player, state.trackVolume, localVolRef.current[channel], match)
+      const prevStatus = prevStatusRef.current[channel]
+      const now = Date.now()
+
+      if (state.status === 'playing') {
+        if (prevStatus !== 'playing') {
+          if (shouldFadeInAfterSilence(lastActiveAtRef.current[channel], now)) {
+            fadeStartedAtRef.current[channel] = now
+            scheduleFadeTick()
+          } else {
+            delete fadeStartedAtRef.current[channel]
+          }
+        }
+        lastActiveAtRef.current[channel] = now
+      } else {
+        delete fadeStartedAtRef.current[channel]
+      }
+      prevStatusRef.current[channel] = state.status
+
+      const fadeGain = getFadeGain(channel, now)
+      applyChannelVolume(
+        player,
+        channel,
+        localVolRef.current,
+        state,
+        tracksRef.current,
+        loudnessRef.current,
+        fadeGain,
+      )
 
       if (state.status === 'idle' || !state.trackId) {
         player.audio.pause()
@@ -394,11 +638,14 @@ export default function MusicSyncProvider({
         }
 
         player.audio.loop = state.loopMode === 'track'
-        applyVolume(
+        applyChannelVolume(
           player,
-          state.trackVolume,
-          localVolRef.current[channel],
-          matchGainFor(channel, state, tracksRef.current, loudnessRef.current),
+          channel,
+          localVolRef.current,
+          state,
+          tracksRef.current,
+          loudnessRef.current,
+          getFadeGain(channel),
         )
 
         const targetSec = computePositionMs(state) / 1000
@@ -416,8 +663,16 @@ export default function MusicSyncProvider({
         if (state.status === 'playing') {
           try {
             await player.audio.play()
-          } catch {
-            /* autoplay may be blocked until user gesture */
+            if (!audioUnlockedRef.current) {
+              setAudioUnlocked(true)
+              saveAudioUnlocked(gameId)
+              audioUnlockedRef.current = true
+            }
+            setAudioBlocked(false)
+          } catch (err) {
+            if (isAutoplayBlockedError(err)) {
+              setAudioBlocked(true)
+            }
           }
         } else {
           player.audio.pause()
@@ -434,7 +689,16 @@ export default function MusicSyncProvider({
     return () => {
       cancelled = true
     }
-  }, [playback, ensurePlayer, loudnessTargets, localVolumes, tracks])
+  }, [
+    playback,
+    ensurePlayer,
+    loudnessTargets,
+    localVolumes,
+    tracks,
+    gameId,
+    getFadeGain,
+    scheduleFadeTick,
+  ])
 
   // ended → conductor advance (GM only)
   useEffect(() => {
@@ -499,9 +763,26 @@ export default function MusicSyncProvider({
     loudnessTargets,
     localVolumes,
     setLocalVolume,
+    setLocalMasterVolume,
+    setLocalMuted,
+    needsAudioUnlock,
+    unlockAudio,
     isGm,
     loading,
-  }), [tracks, playlists, playback, loudnessTargets, localVolumes, setLocalVolume, isGm, loading])
+  }), [
+    tracks,
+    playlists,
+    playback,
+    loudnessTargets,
+    localVolumes,
+    setLocalVolume,
+    setLocalMasterVolume,
+    setLocalMuted,
+    needsAudioUnlock,
+    unlockAudio,
+    isGm,
+    loading,
+  ])
 
   return (
     <MusicSyncContext.Provider value={value}>
