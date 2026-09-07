@@ -621,7 +621,6 @@
     "title": "Settlement",
     "open": "Open settlement sheet",
     "lobbyHint": "Shared settlement sheet: materials, constructions on the map, and traits. Any game member can edit.",
-    "sharedHint": "One settlement per game — visible and editable by all members.",
     "namePlaceholder": "Settlement name…",
     "descriptionLabel": "Description",
     "descriptionPlaceholder": "Description, status, story notes…",
@@ -832,7 +831,9 @@
     "open": "Open GM panel",
     "lobbyHint": "Game master tools: campaign NPCs, invites, and quick access to shared game resources.",
     "pageHint": "Game master panel — manage the campaign, invite players, and edit shared resources.",
-    "unauthorized": "The GM panel is only available to the game master."
+    "unauthorized": "The GM panel is only available to the game master.",
+    "dangerZone": "Danger zone",
+    "deleteHint": "Deleting the game cannot be undone. Characters, map, music, and session settings will be removed."
   },
   "music": {
     "title": "Music",

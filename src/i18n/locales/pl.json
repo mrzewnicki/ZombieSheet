@@ -621,7 +621,6 @@
     "title": "Osada",
     "open": "Otwórz kartę osady",
     "lobbyHint": "Współdzielona karta osady: materiały, konstrukcje na mapie oraz atuty i wady. Edytować może każdy uczestnik gry.",
-    "sharedHint": "Jedna osada na grę — widoczna i edytowalna dla wszystkich uczestników.",
     "namePlaceholder": "Nazwa osady…",
     "descriptionLabel": "Opis",
     "descriptionPlaceholder": "Opis, status, notatki fabularne…",
@@ -832,7 +831,9 @@
     "open": "Otwórz panel MG",
     "lobbyHint": "Narzędzia prowadzącego: NPC kampanii, zaproszenia i szybki dostęp do zasobów gry.",
     "pageHint": "Panel prowadzącego — zarządzaj kampanią, zapraszaj graczy i edytuj wspólne zasoby.",
-    "unauthorized": "Panel MG jest dostępny tylko dla prowadzącego gry."
+    "unauthorized": "Panel MG jest dostępny tylko dla prowadzącego gry.",
+    "dangerZone": "Strefa niebezpieczna",
+    "deleteHint": "Usunięcie gry jest nieodwracalne. Znikną bohaterowie, mapa, muzyka i ustawienia sesji."
   },
   "music": {
     "title": "Muzyka",

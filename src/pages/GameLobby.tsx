@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   doc, collection, onSnapshot, deleteDoc, updateDoc,
@@ -14,7 +14,6 @@ import type { Game, GameMember, Hero } from '@/types'
 import HeroCard from '@/components/hero/HeroCard'
 import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
-import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import Avatar from '@/components/ui/Avatar'
 
 export default function GameLobby() {
@@ -22,13 +21,11 @@ export default function GameLobby() {
   const { user } = useAuth()
   const { t } = useTranslation()
   const { role, loading: roleLoading } = useGameRole(gameId)
-  const navigate = useNavigate()
 
   const [game, setGame] = useState<Game | null>(null)
   const [members, setMembers] = useState<GameMember[]>([])
   const [heroes, setHeroes] = useState<Hero[]>([])
   const [loading, setLoading] = useState(true)
-  const [deleteOpen, setDeleteOpen] = useState(false)
   const [editingNick, setEditingNick] = useState<string | null>(null)
   const [nickDraft, setNickDraft] = useState('')
 
@@ -38,12 +35,7 @@ export default function GameLobby() {
     backTo: '/dashboard',
     backLabel: t('dashboard.title'),
     title: game?.title,
-    actions: isGm ? (
-      <Button variant="ghost" onClick={() => setDeleteOpen(true)} className="text-xs text-ink-faint hover:text-blood">
-        {t('game.deleteGame')}
-      </Button>
-    ) : undefined,
-  }, [game?.title, isGm, t])
+  }, [game?.title, t])
 
   useEffect(() => {
     const gameRef = doc(db, 'games', gameId)
@@ -64,11 +56,6 @@ export default function GameLobby() {
 
     return () => { unsubGame(); unsubMembers(); unsubHeroes() }
   }, [gameId])
-
-  async function handleDelete() {
-    await deleteDoc(doc(db, 'games', gameId))
-    navigate('/dashboard')
-  }
 
   function startEditNick(m: GameMember) {
     setEditingNick(m.uid)
@@ -96,157 +83,147 @@ export default function GameLobby() {
   }
 
   return (
-    <>
-      <div className="space-y-8">
-        {/* Header */}
-        <div>
-          <h1 className="font-heading text-3xl text-ink">{game.title}</h1>
-          {game.description && (
-            <p className="text-ink-muted mt-1 text-sm leading-relaxed">{game.description}</p>
-          )}
+    <div className="space-y-8">
+      {/* Header */}
+      <div>
+        <h1 className="font-heading text-3xl text-ink">{game.title}</h1>
+        {game.description && (
+          <p className="text-ink-muted mt-1 text-sm leading-relaxed">{game.description}</p>
+        )}
+      </div>
+
+      {/* Members */}
+      <section>
+        <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-3">
+          {t('game.members')}
+        </h2>
+        <div className="flex flex-wrap gap-3">
+          {members.map((m) => {
+            const canEditNick = isGm || m.uid === user?.uid
+            const isEditing = editingNick === m.uid
+            return (
+              <div
+                key={m.uid}
+                className="flex items-center gap-2 bg-surface border border-border rounded-lg px-3 py-2 group/chip"
+              >
+                <Avatar src={m.photoURL} name={memberLabel(m)} className="w-6 h-6 shrink-0" />
+
+                {isEditing ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      autoFocus
+                      value={nickDraft}
+                      onChange={(e) => setNickDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveNick(m.uid)
+                        if (e.key === 'Escape') setEditingNick(null)
+                      }}
+                      placeholder={m.displayName}
+                      className="bg-void border border-blood/50 rounded px-2 py-0.5 text-sm text-ink focus:outline-none focus:border-blood w-32"
+                    />
+                    <button onClick={() => saveNick(m.uid)} className="text-blood hover:text-blood-light text-xs font-mono">✓</button>
+                    <button onClick={() => setEditingNick(null)} className="text-ink-faint hover:text-ink text-xs font-mono">✕</button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm text-ink">{memberLabel(m)}</span>
+                    {m.nick && (
+                      <span className="text-[10px] text-ink-faint font-mono hidden group-hover/chip:inline">
+                        ({m.displayName})
+                      </span>
+                    )}
+                    {canEditNick && (
+                      <button
+                        onClick={() => startEditNick(m)}
+                        className="text-ink-faint hover:text-blood text-[10px] opacity-0 group-hover/chip:opacity-100 transition-opacity ml-0.5"
+                        title={t('game.editNick')}
+                      >
+                        ✎
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {m.role === 'gm' && (
+                  <span className="text-[10px] font-mono text-blood border border-blood/40 px-1 rounded shrink-0">
+                    {t('game.gmBadge')}
+                  </span>
+                )}
+                {isGm && m.uid !== user?.uid && (
+                  <button
+                    onClick={async () => {
+                      await deleteDoc(doc(db, 'games', gameId, 'members', m.uid))
+                    }}
+                    className="ml-1 text-ink-faint hover:text-blood text-xs"
+                    title={t('game.removePlayer')}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </section>
+
+      {/* Heroes */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase">
+            {t('game.heroes')}
+          </h2>
+          <Link to={`/game/${gameId}/hero/new`}>
+            <Button className="text-xs py-1.5">{t('game.createHero')}</Button>
+          </Link>
         </div>
 
-        {/* Members */}
-        <section>
-          <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-3">
-            {t('game.members')}
-          </h2>
-          <div className="flex flex-wrap gap-3">
-            {members.map((m) => {
-              const canEditNick = isGm || m.uid === user?.uid
-              const isEditing = editingNick === m.uid
-              return (
-                <div
-                  key={m.uid}
-                  className="flex items-center gap-2 bg-surface border border-border rounded-lg px-3 py-2 group/chip"
-                >
-                  <Avatar src={m.photoURL} name={memberLabel(m)} className="w-6 h-6 shrink-0" />
-
-                  {isEditing ? (
-                    <div className="flex items-center gap-1">
-                      <input
-                        autoFocus
-                        value={nickDraft}
-                        onChange={(e) => setNickDraft(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') saveNick(m.uid)
-                          if (e.key === 'Escape') setEditingNick(null)
-                        }}
-                        placeholder={m.displayName}
-                        className="bg-void border border-blood/50 rounded px-2 py-0.5 text-sm text-ink focus:outline-none focus:border-blood w-32"
-                      />
-                      <button onClick={() => saveNick(m.uid)} className="text-blood hover:text-blood-light text-xs font-mono">✓</button>
-                      <button onClick={() => setEditingNick(null)} className="text-ink-faint hover:text-ink text-xs font-mono">✕</button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm text-ink">{memberLabel(m)}</span>
-                      {m.nick && (
-                        <span className="text-[10px] text-ink-faint font-mono hidden group-hover/chip:inline">
-                          ({m.displayName})
-                        </span>
-                      )}
-                      {canEditNick && (
-                        <button
-                          onClick={() => startEditNick(m)}
-                          className="text-ink-faint hover:text-blood text-[10px] opacity-0 group-hover/chip:opacity-100 transition-opacity ml-0.5"
-                          title={t('game.editNick')}
-                        >
-                          ✎
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {m.role === 'gm' && (
-                    <span className="text-[10px] font-mono text-blood border border-blood/40 px-1 rounded shrink-0">
-                      {t('game.gmBadge')}
-                    </span>
-                  )}
-                  {isGm && m.uid !== user?.uid && (
-                    <button
-                      onClick={async () => {
-                        await deleteDoc(doc(db, 'games', gameId, 'members', m.uid))
-                      }}
-                      className="ml-1 text-ink-faint hover:text-blood text-xs"
-                      title={t('game.removePlayer')}
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              )
-            })}
+        {heroes.length === 0 ? (
+          <p className="text-ink-faint text-sm">{t('game.noHeroes')}</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {heroes.map((hero) => (
+              <HeroCard
+                key={hero.id}
+                gameId={gameId}
+                hero={hero}
+                owner={getMemberForHero(hero)}
+                isGm={isGm && hero.ownerId === user?.uid}
+              />
+            ))}
           </div>
-        </section>
+        )}
+      </section>
 
-        {/* Heroes */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase">
-              {t('game.heroes')}
-            </h2>
-            <Link to={`/game/${gameId}/hero/new`}>
-              <Button className="text-xs py-1.5">{t('game.createHero')}</Button>
-            </Link>
-          </div>
-
-          {heroes.length === 0 ? (
-            <p className="text-ink-faint text-sm">{t('game.noHeroes')}</p>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {heroes.map((hero) => (
-                <HeroCard
-                  key={hero.id}
-                  gameId={gameId}
-                  hero={hero}
-                  owner={getMemberForHero(hero)}
-                  isGm={isGm && hero.ownerId === user?.uid}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Shared game tools */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {isGm && (
-            <Link
-              to={`/game/${gameId}/gm`}
-              className="rounded-lg border border-border bg-elevated/40 px-4 py-4 hover:border-border-light hover:bg-elevated/60 transition-colors group"
-            >
-              <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-2 group-hover:text-blood">
-                {t('gmPanel.title')}
-              </h2>
-              <p className="text-ink-faint text-sm leading-relaxed">{t('gmPanel.lobbyHint')}</p>
-              <p className="mt-3 text-[10px] font-mono uppercase tracking-wider text-ink-muted group-hover:text-blood-light">
-                {t('gmPanel.open')} →
-              </p>
-            </Link>
-          )}
-
+      {/* Shared game tools */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {isGm && (
           <Link
-            to={`/game/${gameId}/settlement`}
+            to={`/game/${gameId}/gm`}
             className="rounded-lg border border-border bg-elevated/40 px-4 py-4 hover:border-border-light hover:bg-elevated/60 transition-colors group"
           >
             <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-2 group-hover:text-blood">
-              {t('settlement.title')}
+              {t('gmPanel.title')}
             </h2>
-            <p className="text-ink-faint text-sm leading-relaxed">{t('settlement.lobbyHint')}</p>
+            <p className="text-ink-faint text-sm leading-relaxed">{t('gmPanel.lobbyHint')}</p>
             <p className="mt-3 text-[10px] font-mono uppercase tracking-wider text-ink-muted group-hover:text-blood-light">
-              {t('settlement.open')} →
+              {t('gmPanel.open')} →
             </p>
           </Link>
-        </div>
-      </div>
+        )}
 
-      <ConfirmDialog
-        open={deleteOpen}
-        message={t('game.deleteConfirm', { title: game.title })}
-        onConfirm={handleDelete}
-        onCancel={() => setDeleteOpen(false)}
-        dangerous
-      />
-    </>
+        <Link
+          to={`/game/${gameId}/settlement`}
+          className="rounded-lg border border-border bg-elevated/40 px-4 py-4 hover:border-border-light hover:bg-elevated/60 transition-colors group"
+        >
+          <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-2 group-hover:text-blood">
+            {t('settlement.title')}
+          </h2>
+          <p className="text-ink-faint text-sm leading-relaxed">{t('settlement.lobbyHint')}</p>
+          <p className="mt-3 text-[10px] font-mono uppercase tracking-wider text-ink-muted group-hover:text-blood-light">
+            {t('settlement.open')} →
+          </p>
+        </Link>
+      </div>
+    </div>
   )
 }

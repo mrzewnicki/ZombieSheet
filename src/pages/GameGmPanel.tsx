@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore'
+import { deleteDoc, doc, onSnapshot, updateDoc } from 'firebase/firestore'
 import { db } from '@/config/firebase'
 import { useLayoutHeader } from '@/contexts/LayoutContext'
 import { useGameRole } from '@/hooks/useGameRole'
 import Button from '@/components/ui/Button'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import Spinner from '@/components/ui/Spinner'
 import type { Game } from '@/types'
 
@@ -15,6 +16,7 @@ const linkClass =
 export default function GameGmPanel() {
   const { gameId = '' } = useParams()
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const { role, loading: roleLoading } = useGameRole(gameId)
   const isGm = role === 'gm'
 
@@ -22,6 +24,8 @@ export default function GameGmPanel() {
   const [loadingGame, setLoadingGame] = useState(true)
   const [copied, setCopied] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useLayoutHeader({
     backTo: `/game/${gameId}`,
@@ -53,6 +57,17 @@ export default function GameGmPanel() {
     setRegenerating(false)
   }
 
+  async function handleDelete() {
+    setDeleting(true)
+    try {
+      await deleteDoc(doc(db, 'games', gameId))
+      navigate('/dashboard')
+    } catch {
+      setDeleting(false)
+      setDeleteOpen(false)
+    }
+  }
+
   if (loadingGame || roleLoading) {
     return (
       <div className="flex justify-center py-16">
@@ -73,54 +88,81 @@ export default function GameGmPanel() {
   }
 
   return (
-    <div className="space-y-8 max-w-3xl">
-      <p className="text-sm text-ink-faint leading-relaxed">{t('gmPanel.pageHint')}</p>
+    <>
+      <div className="space-y-8 max-w-3xl">
+        <p className="text-sm text-ink-faint leading-relaxed">{t('gmPanel.pageHint')}</p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Link to={`/game/${gameId}/npcs`} className={linkClass}>
-          <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-2 group-hover:text-blood">
-            {t('campaignNpcs.gmPanelTitle')}
-          </h2>
-          <p className="text-ink-faint text-sm leading-relaxed">{t('campaignNpcs.gmLobbyHint')}</p>
-        </Link>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Link to={`/game/${gameId}/npcs`} className={linkClass}>
+            <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-2 group-hover:text-blood">
+              {t('campaignNpcs.gmPanelTitle')}
+            </h2>
+            <p className="text-ink-faint text-sm leading-relaxed">{t('campaignNpcs.gmLobbyHint')}</p>
+          </Link>
 
-        <Link to={`/game/${gameId}/traits`} className={linkClass}>
-          <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-2 group-hover:text-blood">
-            {t('traitsCatalog.title')}
-          </h2>
-          <p className="text-ink-faint text-sm leading-relaxed">{t('traitsCatalog.lobbyHint')}</p>
-        </Link>
+          <Link to={`/game/${gameId}/traits`} className={linkClass}>
+            <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-2 group-hover:text-blood">
+              {t('traitsCatalog.title')}
+            </h2>
+            <p className="text-ink-faint text-sm leading-relaxed">{t('traitsCatalog.lobbyHint')}</p>
+          </Link>
 
-        <Link to={`/game/${gameId}/settlement`} className={linkClass}>
-          <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-2 group-hover:text-blood">
-            {t('settlement.title')}
-          </h2>
-          <p className="text-ink-faint text-sm leading-relaxed">{t('settlement.lobbyHint')}</p>
-        </Link>
+          <Link to={`/game/${gameId}/settlement`} className={linkClass}>
+            <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-2 group-hover:text-blood">
+              {t('settlement.title')}
+            </h2>
+            <p className="text-ink-faint text-sm leading-relaxed">{t('settlement.lobbyHint')}</p>
+          </Link>
 
-        <Link to={`/game/${gameId}/music`} className={linkClass}>
-          <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-2 group-hover:text-blood">
-            {t('music.title')}
+          <Link to={`/game/${gameId}/music`} className={linkClass}>
+            <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-2 group-hover:text-blood">
+              {t('music.title')}
+            </h2>
+            <p className="text-ink-faint text-sm leading-relaxed">{t('music.lobbyHint')}</p>
+          </Link>
+        </div>
+
+        <section>
+          <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-3">
+            {t('game.invite')}
           </h2>
-          <p className="text-ink-faint text-sm leading-relaxed">{t('music.lobbyHint')}</p>
-        </Link>
+          <p className="text-xs text-ink-faint mb-2">{t('game.inviteHint')}</p>
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" onClick={() => void copyLink()} className="text-xs">
+              {copied ? t('common.copied') : t('game.copyLink')}
+            </Button>
+            <Button variant="ghost" onClick={() => void regenerateToken()} loading={regenerating} className="text-xs">
+              {t('game.regenerateLink')}
+            </Button>
+          </div>
+          <p className="mt-2 font-mono text-ink-faint text-[11px] break-all">{getInviteUrl()}</p>
+        </section>
+
+        <section className="border-t border-border pt-6">
+          <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-2">
+            {t('gmPanel.dangerZone')}
+          </h2>
+          <p className="text-xs text-ink-faint mb-3 leading-relaxed">{t('gmPanel.deleteHint')}</p>
+          <Button
+            variant="danger"
+            className="text-xs"
+            onClick={() => setDeleteOpen(true)}
+            disabled={deleting}
+          >
+            {t('game.deleteGame')}
+          </Button>
+        </section>
       </div>
 
-      <section>
-        <h2 className="font-heading text-sm text-blood-light tracking-widest uppercase mb-3">
-          {t('game.invite')}
-        </h2>
-        <p className="text-xs text-ink-faint mb-2">{t('game.inviteHint')}</p>
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" onClick={() => void copyLink()} className="text-xs">
-            {copied ? t('common.copied') : t('game.copyLink')}
-          </Button>
-          <Button variant="ghost" onClick={() => void regenerateToken()} loading={regenerating} className="text-xs">
-            {t('game.regenerateLink')}
-          </Button>
-        </div>
-        <p className="mt-2 font-mono text-ink-faint text-[11px] break-all">{getInviteUrl()}</p>
-      </section>
-    </div>
+      <ConfirmDialog
+        open={deleteOpen}
+        message={t('game.deleteConfirm', { title: game?.title ?? '' })}
+        onConfirm={() => void handleDelete()}
+        onCancel={() => {
+          if (!deleting) setDeleteOpen(false)
+        }}
+        dangerous
+      />
+    </>
   )
 }
