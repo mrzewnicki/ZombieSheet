@@ -422,6 +422,25 @@ export default function MusicSyncProvider({
     }
   }, [gameId])
 
+  // Browsers require a user gesture before audio.play(). Capture the first
+  // click/key/touch anywhere in the document and unlock — no dedicated button.
+  useEffect(() => {
+    if (audioUnlocked && !audioBlocked) return
+
+    const onGesture = () => {
+      void unlockAudio()
+    }
+    const opts: AddEventListenerOptions = { capture: true, passive: true }
+    document.addEventListener('pointerdown', onGesture, opts)
+    document.addEventListener('keydown', onGesture, opts)
+    document.addEventListener('touchstart', onGesture, opts)
+    return () => {
+      document.removeEventListener('pointerdown', onGesture, opts)
+      document.removeEventListener('keydown', onGesture, opts)
+      document.removeEventListener('touchstart', onGesture, opts)
+    }
+  }, [audioUnlocked, audioBlocked, unlockAudio])
+
   const getChannelPositionMs = useCallback((channel: MusicChannel): number => {
     const state = playbackRef.current[channel]
     const track = tracksRef.current.find((t) => t.id === state.trackId)
@@ -451,6 +470,7 @@ export default function MusicSyncProvider({
     if (!user || !gameId) return
     const uid = user.uid
     const displayName = user.displayName ?? ''
+    const photoURL = user.photoURL ?? ''
     const presenceRef = doc(db, 'games', gameId, MUSIC_PRESENCE_COLLECTION, uid)
 
     async function beat() {
@@ -458,6 +478,7 @@ export default function MusicSyncProvider({
         await setDoc(presenceRef, {
           lastSeen: serverTimestamp(),
           displayName,
+          photoURL,
         }, { merge: true })
       } catch {
         /* ignore */

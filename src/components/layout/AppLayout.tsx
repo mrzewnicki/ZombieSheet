@@ -62,7 +62,7 @@ export default function AppLayout({ children }: Props) {
             </>
           )}
 
-          <div ref={headerCenterRef} className="flex-1 min-w-0 flex items-center justify-center px-2" />
+          <div ref={headerCenterRef} className="flex-1 min-w-0 flex items-center justify-center gap-3 px-2" />
 
           <div className="ml-auto flex items-center gap-3 shrink-0">
             {actions}

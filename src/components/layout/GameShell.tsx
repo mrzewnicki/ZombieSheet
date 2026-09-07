@@ -4,8 +4,8 @@ import { LayoutContext } from '@/contexts/LayoutContext'
 import { ChatProvider } from '@/contexts/ChatContext'
 import MusicSyncProvider from '@/contexts/MusicSyncContext'
 import ChatSidebar from '@/components/chat/ChatSidebar'
-import MusicListenBanner from '@/components/music/MusicListenBanner'
 import MusicHeaderHelper from '@/components/music/MusicHeaderHelper'
+import GameOnlineAvatars from '@/components/music/GameOnlineAvatars'
 import SyncDisconnectedBanner from '@/components/music/SyncDisconnectedBanner'
 import { FEATURES } from '@/config/features'
 
@@ -21,7 +21,7 @@ function GameShellInner() {
         <Outlet />
       </div>
       <ChatSidebar />
-      <MusicListenBanner />
+      <GameOnlineAvatars />
       <MusicHeaderHelper />
       <SyncDisconnectedBanner />
     </>
@@ -53,7 +53,7 @@ export default function GameShell() {
   ) : (
     <>
       <Outlet />
-      <MusicListenBanner />
+      <GameOnlineAvatars />
       <MusicHeaderHelper />
       <SyncDisconnectedBanner />
     </>

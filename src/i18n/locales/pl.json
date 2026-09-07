@@ -884,6 +884,7 @@
     "playlistSaveError": "Nie udało się zapisać playlisty.",
     "playlistEmpty": "Playlista nie ma utworów.",
     "nowPlaying": "Teraz",
+    "onlinePlayers": "Online: {{count}}",
     "source": "Źródło",
     "sourcePending": "Niewybrane — wciśnij Play",
     "sourceTrack": "Pojedynczy utwór",

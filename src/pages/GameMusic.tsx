@@ -95,6 +95,7 @@ export default function GameMusic() {
     loading: musicLoading,
     getChannelPositionMs,
     sendMusicCmd,
+    unlockAudio,
   } = useMusicSync()
 
   const [tab, setTab] = useState<TabKey>('mixer')
@@ -536,6 +537,7 @@ export default function GameMusic() {
 
   async function playTrackOnChannel(channel: MusicChannel, track: MusicTrack) {
     if (!user) return
+    void unlockAudio()
     setError(null)
     setPlayMenuTrackId(null)
     setPlayMenuPlaylistId(null)
@@ -565,6 +567,7 @@ export default function GameMusic() {
 
   async function playPlaylistOnChannel(channel: MusicChannel, playlist: MusicPlaylist) {
     if (!user) return
+    void unlockAudio()
     setError(null)
     setPlayMenuTrackId(null)
     setPlayMenuPlaylistId(null)
@@ -598,6 +601,8 @@ export default function GameMusic() {
 
   async function playChannel(channel: MusicChannel) {
     if (!user) return
+    // Same click unlocks autoplay for this tab
+    void unlockAudio()
     const src = channelSource[channel]
     const current = playback[channel]
     setError(null)

@@ -884,6 +884,7 @@
     "playlistSaveError": "Could not save the playlist.",
     "playlistEmpty": "Playlist has no tracks.",
     "nowPlaying": "Now",
+    "onlinePlayers": "Online: {{count}}",
     "source": "Source",
     "sourcePending": "Not applied — press Play",
     "sourceTrack": "Single track",
