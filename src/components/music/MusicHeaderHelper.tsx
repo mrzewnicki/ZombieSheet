@@ -6,7 +6,6 @@ import { useContext } from 'react'
 import { LayoutContext } from '@/contexts/LayoutContext'
 import { useMusicSync } from '@/contexts/MusicSyncContext'
 import { MUSIC_CHANNELS } from '@/utils/musicPlayback'
-import type { MusicChannel } from '@/types'
 
 /**
  * Compact session-music control portaled into the AppLayout header center.

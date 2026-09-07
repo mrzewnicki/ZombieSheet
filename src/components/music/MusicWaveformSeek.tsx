@@ -84,7 +84,7 @@ export default function MusicWaveformSeek({
   }
 
   return (
-    <div className="block space-y-1">
+    <div className="block space-y-0.5 min-w-0">
       <span className="text-[10px] font-mono text-ink-faint">
         {empty ? '0:00 / —' : `${formatDurationMs(displayMs)} / ${formatDurationMs(durationMs)}`}
         {loading && !bars ? ' · …' : ''}
@@ -98,7 +98,7 @@ export default function MusicWaveformSeek({
         aria-valuemax={Math.max(0, durationMs)}
         aria-valuenow={empty ? 0 : Math.min(displayMs, durationMs)}
         aria-label={ariaLabel}
-        className={`relative h-16 w-full rounded border border-border bg-dark/60 touch-none select-none overflow-hidden ${
+        className={`relative h-10 w-full rounded border border-border bg-dark/60 touch-none select-none overflow-hidden ${
           empty ? 'cursor-default opacity-60' : 'cursor-pointer'
         }`}
         onPointerDown={onPointerDown}

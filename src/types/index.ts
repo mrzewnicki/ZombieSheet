@@ -491,7 +491,8 @@ export interface MusicPlaybackState {
 
 /**
  * Per-channel mix settings.
- * `loudnessTarget` (0–1): match all tracks to this RMS; 0 = matching off.
+ * `loudnessTarget` (0–1 linear RMS): match all tracks to this level; 0 = matching off.
+ * UI exposes the same value in dBFS (−40…0).
  */
 export interface MusicChannelSettings {
   channel: MusicChannel

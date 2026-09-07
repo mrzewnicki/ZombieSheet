@@ -28,6 +28,8 @@ import type {
 import {
   DEFAULT_LOUDNESS_TARGET,
   DEFAULT_TRACK_VOLUME,
+  LOUDNESS_DB_MAX,
+  LOUDNESS_DB_MIN,
   MUSIC_CHANNELS,
   MUSIC_CHANNELS_COLLECTION,
   MUSIC_MAX_BYTES,
@@ -35,14 +37,16 @@ import {
   MUSIC_PLAYLISTS_COLLECTION,
   MUSIC_TRACKS_COLLECTION,
   formatDurationMs,
+  formatLoudnessTargetDb,
   isAllowedMusicFile,
+  loudnessSliderDbToTarget,
+  loudnessTargetToSliderDb,
   musicChannelSettingsPayload,
   musicFileRejectReason,
   musicPlaybackPayload,
   musicPlaylistPayload,
   musicTrackPayload,
   musicTrackStoragePath,
-  nextPlaylistIndex,
   normalizePlaylistLoopMode,
   resolveMusicContentType,
   stepPlaylistIndex,
@@ -1340,238 +1344,244 @@ export default function GameMusic() {
             const position = duration > 0
               ? Math.min(duration, getChannelPositionMs(channel))
               : getChannelPositionMs(channel)
-            const activePlaylist =
-              state.source === 'playlist' && state.playlistId
-                ? playlists.find((p) => p.id === state.playlistId)
-                : undefined
-            const nextPlaylistIdx = activePlaylist
-              ? nextPlaylistIndex(
-                activePlaylist.trackIds,
-                state.playlistIndex ?? 0,
-                state.loopMode === 'playlist' ? 'playlist' : 'off',
-              )
-              : null
-            const nextTrack =
-              nextPlaylistIdx != null && activePlaylist
-                ? trackById.get(activePlaylist.trackIds[nextPlaylistIdx] ?? '')
-                : undefined
+            const draftLoopMode: MusicLoopMode | null = src.mode === 'track' && src.trackId
+              ? (trackById.get(src.trackId)?.loopMode ?? 'off')
+              : src.mode === 'playlist' && src.playlistId
+                ? (playlists.find((p) => p.id === src.playlistId)?.loopMode ?? 'off')
+                : null
+            const LoopIcon = draftLoopMode === 'track'
+              ? FaRedo
+              : draftLoopMode === 'playlist'
+                ? FaSync
+                : null
 
             return (
               <div
                 key={channel}
-                className="rounded-lg border border-border bg-surface p-3 space-y-3"
+                className="rounded-lg border border-border bg-surface p-3"
               >
-                <h3 className="font-heading text-sm text-blood-light tracking-widest uppercase">
-                  {t(CHANNEL_LABEL_KEY[channel])}
-                </h3>
+                <div className="flex gap-3 items-stretch">
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <h3 className="font-heading text-sm text-blood-light tracking-widest uppercase">
+                      {t(CHANNEL_LABEL_KEY[channel])}
+                    </h3>
 
-                {(state.status === 'playing' || state.status === 'paused') && currentTrack && (
-                  <div className="min-w-0 space-y-0.5">
-                    <p className="text-xs text-ink-muted truncate">
-                      {currentTrack.name}
-                      {activePlaylist ? ` · ${activePlaylist.name}` : ''}
-                    </p>
-                    {activePlaylist ? (
-                      <p className="text-[10px] text-ink-faint truncate">
-                        {nextTrack
-                          ? `${t('music.upNext')}: ${nextTrack.name}`
-                          : t('music.playlistEnd')}
-                      </p>
-                    ) : null}
+                    <div>
+                      <label className="block space-y-1">
+                        <span className="text-[10px] font-mono uppercase text-ink-faint">
+                          {t('music.source')}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          {draftLoopMode != null && (
+                            <span
+                              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-void text-ink-muted"
+                              title={t(`music.loopModes.${draftLoopMode}`)}
+                              aria-label={`${t('music.loop')}: ${t(`music.loopModes.${draftLoopMode}`)}`}
+                            >
+                              {LoopIcon
+                                ? <LoopIcon className="w-3.5 h-3.5" aria-hidden />
+                                : (
+                                  <span className="text-[11px] font-mono font-semibold leading-none" aria-hidden>
+                                    ×1
+                                  </span>
+                                )}
+                            </span>
+                          )}
+                          <select
+                            value={
+                              src.mode === 'playlist' && src.playlistId
+                                ? `playlist:${src.playlistId}`
+                                : src.mode === 'track' && src.trackId
+                                  ? `track:${src.trackId}`
+                                  : ''
+                            }
+                            onChange={(e) => {
+                              const value = e.target.value
+                              if (value.startsWith('playlist:')) {
+                                setChannelSource((prev) => ({
+                                  ...prev,
+                                  [channel]: {
+                                    mode: 'playlist',
+                                    trackId: '',
+                                    playlistId: value.slice('playlist:'.length),
+                                  },
+                                }))
+                                return
+                              }
+                              if (value.startsWith('track:')) {
+                                setChannelSource((prev) => ({
+                                  ...prev,
+                                  [channel]: {
+                                    mode: 'track',
+                                    trackId: value.slice('track:'.length),
+                                    playlistId: '',
+                                  },
+                                }))
+                                return
+                              }
+                              setChannelSource((prev) => ({
+                                ...prev,
+                                [channel]: { mode: 'track', trackId: '', playlistId: '' },
+                              }))
+                            }}
+                            className="min-w-0 flex-1 rounded border border-border bg-void px-2 py-1.5 text-sm text-ink"
+                          >
+                            <option value="">{t('music.selectSource')}</option>
+                            {tracks.length > 0 && (
+                              <optgroup label={t('music.sourceTrack')}>
+                                {tracks.map((track) => (
+                                  <option key={track.id} value={`track:${track.id}`}>
+                                    {track.name}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )}
+                            {playlists.length > 0 && (
+                              <optgroup label={t('music.sourcePlaylist')}>
+                                {playlists.map((playlist) => (
+                                  <option key={playlist.id} value={`playlist:${playlist.id}`}>
+                                    {playlist.name}
+                                    {playlist.trackIds.length
+                                      ? ` (${playlist.trackIds.length})`
+                                      : ''}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )}
+                          </select>
+                        </div>
+                        {sourceDraftDiffers(src, state) ? (
+                          <p className="text-[10px] text-amber-600/90">
+                            {t('music.sourcePending')}
+                          </p>
+                        ) : null}
+                      </label>
+                    </div>
+
+                    <div className="flex items-end gap-2">
+                      <div className="flex items-center gap-1 shrink-0 pb-0.5">
+                        {state.source === 'playlist'
+                          && (state.status === 'playing' || state.status === 'paused') && (
+                          <button
+                            type="button"
+                            aria-label={t('music.prevTrack')}
+                            disabled={(playlists.find((p) => p.id === state.playlistId)?.trackIds.length ?? 0) < 2}
+                            onClick={() => void skipPlaylistTrack(channel, -1)}
+                            className="inline-flex items-center justify-center w-8 h-8 rounded text-xs border border-border bg-void text-ink hover:bg-elevated transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <FaStepBackward className="w-3 h-3" aria-hidden />
+                          </button>
+                        )}
+                        {state.status === 'playing' ? (
+                          <button
+                            type="button"
+                            aria-label={t('music.pause')}
+                            onClick={() => void pauseChannel(channel)}
+                            className="inline-flex items-center justify-center w-8 h-8 rounded text-xs bg-blood/80 hover:bg-blood text-white border border-blood transition-colors"
+                          >
+                            <FaPause className="w-3 h-3" aria-hidden />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            aria-label={
+                              state.status === 'paused' ? t('music.resume') : t('music.play')
+                            }
+                            onClick={() => void playChannel(channel)}
+                            className="inline-flex items-center justify-center w-8 h-8 rounded text-xs bg-emerald-700/80 hover:bg-emerald-600 text-white border border-emerald-700 transition-colors"
+                          >
+                            <FaPlay className="w-3 h-3" aria-hidden />
+                          </button>
+                        )}
+                        {state.source === 'playlist'
+                          && (state.status === 'playing' || state.status === 'paused') && (
+                          <button
+                            type="button"
+                            aria-label={t('music.nextTrack')}
+                            disabled={(playlists.find((p) => p.id === state.playlistId)?.trackIds.length ?? 0) < 2}
+                            onClick={() => void skipPlaylistTrack(channel, 1)}
+                            className="inline-flex items-center justify-center w-8 h-8 rounded text-xs border border-border bg-void text-ink hover:bg-elevated transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <FaStepForward className="w-3 h-3" aria-hidden />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <MusicWaveformSeek
+                          peaks={currentTrack?.waveformPeaks}
+                          positionMs={duration > 0 ? Math.min(position, duration) : 0}
+                          durationMs={duration}
+                          ariaLabel={t('music.seek')}
+                          onSeek={(ms) => {
+                            if (!state.trackId || duration <= 0) return
+                            void seekChannel(channel, ms)
+                          }}
+                          loading={Boolean(state.trackId && waveformLoadingIds[state.trackId])}
+                        />
+                        {currentTrack && !(currentTrack.waveformPeaks && currentTrack.waveformPeaks.length >= 2) ? (
+                          <Button
+                            variant="ghost"
+                            className="text-xs"
+                            loading={Boolean(waveformLoadingIds[currentTrack.id])}
+                            onClick={() => pickWaveformFile(currentTrack.id)}
+                          >
+                            {t('music.waveformFromFile')}
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
                   </div>
-                )}
 
-                <div className="space-y-2">
-                  <label className="block space-y-1">
-                    <span className="text-[10px] font-mono uppercase text-ink-faint">
-                      {t('music.source')}
-                    </span>
-                    <select
-                      value={
-                        src.mode === 'playlist' && src.playlistId
-                          ? `playlist:${src.playlistId}`
-                          : src.mode === 'track' && src.trackId
-                            ? `track:${src.trackId}`
-                            : ''
-                      }
-                      onChange={(e) => {
-                        const value = e.target.value
-                        if (value.startsWith('playlist:')) {
-                          setChannelSource((prev) => ({
-                            ...prev,
-                            [channel]: {
-                              mode: 'playlist',
-                              trackId: '',
-                              playlistId: value.slice('playlist:'.length),
-                            },
-                          }))
-                          return
-                        }
-                        if (value.startsWith('track:')) {
-                          setChannelSource((prev) => ({
-                            ...prev,
-                            [channel]: {
-                              mode: 'track',
-                              trackId: value.slice('track:'.length),
-                              playlistId: '',
-                            },
-                          }))
-                          return
-                        }
-                        setChannelSource((prev) => ({
-                          ...prev,
-                          [channel]: { mode: 'track', trackId: '', playlistId: '' },
-                        }))
-                      }}
-                      className="w-full rounded border border-border bg-void px-2 py-1.5 text-sm text-ink"
+                  <div className="flex shrink-0 gap-2 self-start pl-1 border-l border-border/60">
+                    <label
+                      className="flex w-9 flex-col items-center gap-1"
+                      title={t('music.trackVolumeHint')}
                     >
-                      <option value="">{t('music.selectSource')}</option>
-                      {tracks.length > 0 && (
-                        <optgroup label={t('music.sourceTrack')}>
-                          {tracks.map((track) => (
-                            <option key={track.id} value={`track:${track.id}`}>
-                              {track.name}
-                            </option>
-                          ))}
-                        </optgroup>
-                      )}
-                      {playlists.length > 0 && (
-                        <optgroup label={t('music.sourcePlaylist')}>
-                          {playlists.map((playlist) => (
-                            <option key={playlist.id} value={`playlist:${playlist.id}`}>
-                              {playlist.name}
-                              {playlist.trackIds.length
-                                ? ` (${playlist.trackIds.length})`
-                                : ''}
-                            </option>
-                          ))}
-                        </optgroup>
-                      )}
-                    </select>
-                    {sourceDraftDiffers(src, state) ? (
-                      <p className="text-[10px] text-amber-600/90">
-                        {t('music.sourcePending')}
-                      </p>
-                    ) : null}
-                  </label>
+                      <span className="block h-3 w-full truncate text-center text-[9px] font-mono uppercase text-ink-faint tabular-nums leading-none">
+                        {Math.round((state.trackVolume || 1) * 100)}%
+                      </span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={state.trackVolume ?? 1}
+                        onChange={(e) => void setTrackVolume(channel, Number(e.target.value))}
+                        className="music-fader-v accent-blood"
+                        aria-label={t('music.trackVolume')}
+                      />
+                      <span className="text-[9px] font-mono uppercase text-ink-faint leading-none">
+                        VOL
+                      </span>
+                    </label>
 
-                  {(src.mode === 'track' && src.trackId) || (src.mode === 'playlist' && src.playlistId) ? (
-                    <p className="text-[10px] text-ink-faint">
-                      {t('music.loop')}:{' '}
-                      {src.mode === 'track'
-                        ? t(`music.loopModes.${trackById.get(src.trackId)?.loopMode ?? 'off'}`)
-                        : t(`music.loopModes.${playlists.find((p) => p.id === src.playlistId)?.loopMode ?? 'off'}`)}
-                    </p>
-                  ) : null}
+                    <label
+                      className="flex w-9 flex-col items-center gap-1"
+                      title={t('music.loudnessTargetHint')}
+                    >
+                      <span className="block h-3 w-full truncate text-center text-[9px] font-mono uppercase text-ink-faint tabular-nums leading-none">
+                        {formatLoudnessTargetDb(loudnessTarget) ?? t('music.loudnessOff')}
+                      </span>
+                      <input
+                        type="range"
+                        min={LOUDNESS_DB_MIN}
+                        max={LOUDNESS_DB_MAX}
+                        step={0.5}
+                        value={loudnessTargetToSliderDb(loudnessTarget)}
+                        onChange={(e) => void setLoudnessTarget(
+                          channel,
+                          loudnessSliderDbToTarget(Number(e.target.value)),
+                        )}
+                        className="music-fader-v accent-blood"
+                        aria-label={t('music.loudnessTarget')}
+                      />
+                      <span className="text-[9px] font-mono uppercase text-ink-faint leading-none">
+                        dB
+                      </span>
+                    </label>
+                  </div>
                 </div>
-
-                <div className="flex items-center gap-1">
-                  {state.source === 'playlist'
-                    && (state.status === 'playing' || state.status === 'paused') && (
-                    <button
-                      type="button"
-                      aria-label={t('music.prevTrack')}
-                      disabled={(playlists.find((p) => p.id === state.playlistId)?.trackIds.length ?? 0) < 2}
-                      onClick={() => void skipPlaylistTrack(channel, -1)}
-                      className="inline-flex items-center justify-center w-8 h-8 rounded text-xs border border-border bg-void text-ink hover:bg-elevated transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      <FaStepBackward className="w-3 h-3" aria-hidden />
-                    </button>
-                  )}
-                  {state.status === 'playing' ? (
-                    <button
-                      type="button"
-                      aria-label={t('music.pause')}
-                      onClick={() => void pauseChannel(channel)}
-                      className="inline-flex items-center justify-center w-8 h-8 rounded text-xs bg-blood/80 hover:bg-blood text-white border border-blood transition-colors"
-                    >
-                      <FaPause className="w-3 h-3" aria-hidden />
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      aria-label={
-                        state.status === 'paused' ? t('music.resume') : t('music.play')
-                      }
-                      onClick={() => void playChannel(channel)}
-                      className="inline-flex items-center justify-center w-8 h-8 rounded text-xs bg-emerald-700/80 hover:bg-emerald-600 text-white border border-emerald-700 transition-colors"
-                    >
-                      <FaPlay className="w-3 h-3" aria-hidden />
-                    </button>
-                  )}
-                  {state.source === 'playlist'
-                    && (state.status === 'playing' || state.status === 'paused') && (
-                    <button
-                      type="button"
-                      aria-label={t('music.nextTrack')}
-                      disabled={(playlists.find((p) => p.id === state.playlistId)?.trackIds.length ?? 0) < 2}
-                      onClick={() => void skipPlaylistTrack(channel, 1)}
-                      className="inline-flex items-center justify-center w-8 h-8 rounded text-xs border border-border bg-void text-ink hover:bg-elevated transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      <FaStepForward className="w-3 h-3" aria-hidden />
-                    </button>
-                  )}
-                </div>
-
-                <div className="space-y-1 min-h-[5.75rem]">
-                  <MusicWaveformSeek
-                    peaks={currentTrack?.waveformPeaks}
-                    positionMs={duration > 0 ? Math.min(position, duration) : 0}
-                    durationMs={duration}
-                    ariaLabel={t('music.seek')}
-                    onSeek={(ms) => {
-                      if (!state.trackId || duration <= 0) return
-                      void seekChannel(channel, ms)
-                    }}
-                    loading={Boolean(state.trackId && waveformLoadingIds[state.trackId])}
-                  />
-                  {currentTrack && !(currentTrack.waveformPeaks && currentTrack.waveformPeaks.length >= 2) ? (
-                    <Button
-                      variant="ghost"
-                      className="text-xs"
-                      loading={Boolean(waveformLoadingIds[currentTrack.id])}
-                      onClick={() => pickWaveformFile(currentTrack.id)}
-                    >
-                      {t('music.waveformFromFile')}
-                    </Button>
-                  ) : null}
-                </div>
-
-                <label className="block space-y-1">
-                  <span className="text-[10px] font-mono uppercase text-ink-faint">
-                    {t('music.trackVolume')} ({Math.round((state.trackVolume || 1) * 100)}%)
-                  </span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={state.trackVolume ?? 1}
-                    onChange={(e) => void setTrackVolume(channel, Number(e.target.value))}
-                    className="w-full accent-blood"
-                  />
-                  <p className="text-[10px] text-ink-faint">{t('music.trackVolumeHint')}</p>
-                </label>
-
-                <label className="block space-y-1">
-                  <span className="text-[10px] font-mono uppercase text-ink-faint">
-                    {t('music.loudnessTarget')} (
-                    {loudnessTarget <= 0
-                      ? t('music.loudnessOff')
-                      : `${Math.round(loudnessTarget * 100)}%`}
-                    )
-                  </span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={loudnessTarget}
-                    onChange={(e) => void setLoudnessTarget(channel, Number(e.target.value))}
-                    className="w-full accent-blood"
-                  />
-                  <p className="text-[10px] text-ink-faint">{t('music.loudnessTargetHint')}</p>
-                </label>
               </div>
             )
           })}

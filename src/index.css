@@ -120,6 +120,17 @@
     border: 1px solid theme('colors.blood.dark');
   }
 
+  /* Vertical faders on the mixer channel card (right edge) */
+  .music-fader-v {
+    writing-mode: vertical-lr;
+    direction: rtl;
+    width: 1.25rem;
+    height: 7.65rem;
+    flex: none;
+    cursor: pointer;
+    accent-color: theme('colors.blood.DEFAULT');
+  }
+
   /* Markdown description renderer */
   .prose-hero {
     @apply text-sm text-ink leading-relaxed;

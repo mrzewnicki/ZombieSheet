@@ -81,10 +81,13 @@ export function resolveMusicContentType(file: File): string {
 }
 
 export const DEFAULT_TRACK_VOLUME = 1
-/** Default RMS target for loudness matching (~typical mastered level). */
+/** Default RMS target for loudness matching (~typical mastered level ≈ −14 dBFS). */
 export const DEFAULT_LOUDNESS_TARGET = 0.2
 export const LOUDNESS_MATCH_MIN_GAIN = 0.15
 export const LOUDNESS_MATCH_MAX_GAIN = 3
+/** UI floor for loudness fader; at this dB matching is treated as off. */
+export const LOUDNESS_DB_MIN = -40
+export const LOUDNESS_DB_MAX = 0
 
 export function isMusicChannel(value: unknown): value is MusicChannel {
   return value === 'ambient' || value === 'music' || value === 'effects'
@@ -107,6 +110,38 @@ export function clampLoudnessTarget(value: unknown, fallback = DEFAULT_LOUDNESS_
 export function clampLoudnessRms(value: unknown): number | undefined {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return undefined
   return Math.min(1, Math.max(0.0001, value))
+}
+
+/** Linear RMS (0–1] → dBFS. */
+export function loudnessRmsToDb(rms: number): number {
+  if (!(rms > 0)) return LOUDNESS_DB_MIN
+  return 20 * Math.log10(Math.min(1, Math.max(1e-6, rms)))
+}
+
+/** dBFS → linear RMS (0–1]. */
+export function loudnessDbToRms(db: number): number {
+  if (!(db > LOUDNESS_DB_MIN)) return 0
+  const clamped = Math.min(LOUDNESS_DB_MAX, Math.max(LOUDNESS_DB_MIN, db))
+  return Math.min(1, Math.pow(10, clamped / 20))
+}
+
+/** Slider position in dB for a stored target (0 → floor / off). */
+export function loudnessTargetToSliderDb(target: number): number {
+  if (!(target > 0)) return LOUDNESS_DB_MIN
+  return Math.min(LOUDNESS_DB_MAX, Math.max(LOUDNESS_DB_MIN, loudnessRmsToDb(target)))
+}
+
+/** Slider dB → stored target (floor → 0 / off). */
+export function loudnessSliderDbToTarget(db: number): number {
+  if (!(db > LOUDNESS_DB_MIN)) return 0
+  return clampLoudnessTarget(loudnessDbToRms(db), 0)
+}
+
+/** Format target for UI (numeric dB only; unit shown separately). Always one decimal for stable width. */
+export function formatLoudnessTargetDb(target: number): string | null {
+  if (!(target > 0)) return null
+  const db = loudnessRmsToDb(target)
+  return (Math.round(db * 10) / 10).toFixed(1)
 }
 
 /** Gain so track RMS moves toward target. target ≤ 0 → matching off. */

@@ -9,6 +9,12 @@ import {
   loudnessMatchGain,
   normalizeChannelLoudnessTarget,
   DEFAULT_LOUDNESS_TARGET,
+  LOUDNESS_DB_MIN,
+  formatLoudnessTargetDb,
+  loudnessDbToRms,
+  loudnessRmsToDb,
+  loudnessSliderDbToTarget,
+  loudnessTargetToSliderDb,
 } from '@/utils/musicPlayback'
 
 describe('normalizeMusicPlaybackState', () => {
@@ -102,6 +108,18 @@ describe('volume and loudness', () => {
   it('reads loudness target from channel settings', () => {
     expect(normalizeChannelLoudnessTarget({ loudnessTarget: 0.35 })).toBe(0.35)
     expect(normalizeChannelLoudnessTarget(null)).toBe(DEFAULT_LOUDNESS_TARGET)
+  })
+
+  it('converts loudness between linear RMS and dB', () => {
+    expect(loudnessRmsToDb(1)).toBeCloseTo(0)
+    expect(loudnessRmsToDb(0.2)).toBeCloseTo(20 * Math.log10(0.2))
+    expect(loudnessDbToRms(0)).toBeCloseTo(1)
+    expect(loudnessDbToRms(-40)).toBe(0)
+    expect(loudnessTargetToSliderDb(0)).toBe(LOUDNESS_DB_MIN)
+    expect(loudnessSliderDbToTarget(LOUDNESS_DB_MIN)).toBe(0)
+    expect(formatLoudnessTargetDb(0)).toBeNull()
+    expect(formatLoudnessTargetDb(DEFAULT_LOUDNESS_TARGET)).toBe('-14.0')
+    expect(formatLoudnessTargetDb(1)).toBe('0.0')
   })
 })
 
