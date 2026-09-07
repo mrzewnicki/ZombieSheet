@@ -53,6 +53,7 @@ export interface PlayCmdPayload {
   playlistIndex?: number
   trackIds?: string[]
   durationMs?: number
+  positionMs?: number
 }
 
 export interface PauseCmdPayload {

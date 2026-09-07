@@ -196,11 +196,14 @@ export class GameRoom implements DurableObject {
     try {
       const payload = await verifyFirebaseToken(token, projectId)
       uid = payload.sub
+      console.log('[GameRoom] hello auth ok', { uid, gameId, projectId })
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Auth failed'
+      console.error('[GameRoom] AUTH_FAILED', message)
       this.sendTo(ws, {
         type: 'error',
         code: 'AUTH_FAILED',
-        message: err instanceof Error ? err.message : 'Auth failed',
+        message,
       })
       ws.close(4001, 'Unauthorized')
       return
@@ -209,10 +212,28 @@ export class GameRoom implements DurableObject {
     // Resolve role (GM or player)
     let role: ClientRole | null = null
     try {
+      if (!saJson) {
+        console.error('[GameRoom] SERVER_MISCONFIG missing SA')
+        this.sendTo(ws, {
+          type: 'error',
+          code: 'SERVER_MISCONFIG',
+          message: 'FIREBASE_SERVICE_ACCOUNT_JSON is not configured',
+        })
+        ws.close(1011, 'Misconfigured')
+        return
+      }
       role = await resolveRole(uid, gameId, projectId, saJson)
-    } catch {
-      // Non-fatal — treat as player if Firestore unreachable
-      role = 'player'
+      console.log('[GameRoom] role', { uid, role })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Role check failed'
+      console.error('[GameRoom] ROLE_CHECK_FAILED', message)
+      this.sendTo(ws, {
+        type: 'error',
+        code: 'ROLE_CHECK_FAILED',
+        message,
+      })
+      ws.close(1011, 'Role check failed')
+      return
     }
 
     if (role === null) {
@@ -222,6 +243,11 @@ export class GameRoom implements DurableObject {
     }
 
     this.socketMeta.set(ws, { uid, role })
+    try {
+      ws.serializeAttachment({ uid, role })
+    } catch {
+      /* older runtime / attachment unavailable */
+    }
 
     this.sendTo(ws, {
       type: 'welcome',
@@ -233,7 +259,18 @@ export class GameRoom implements DurableObject {
   }
 
   private async handleCmd(ws: WebSocket, msg: CmdMsg): Promise<void> {
-    const meta = this.socketMeta.get(ws)
+    let meta = this.socketMeta.get(ws)
+    if (!meta) {
+      try {
+        const attached = ws.deserializeAttachment() as SocketMeta | null
+        if (attached?.uid && attached?.role) {
+          meta = attached
+          this.socketMeta.set(ws, meta)
+        }
+      } catch {
+        /* no attachment */
+      }
+    }
     if (!meta || meta.role !== 'gm') {
       this.sendTo(ws, { type: 'error', code: 'FORBIDDEN', message: 'GM only' })
       return
@@ -246,6 +283,7 @@ export class GameRoom implements DurableObject {
     switch (action) {
       case 'play': {
         const p = payload as PlayPayload
+        const startPos = Math.max(0, Math.trunc(p.positionMs ?? 0))
         this.channelStates[channel] = {
           channel,
           status: 'playing',
@@ -256,14 +294,15 @@ export class GameRoom implements DurableObject {
           trackIds: p.trackIds,
           loopMode: p.loopMode,
           trackVolume: clampVolume(p.trackVolume),
-          positionMs: 0,
+          positionMs: startPos,
           startedAtMs: now,
           durationMs: p.durationMs,
         }
         // Schedule alarm for playlist advance when duration is known
         if (p.source === 'playlist' && typeof p.durationMs === 'number' && p.durationMs > 0) {
+          const remaining = Math.max(1, p.durationMs - startPos)
           this.alarmChannel = channel
-          await this.state.storage.setAlarm(now + p.durationMs)
+          await this.state.storage.setAlarm(now + remaining)
         }
         break
       }

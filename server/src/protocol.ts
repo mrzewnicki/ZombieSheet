@@ -68,6 +68,8 @@ export interface PlayPayload {
   /** Full ordered trackIds — required when source=playlist for server-side advance */
   trackIds?: string[]
   durationMs?: number
+  /** Resume from this position (default 0) */
+  positionMs?: number
 }
 
 export interface PausePayload {

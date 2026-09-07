@@ -600,6 +600,7 @@ export default function MusicSyncProvider({
       getToken: () => user.getIdToken(),
       onState: (snapshot, serverTimeMs) => {
         clockOffsetRef.current = serverTimeMs - Date.now()
+        setSyncDisconnected(false)
         const next: Record<MusicChannel, MusicPlaybackState> = {
           ambient: syncStateToPlayback(snapshot.ambient),
           music: syncStateToPlayback(snapshot.music),
@@ -608,10 +609,13 @@ export default function MusicSyncProvider({
         setPlayback(next)
       },
       onRole: () => { /* role comes from useGameRole */ },
-      onConnected: () => { setSyncDisconnected(false) },
-      onDisconnected: () => { setSyncDisconnected(true) },
+      onConnected: () => { /* wait for welcome/state before clearing banner */ },
+      onDisconnected: () => { /* transient; banner only after sync_unavailable */ },
       onError: (err) => {
-        if (err === 'sync_unavailable') setSyncDisconnected(true)
+        console.warn('[musicSync]', err)
+        if (err === 'sync_unavailable' || err.startsWith('[AUTH_FAILED]') || err.startsWith('[ROLE_CHECK_FAILED]') || err.startsWith('[NOT_MEMBER]') || err.startsWith('[SERVER_MISCONFIG]')) {
+          setSyncDisconnected(true)
+        }
       },
     })
 

@@ -258,6 +258,7 @@ export default function GameMusic() {
             trackVolume: state.trackVolume,
             playlistId: state.playlistId,
             playlistIndex: state.playlistIndex,
+            positionMs: state.positionMs || 0,
             durationMs: tracks.find((t) => t.id === state.trackId)?.durationMs,
             trackIds: state.source === 'playlist'
               ? playlists.find((p) => p.id === state.playlistId)?.trackIds

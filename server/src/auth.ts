@@ -55,13 +55,21 @@ async function getJwks(): Promise<Map<string, CryptoKey>> {
   return keys
 }
 
-function base64urlToUint8(b64: string): Uint8Array {
-  const padded = b64.replace(/-/g, '+').replace(/_/g, '/').padEnd(
-    b64.length + ((4 - (b64.length % 4)) % 4),
-    '=',
-  )
+function base64ToUint8(b64: string): Uint8Array {
+  const normalized = b64.replace(/-/g, '+').replace(/_/g, '/')
+  const padLen = (4 - (normalized.length % 4)) % 4
+  const padded = normalized + '='.repeat(padLen)
   const binary = atob(padded)
-  return Uint8Array.from(binary, (c) => c.charCodeAt(0))
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return bytes
+}
+
+function bytesToBase64Url(bytes: ArrayBuffer): string {
+  const u8 = new Uint8Array(bytes)
+  let binary = ''
+  for (let i = 0; i < u8.length; i++) binary += String.fromCharCode(u8[i]!)
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
 }
 
 interface JwtPayload {
@@ -84,7 +92,7 @@ export async function verifyFirebaseToken(
 
   const [headerB64, payloadB64, sigB64] = parts as [string, string, string]
 
-  const header = JSON.parse(new TextDecoder().decode(base64urlToUint8(headerB64))) as {
+  const header = JSON.parse(new TextDecoder().decode(base64ToUint8(headerB64))) as {
     kid: string
     alg: string
   }
@@ -96,7 +104,7 @@ export async function verifyFirebaseToken(
   if (!key) throw new Error('Unknown key ID')
 
   const signingInput = new TextEncoder().encode(`${headerB64}.${payloadB64}`)
-  const sig = base64urlToUint8(sigB64)
+  const sig = base64ToUint8(sigB64)
 
   const valid = await crypto.subtle.verify(
     { name: 'RSASSA-PKCS1-v1_5' },
@@ -107,7 +115,7 @@ export async function verifyFirebaseToken(
   if (!valid) throw new Error('Invalid signature')
 
   const payload = JSON.parse(
-    new TextDecoder().decode(base64urlToUint8(payloadB64)),
+    new TextDecoder().decode(base64ToUint8(payloadB64)),
   ) as JwtPayload
 
   const now = Math.floor(Date.now() / 1000)
@@ -124,6 +132,38 @@ interface ServiceAccountJson {
   private_key: string
 }
 
+/** Parse SA JSON from env — supports raw JSON or base64 (safer for .dev.vars). */
+export function parseServiceAccountJson(raw: string): ServiceAccountJson {
+  const trimmed = raw.trim()
+  if (!trimmed) throw new Error('Empty service account JSON')
+
+  const tryParse = (s: string): ServiceAccountJson | null => {
+    try {
+      return JSON.parse(s) as ServiceAccountJson
+    } catch {
+      return null
+    }
+  }
+
+  let parsed = tryParse(trimmed)
+  if (parsed?.private_key && parsed.client_email) return parsed
+
+  // dotenv sometimes leaves \" escapes
+  parsed = tryParse(trimmed.replace(/\\"/g, '"').replace(/\\\\/g, '\\'))
+  if (parsed?.private_key && parsed.client_email) return parsed
+
+  // base64-encoded JSON (recommended for .dev.vars)
+  try {
+    const decoded = atob(trimmed)
+    parsed = tryParse(decoded)
+    if (parsed?.private_key && parsed.client_email) return parsed
+  } catch {
+    /* not base64 */
+  }
+
+  throw new Error('Invalid FIREBASE_SERVICE_ACCOUNT_JSON (expected JSON or base64 JSON)')
+}
+
 /** Cache of service account access tokens (module-level, shared per isolate) */
 const saTokenCache = {
   token: '',
@@ -136,7 +176,7 @@ async function getServiceAccountToken(saJson: string): Promise<string> {
     return saTokenCache.token
   }
 
-  const sa = JSON.parse(saJson) as ServiceAccountJson
+  const sa = parseServiceAccountJson(saJson)
   const iat = Math.floor(now / 1000)
   const exp = iat + 3600
 
@@ -161,7 +201,7 @@ async function getServiceAccountToken(saJson: string): Promise<string> {
     .replace(/-----BEGIN PRIVATE KEY-----/, '')
     .replace(/-----END PRIVATE KEY-----/, '')
     .replace(/\s/g, '')
-  const der = base64urlToUint8(pemBody)
+  const der = base64ToUint8(pemBody)
 
   const privateKey = await crypto.subtle.importKey(
     'pkcs8',
@@ -177,10 +217,7 @@ async function getServiceAccountToken(saJson: string): Promise<string> {
     new TextEncoder().encode(sigInput),
   )
 
-  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sigBytes)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '')
+  const sigB64 = bytesToBase64Url(sigBytes)
 
   const jwt = `${sigInput}.${sigB64}`
 

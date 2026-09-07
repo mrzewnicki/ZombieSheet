@@ -69,7 +69,10 @@ export class MusicSyncClient {
   }
 
   sendCmd(action: SyncCmdAction, channel: SyncMusicChannel, payload: SyncCmdPayload): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      this.opts.onError?.('not_connected')
+      return
+    }
     const msg: CmdMsg = { type: 'cmd', action, channel, payload }
     this.ws.send(JSON.stringify(msg))
   }
@@ -107,10 +110,15 @@ export class MusicSyncClient {
       this._handleMessage(msg)
     })
 
-    ws.addEventListener('close', () => {
+    ws.addEventListener('close', (event) => {
       this._clearTimers()
       this.ws = null
       this.opts.onDisconnected?.()
+      // Do not retry permanent auth / membership failures
+      if (event.code === 4001 || event.code === 4003) {
+        this.opts.onError?.('sync_unavailable')
+        return
+      }
       this._scheduleReconnect()
     })
 

@@ -5,6 +5,7 @@
  */
 
 import type { ChannelState, MusicChannel } from './protocol.js'
+import { parseServiceAccountJson } from './auth.js'
 
 let saTokenCache = { token: '', expiresAt: 0 }
 
@@ -13,7 +14,7 @@ async function getToken(saJson: string): Promise<string> {
   if (saTokenCache.token && saTokenCache.expiresAt > now + 60_000) return saTokenCache.token
 
   // Minimal service account JWT for Firestore scope
-  const sa = JSON.parse(saJson) as { client_email: string; private_key: string }
+  const sa = parseServiceAccountJson(saJson)
   const iat = Math.floor(now / 1000)
   const exp = iat + 3600
   const encode = (obj: unknown) =>
