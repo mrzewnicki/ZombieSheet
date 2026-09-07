@@ -4,3 +4,9 @@ dist
 .env.local
 *.local
 .firebase
+
+# Cloudflare Worker local dev secrets
+server/.dev.vars
+server/node_modules
+server/dist
+server/.wrangler

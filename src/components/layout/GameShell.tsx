@@ -6,6 +6,7 @@ import MusicSyncProvider from '@/contexts/MusicSyncContext'
 import ChatSidebar from '@/components/chat/ChatSidebar'
 import MusicListenBanner from '@/components/music/MusicListenBanner'
 import MusicHeaderHelper from '@/components/music/MusicHeaderHelper'
+import SyncDisconnectedBanner from '@/components/music/SyncDisconnectedBanner'
 import { FEATURES } from '@/config/features'
 
 /**
@@ -22,6 +23,7 @@ function GameShellInner() {
       <ChatSidebar />
       <MusicListenBanner />
       <MusicHeaderHelper />
+      <SyncDisconnectedBanner />
     </>
   )
 }
@@ -53,6 +55,7 @@ export default function GameShell() {
       <Outlet />
       <MusicListenBanner />
       <MusicHeaderHelper />
+      <SyncDisconnectedBanner />
     </>
   )
 

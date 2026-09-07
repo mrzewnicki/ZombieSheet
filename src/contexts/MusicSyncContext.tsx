@@ -54,6 +54,9 @@ import {
   normalizeMusicTrack,
 } from '@/utils/musicPlayback'
 import { storageUrlForFetch } from '@/utils/musicWaveform'
+import { FEATURES } from '@/config/features'
+import { MusicSyncClient } from '@/utils/musicSyncClient'
+import type { SyncChannelState, SyncCmdAction, SyncCmdPayload, SyncMusicChannel } from '@/types/musicSync'
 
 const PRESENCE_MS = 25_000
 const urlCache = new Map<string, string>()
@@ -79,6 +82,13 @@ interface MusicSyncContextValue {
   unlockAudio: () => Promise<void>
   /** Live playhead for UI — prefers the local audio element when bound. */
   getChannelPositionMs: (channel: MusicChannel) => number
+  /**
+   * Send a playback command to the sync backend (workers mode only).
+   * No-op in firestore mode — use writePlayback/setDoc directly.
+   */
+  sendMusicCmd: (action: SyncCmdAction, channel: SyncMusicChannel, payload: SyncCmdPayload) => void
+  /** True when WS sync is disconnected and retrying */
+  syncDisconnected: boolean
   isGm: boolean
   loading: boolean
 }
@@ -204,6 +214,11 @@ export default function MusicSyncProvider({
   const [audioUnlocked, setAudioUnlocked] = useState(() => loadAudioUnlocked(gameId))
   const [audioBlocked, setAudioBlocked] = useState(false)
   const [loading, setLoading] = useState(true)
+  /** Workers mode only: true when WS is disconnected and retrying */
+  const [syncDisconnected, setSyncDisconnected] = useState(false)
+  /** Workers mode: accumulated clock offset from pong messages */
+  const clockOffsetRef = useRef(0)
+  const syncClientRef = useRef<MusicSyncClient | null>(null)
 
   const playersRef = useRef<Partial<Record<MusicChannel, ChannelPlayer>>>({})
   const playbackRef = useRef(playback)
@@ -424,7 +439,11 @@ export default function MusicSyncProvider({
       }
       return Math.max(0, fromAudio)
     }
-    return computePositionMs(state, Date.now(), durationMs)
+    // In workers mode, adjust Date.now() by the server clock offset for better accuracy
+    const now = FEATURES.musicSync === 'workers'
+      ? Date.now() + clockOffsetRef.current
+      : Date.now()
+    return computePositionMs(state, now, durationMs)
   }, [])
 
   // Presence heartbeat
@@ -495,18 +514,22 @@ export default function MusicSyncProvider({
       },
     )
 
-    const unsubsPlayback = MUSIC_CHANNELS.map((channel) =>
-      onSnapshot(
-        doc(db, 'games', gameId, MUSIC_PLAYBACK_COLLECTION, channel),
-        (snap) => {
-          const next = normalizeMusicPlaybackState(
-            channel,
-            snap.exists() ? (snap.data() as Record<string, unknown>) : null,
-          )
-          setPlayback((prev) => ({ ...prev, [channel]: next }))
-        },
+    // musicPlayback: only subscribe via Firestore in firestore mode.
+    // In workers mode, playback state comes from the WebSocket (see WS effect below).
+    const unsubsPlayback = FEATURES.musicSync === 'firestore'
+      ? MUSIC_CHANNELS.map((channel) =>
+        onSnapshot(
+          doc(db, 'games', gameId, MUSIC_PLAYBACK_COLLECTION, channel),
+          (snap) => {
+            const next = normalizeMusicPlaybackState(
+              channel,
+              snap.exists() ? (snap.data() as Record<string, unknown>) : null,
+            )
+            setPlayback((prev) => ({ ...prev, [channel]: next }))
+          },
+        )
       )
-    )
+      : []
 
     const unsubsLoudness = MUSIC_CHANNELS.map((channel) =>
       onSnapshot(
@@ -541,6 +564,77 @@ export default function MusicSyncProvider({
       unsubsLoudness.forEach((u) => u())
     }
   }, [gameId])
+
+  // ── Workers mode: WebSocket sync ─────────────────────────────────────────────
+  // Convert server ChannelState → MusicPlaybackState (front-end shape)
+  const syncStateToPlayback = useCallback(
+    (serverState: SyncChannelState): MusicPlaybackState => {
+      return {
+        channel: serverState.channel as MusicChannel,
+        status: serverState.status,
+        source: serverState.source,
+        trackId: serverState.trackId,
+        playlistId: serverState.playlistId,
+        playlistIndex: serverState.playlistIndex,
+        loopMode: serverState.loopMode,
+        trackVolume: serverState.trackVolume,
+        positionMs: serverState.positionMs,
+        // Convert server epoch ms → pseudo Timestamp (used only for computePositionMs)
+        startedAt: serverState.startedAtMs != null
+          ? { toMillis: () => serverState.startedAtMs as number } as import('firebase/firestore').Timestamp
+          : null,
+      }
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (FEATURES.musicSync !== 'workers') return
+    if (!user || !gameId) return
+    const baseUrl = FEATURES.musicSyncUrl
+    if (!baseUrl) return
+
+    const client = new MusicSyncClient({
+      baseUrl,
+      gameId,
+      getToken: () => user.getIdToken(),
+      onState: (snapshot, serverTimeMs) => {
+        clockOffsetRef.current = serverTimeMs - Date.now()
+        const next: Record<MusicChannel, MusicPlaybackState> = {
+          ambient: syncStateToPlayback(snapshot.ambient),
+          music: syncStateToPlayback(snapshot.music),
+          effects: syncStateToPlayback(snapshot.effects),
+        }
+        setPlayback(next)
+      },
+      onRole: () => { /* role comes from useGameRole */ },
+      onConnected: () => { setSyncDisconnected(false) },
+      onDisconnected: () => { setSyncDisconnected(true) },
+      onError: (err) => {
+        if (err === 'sync_unavailable') setSyncDisconnected(true)
+      },
+    })
+
+    syncClientRef.current = client
+    client.connect()
+    setLoading(false) // catalog is still loaded from Firestore; WS state arrives async
+
+    return () => {
+      client.close()
+      syncClientRef.current = null
+      setSyncDisconnected(false)
+    }
+  }, [gameId, user, syncStateToPlayback])
+
+  const sendMusicCmd = useCallback(
+    (action: SyncCmdAction, channel: SyncMusicChannel, payload: SyncCmdPayload) => {
+      if (FEATURES.musicSync !== 'workers') return
+      syncClientRef.current?.sendCmd(action, channel, payload)
+    },
+    [],
+  )
+
+  // ── End workers mode ──────────────────────────────────────────────────────────
 
   const advancePlaylist = useCallback(async (channel: MusicChannel) => {
     if (!isGm || !user) return
@@ -666,8 +760,10 @@ export default function MusicSyncProvider({
         const targetSec = computePositionMs(state, Date.now(), track.durationMs) / 1000
         if (Number.isFinite(targetSec)) {
           const drift = Math.abs((player.audio.currentTime || 0) - targetSec)
-          // Always align after a new bind; otherwise only correct large drift.
-          if (needsBind || player.audio.paused || drift > 0.75) {
+          // Always align after a new bind; otherwise only correct drift.
+          // Workers mode: tighter threshold (0.2s) since server time is authoritative.
+          const driftThreshold = FEATURES.musicSync === 'workers' ? 0.2 : 0.75
+          if (needsBind || player.audio.paused || drift > driftThreshold) {
             try {
               player.audio.currentTime = targetSec
             } catch {
@@ -733,8 +829,10 @@ export default function MusicSyncProvider({
     scheduleFadeTick,
   ])
 
-  // ended → conductor advance (GM only)
+  // ended → conductor advance (GM only, firestore mode).
+  // In workers mode the server DO alarm handles playlist advance — no client action needed.
   useEffect(() => {
+    if (FEATURES.musicSync === 'workers') return
     const cleanups: Array<() => void> = []
     for (const channel of MUSIC_CHANNELS) {
       const player = ensurePlayer(channel)
@@ -801,6 +899,8 @@ export default function MusicSyncProvider({
     needsAudioUnlock,
     unlockAudio,
     getChannelPositionMs,
+    sendMusicCmd,
+    syncDisconnected,
     isGm,
     loading,
   }), [
@@ -815,6 +915,8 @@ export default function MusicSyncProvider({
     needsAudioUnlock,
     unlockAudio,
     getChannelPositionMs,
+    sendMusicCmd,
+    syncDisconnected,
     isGm,
     loading,
   ])

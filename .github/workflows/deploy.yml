@@ -3,6 +3,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [master]
+    paths-ignore:
+      - 'server/**'
   workflow_dispatch:
 
 permissions:
@@ -42,6 +44,8 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
           VITE_CHAT_ENABLED: ${{ secrets.VITE_CHAT_ENABLED }}
           VITE_CHAT_INPUT_ENABLED: ${{ secrets.VITE_CHAT_INPUT_ENABLED }}
+          VITE_MUSIC_SYNC: ${{ secrets.VITE_MUSIC_SYNC }}
+          VITE_MUSIC_SYNC_URL: ${{ secrets.VITE_MUSIC_SYNC_URL }}
         run: npm run build
 
       - uses: actions/upload-pages-artifact@v3

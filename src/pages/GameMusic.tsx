@@ -49,6 +49,7 @@ import {
 } from '@/utils/musicPlayback'
 import { analyzeMusicDownloadUrl, analyzeMusicFile } from '@/utils/musicWaveform'
 import MusicWaveformSeek from '@/components/music/MusicWaveformSeek'
+import { FEATURES } from '@/config/features'
 
 type TabKey = 'library' | 'playlists' | 'mixer'
 
@@ -93,6 +94,7 @@ export default function GameMusic() {
     loudnessTargets,
     loading: musicLoading,
     getChannelPositionMs,
+    sendMusicCmd,
   } = useMusicSync()
 
   const [tab, setTab] = useState<TabKey>('mixer')
@@ -244,6 +246,33 @@ export default function GameMusic() {
     opts?: { setStartedAt?: boolean; clearStartedAt?: boolean },
   ) => {
     if (!user) return
+    // Workers mode: route through WebSocket instead of Firestore
+    if (FEATURES.musicSync === 'workers') {
+      if (opts?.setStartedAt) {
+        // Determine action from state
+        if (state.status === 'playing') {
+          sendMusicCmd('play', channel, {
+            trackId: state.trackId,
+            source: state.source,
+            loopMode: state.loopMode,
+            trackVolume: state.trackVolume,
+            playlistId: state.playlistId,
+            playlistIndex: state.playlistIndex,
+            durationMs: tracks.find((t) => t.id === state.trackId)?.durationMs,
+            trackIds: state.source === 'playlist'
+              ? playlists.find((p) => p.id === state.playlistId)?.trackIds
+              : undefined,
+          })
+        }
+      } else if (opts?.clearStartedAt && state.status === 'paused') {
+        sendMusicCmd('pause', channel, { positionMs: state.positionMs })
+      } else if (!opts?.setStartedAt && !opts?.clearStartedAt) {
+        // volume or seek update
+        sendMusicCmd('setTrackVolume', channel, { trackVolume: state.trackVolume })
+      }
+      return
+    }
+    // Firestore mode (default)
     const payload = musicPlaybackPayload(state, user.uid)
     await setDoc(
       doc(db, 'games', gameId, MUSIC_PLAYBACK_COLLECTION, channel),
@@ -255,7 +284,7 @@ export default function GameMusic() {
       },
       { merge: true },
     )
-  }, [gameId, user])
+  }, [gameId, user, sendMusicCmd, tracks, playlists])
 
   async function handleUpload(files: FileList | null) {
     if (!user || !files?.length) return
@@ -694,6 +723,10 @@ export default function GameMusic() {
     if (!trackId) return
     setError(null)
     try {
+      if (FEATURES.musicSync === 'workers') {
+        sendMusicCmd('skip', channel, { delta })
+        return
+      }
       await writePlayback(channel, {
         ...state,
         status: 'playing',
@@ -712,6 +745,10 @@ export default function GameMusic() {
     const state = playback[channel]
     if (!state.trackId) return
     try {
+      if (FEATURES.musicSync === 'workers') {
+        sendMusicCmd('seek', channel, { positionMs: Math.max(0, Math.trunc(positionMs)) })
+        return
+      }
       await writePlayback(channel, {
         ...state,
         positionMs: Math.max(0, Math.trunc(positionMs)),
@@ -726,6 +763,10 @@ export default function GameMusic() {
     if (!user) return
     const state = playback[channel]
     try {
+      if (FEATURES.musicSync === 'workers') {
+        sendMusicCmd('setTrackVolume', channel, { trackVolume })
+        return
+      }
       await writePlayback(channel, {
         ...state,
         trackVolume,

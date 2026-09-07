@@ -1,0 +1,14 @@
+name = "zombie-sheet-sync"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[durable_objects]
+bindings = [{ name = "GAME_ROOM", class_name = "GameRoom" }]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GameRoom"]
+
+[vars]
+FIREBASE_PROJECT_ID = "zombiesheet-rpg"
