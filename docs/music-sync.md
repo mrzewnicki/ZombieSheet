@@ -23,7 +23,8 @@ SPA (GitHub Pages)
               ├── hello + Firebase ID token → JWT verify → welcome + playback snapshot
               ├── cmd (GM only): play/pause/seek/skip/setTrackVolume → broadcast state
               ├── ping → pong  (clock offset measurement)
-              └── alarm: playlist auto-advance without GM tab open
+              ├── alarm: playlist auto-advance without GM tab open
+              └── empty session: ~45s after last WS disconnect → idle all channels
 ```
 
 ---
@@ -133,7 +134,7 @@ node scripts/ws-test.mjs test-game <firebase-id-token>
 | File | Role |
 |---|---|
 | `server/src/index.ts` | Worker entrypoint, routes `/health` and `/ws/:gameId` |
-| `server/src/GameRoom.ts` | Durable Object — state machine for 3 channels, WS hibernation, alarm |
+| `server/src/GameRoom.ts` | Durable Object — state machine for 3 channels, WS hibernation, alarm, empty-session stop |
 | `server/src/auth.ts` | Firebase JWT verify + Firestore role check via service account |
 | `server/src/protocol.ts` | Master copy of WS message types |
 | `server/src/musicHelpers.ts` | Pure helpers (computePositionMs, nextPlaylistIndex) — server-side mirror |

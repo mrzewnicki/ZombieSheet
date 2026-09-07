@@ -8,9 +8,8 @@ import { useContext } from 'react'
 import { LayoutContext } from '@/contexts/LayoutContext'
 import Avatar from '@/components/ui/Avatar'
 import { memberLabel, type GameMember } from '@/types'
-import { MUSIC_PRESENCE_COLLECTION } from '@/utils/musicPlayback'
+import { MUSIC_PRESENCE_COLLECTION, PRESENCE_ONLINE_MS } from '@/utils/musicPlayback'
 
-const ONLINE_MS = 60_000
 const MAX_VISIBLE = 5
 
 interface PresenceRow {
@@ -83,7 +82,7 @@ export default function GameOnlineAvatars() {
 
   const online = useMemo(() => {
     return presence
-      .filter((u) => u.lastSeenMs > 0 && now - u.lastSeenMs < ONLINE_MS)
+      .filter((u) => u.lastSeenMs > 0 && now - u.lastSeenMs < PRESENCE_ONLINE_MS)
       .map((u) => {
         const member = membersByUid[u.uid]
         return {

@@ -17,6 +17,8 @@ export const MUSIC_PLAYLISTS_COLLECTION = 'musicPlaylists'
 export const MUSIC_PLAYBACK_COLLECTION = 'musicPlayback'
 export const MUSIC_CHANNELS_COLLECTION = 'musicChannels'
 export const MUSIC_PRESENCE_COLLECTION = 'musicPresence'
+/** Heartbeat stale after this many ms → user is offline (avatars + empty-session checks). */
+export const PRESENCE_ONLINE_MS = 60_000
 
 export const MUSIC_MAX_BYTES = 25 * 1024 * 1024
 export const MUSIC_ALLOWED_MIME = [

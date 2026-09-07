@@ -39,6 +39,12 @@ interface SocketMeta {
 
 const MUSIC_CHANNELS: MusicChannel[] = ['ambient', 'music', 'effects']
 
+/**
+ * After the last client disconnects, wait this long before forcing idle.
+ * Covers brief WS reconnects without killing a live session.
+ */
+const EMPTY_SESSION_STOP_MS = 45_000
+
 export class GameRoom implements DurableObject {
   private readonly state: DurableObjectState
   private readonly env: Env
@@ -56,6 +62,8 @@ export class GameRoom implements DurableObject {
 
   /** Per-channel alarm tracking: which channel is awaiting auto-advance */
   private alarmChannel: MusicChannel | null = null
+  /** Absolute time when empty-session stop should fire (null = not armed) */
+  private emptyStopDueAt: number | null = null
   /** Stored so mirror can write to the right game path */
   private gameId: string | null = null
 
@@ -130,21 +138,45 @@ export class GameRoom implements DurableObject {
   }
 
   /** Hibernation handler — client disconnected */
-  webSocketClose(ws: WebSocket): void {
+  async webSocketClose(ws: WebSocket): Promise<void> {
     this.socketMeta.delete(ws)
+    await this.maybeScheduleEmptyStop()
   }
 
   /** Hibernation handler — error on a socket */
-  webSocketError(ws: WebSocket): void {
+  async webSocketError(ws: WebSocket): Promise<void> {
     this.socketMeta.delete(ws)
+    await this.maybeScheduleEmptyStop()
   }
 
-  /** Alarm handler — fires when a track is expected to end (playlist advance) */
+  /**
+   * Alarm handler — either empty-session stop or playlist auto-advance.
+   * DO has a single alarm; scheduleNextAlarm() picks the earliest due event.
+   */
   async alarm(): Promise<void> {
-    if (!this.alarmChannel) return
+    const now = Date.now()
+
+    if (this.emptyStopDueAt != null && now >= this.emptyStopDueAt - 50) {
+      if (this.authenticatedSocketCount() === 0) {
+        await this.stopAllForEmptySession()
+        return
+      }
+      // Someone reconnected — cancel empty stop and continue to playlist if needed
+      this.emptyStopDueAt = null
+      await this.state.storage.delete('emptyStopDueAt')
+    }
+
+    if (!this.alarmChannel) {
+      await this.scheduleNextAlarm()
+      return
+    }
     const channel = this.alarmChannel
     const state = this.channelStates[channel]
-    if (state.status !== 'playing') return
+    if (state.status !== 'playing') {
+      this.alarmChannel = null
+      await this.scheduleNextAlarm()
+      return
+    }
 
     const trackIds = state.trackIds ?? []
     const currentIndex = state.playlistIndex ?? 0
@@ -152,8 +184,8 @@ export class GameRoom implements DurableObject {
 
     if (nextIdx === null) {
       // End of playlist — go idle
-      const idle = idleChannelState(channel)
-      this.channelStates[channel] = idle
+      this.channelStates[channel] = idleChannelState(channel)
+      this.alarmChannel = null
     } else {
       const nextTrackId = trackIds[nextIdx] ?? ''
       this.channelStates[channel] = {
@@ -161,11 +193,11 @@ export class GameRoom implements DurableObject {
         trackId: nextTrackId,
         playlistIndex: nextIdx,
         positionMs: 0,
-        startedAtMs: Date.now(),
+        startedAtMs: now,
+        durationMs: undefined,
       }
-      // If we know durationMs for the new track, set another alarm
-      // (durationMs is unknown server-side unless passed in play cmd — alarm will be
-      // re-set by the next play cmd from GM or not set at all; graceful degradation)
+      // durationMs unknown for next track until a client sends play — no playlist alarm
+      this.alarmChannel = null
     }
 
     this.revision++
@@ -176,8 +208,8 @@ export class GameRoom implements DurableObject {
       serverTimeMs: Date.now(),
       playback: this.channelStates,
     })
-    // Mirror to Firestore (alarm advance is a significant state change)
     void this.mirrorToFirestore(channel)
+    await this.scheduleNextAlarm()
   }
 
   // ── Message handlers ─────────────────────────────────────────────────────────
@@ -249,6 +281,9 @@ export class GameRoom implements DurableObject {
       /* older runtime / attachment unavailable */
     }
 
+    // A live client is present — cancel any pending empty-session stop
+    await this.clearEmptyStop()
+
     this.sendTo(ws, {
       type: 'welcome',
       role,
@@ -300,9 +335,9 @@ export class GameRoom implements DurableObject {
         }
         // Schedule alarm for playlist advance when duration is known
         if (p.source === 'playlist' && typeof p.durationMs === 'number' && p.durationMs > 0) {
-          const remaining = Math.max(1, p.durationMs - startPos)
           this.alarmChannel = channel
-          await this.state.storage.setAlarm(now + remaining)
+        } else if (this.alarmChannel === channel) {
+          this.alarmChannel = null
         }
         break
       }
@@ -315,9 +350,7 @@ export class GameRoom implements DurableObject {
           positionMs: Math.max(0, Math.trunc(p.positionMs)),
           startedAtMs: null,
         }
-        // Cancel pending alarm for this channel
         if (this.alarmChannel === channel) {
-          await this.state.storage.deleteAlarm()
           this.alarmChannel = null
         }
         // Mirror to Firestore on pause
@@ -333,13 +366,22 @@ export class GameRoom implements DurableObject {
           positionMs: newPos,
           startedAtMs: current.status === 'playing' ? now : null,
         }
-        // Update alarm if playing in playlist with known duration
-        if (current.status === 'playing' && current.source === 'playlist' && typeof current.durationMs === 'number') {
-          const remaining = current.durationMs - newPos
-          if (remaining > 0) {
-            this.alarmChannel = channel
-            await this.state.storage.setAlarm(now + remaining)
-          }
+        // Keep playlist alarm channel so scheduleNextAlarm recomputes remaining time
+        if (
+          !(current.status === 'playing'
+            && current.source === 'playlist'
+            && typeof current.durationMs === 'number'
+            && current.durationMs - newPos > 0)
+          && this.alarmChannel === channel
+        ) {
+          this.alarmChannel = null
+        } else if (
+          current.status === 'playing'
+          && current.source === 'playlist'
+          && typeof current.durationMs === 'number'
+          && current.durationMs - newPos > 0
+        ) {
+          this.alarmChannel = channel
         }
         break
       }
@@ -386,6 +428,121 @@ export class GameRoom implements DurableObject {
     })
     // Mirror updated channel to Firestore for late-joining clients
     void this.mirrorToFirestore(channel)
+    await this.scheduleNextAlarm()
+  }
+
+  // ── Empty-session stop ───────────────────────────────────────────────────────
+
+  private hasActivePlayback(): boolean {
+    return MUSIC_CHANNELS.some((ch) => {
+      const status = this.channelStates[ch].status
+      return status === 'playing' || status === 'paused'
+    })
+  }
+
+  /** Count sockets that completed hello (uid attached). */
+  private authenticatedSocketCount(): number {
+    let count = 0
+    for (const ws of this.state.getWebSockets()) {
+      if (this.socketMeta.has(ws)) {
+        count++
+        continue
+      }
+      try {
+        const attached = ws.deserializeAttachment() as SocketMeta | null
+        if (attached?.uid && attached?.role) {
+          this.socketMeta.set(ws, attached)
+          count++
+        }
+      } catch {
+        /* no attachment yet */
+      }
+    }
+    return count
+  }
+
+  private async maybeScheduleEmptyStop(): Promise<void> {
+    if (this.authenticatedSocketCount() > 0) return
+    if (!this.hasActivePlayback()) {
+      await this.clearEmptyStop()
+      return
+    }
+    this.emptyStopDueAt = Date.now() + EMPTY_SESSION_STOP_MS
+    await this.state.storage.put('emptyStopDueAt', this.emptyStopDueAt)
+    console.log('[GameRoom] empty session stop armed', {
+      gameId: this.gameId,
+      dueAt: this.emptyStopDueAt,
+    })
+    await this.scheduleNextAlarm()
+  }
+
+  private async clearEmptyStop(): Promise<void> {
+    if (this.emptyStopDueAt == null) return
+    this.emptyStopDueAt = null
+    await this.state.storage.delete('emptyStopDueAt')
+    await this.scheduleNextAlarm()
+  }
+
+  private async stopAllForEmptySession(): Promise<void> {
+    const changed: MusicChannel[] = []
+    for (const ch of MUSIC_CHANNELS) {
+      const status = this.channelStates[ch].status
+      if (status === 'playing' || status === 'paused') {
+        this.channelStates[ch] = idleChannelState(ch)
+        changed.push(ch)
+      }
+    }
+    this.alarmChannel = null
+    this.emptyStopDueAt = null
+    await this.state.storage.delete('emptyStopDueAt')
+    await this.state.storage.deleteAlarm()
+
+    if (changed.length === 0) return
+
+    this.revision++
+    await this.persistState()
+    this.broadcast({
+      type: 'state',
+      revision: this.revision,
+      serverTimeMs: Date.now(),
+      playback: this.channelStates,
+    })
+    console.log('[GameRoom] stopped playback — empty session', {
+      gameId: this.gameId,
+      channels: changed,
+    })
+    for (const ch of changed) {
+      void this.mirrorToFirestore(ch)
+    }
+  }
+
+  /** Earliest absolute time for the current playlist alarm, if any. */
+  private playlistAlarmDueAt(now = Date.now()): number | null {
+    if (!this.alarmChannel) return null
+    const state = this.channelStates[this.alarmChannel]
+    if (state.status !== 'playing') return null
+    if (!(typeof state.durationMs === 'number' && state.durationMs > 0)) return null
+    const pos = computePositionMs(state, now)
+    const remaining = state.durationMs - pos
+    if (remaining <= 0) return now + 1
+    return now + remaining
+  }
+
+  /**
+   * Single DO alarm for both playlist advance and empty-session stop.
+   * Always call after mutating alarmChannel / emptyStopDueAt.
+   */
+  private async scheduleNextAlarm(): Promise<void> {
+    const candidates: number[] = []
+    if (this.emptyStopDueAt != null) candidates.push(this.emptyStopDueAt)
+    const playlistDue = this.playlistAlarmDueAt()
+    if (playlistDue != null) candidates.push(playlistDue)
+
+    if (candidates.length === 0) {
+      await this.state.storage.deleteAlarm()
+      return
+    }
+    await this.state.storage.setAlarm(Math.min(...candidates))
   }
 
   // ── State persistence (SQLite via DO storage) ────────────────────────────────
@@ -416,8 +573,14 @@ export class GameRoom implements DurableObject {
     if (typeof rev === 'number') this.revision = rev
     const alarmCh = await this.state.storage.get<MusicChannel>('alarmChannel')
     if (alarmCh) this.alarmChannel = alarmCh
+    const emptyDue = await this.state.storage.get<number>('emptyStopDueAt')
+    if (typeof emptyDue === 'number' && Number.isFinite(emptyDue)) {
+      this.emptyStopDueAt = emptyDue
+    }
     const gid = await this.state.storage.get<string>('gameId')
     if (gid) this.gameId = gid
+    // Re-arm the single DO alarm after wake (playlist and/or empty-session)
+    await this.scheduleNextAlarm()
   }
 
   // ── Firestore mirror (on pause / periodic) ───────────────────────────────────

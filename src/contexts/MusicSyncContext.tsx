@@ -11,9 +11,11 @@ import {
 import {
   collection,
   doc,
+  getDocs,
   onSnapshot,
   serverTimestamp,
   setDoc,
+  type Timestamp,
 } from 'firebase/firestore'
 import { getDownloadURL, ref } from 'firebase/storage'
 import { db, storage } from '@/config/firebase'
@@ -43,6 +45,7 @@ import {
   MUSIC_PLAYLISTS_COLLECTION,
   MUSIC_PRESENCE_COLLECTION,
   MUSIC_TRACKS_COLLECTION,
+  PRESENCE_ONLINE_MS,
   computePositionMs,
   idlePlaybackState,
   loudnessMatchGain,
@@ -491,6 +494,65 @@ export default function MusicSyncProvider({
       window.clearInterval(timer)
     }
   }, [gameId, user])
+
+  // Firestore mode: if GM is the last person leaving, idle all active channels.
+  // Workers mode relies on GameRoom empty-session stop after the last WS disconnect.
+  useEffect(() => {
+    if (!user || !gameId || !isGm) return
+    if (FEATURES.musicSync === 'workers') return
+
+    const uid = user.uid
+
+    function presenceLastSeenMs(data: Record<string, unknown>): number {
+      const lastSeen = data.lastSeen
+      if (lastSeen && typeof lastSeen === 'object' && 'toMillis' in lastSeen) {
+        return (lastSeen as Timestamp).toMillis()
+      }
+      if (typeof lastSeen === 'number' && Number.isFinite(lastSeen)) return lastSeen
+      return 0
+    }
+
+    async function stopIfLastInSession() {
+      try {
+        const snap = await getDocs(collection(db, 'games', gameId, MUSIC_PRESENCE_COLLECTION))
+        const now = Date.now()
+        const othersOnline = snap.docs.some((d) => {
+          if (d.id === uid) return false
+          const lastSeenMs = presenceLastSeenMs(d.data() as Record<string, unknown>)
+          return lastSeenMs > 0 && now - lastSeenMs < PRESENCE_ONLINE_MS
+        })
+        if (othersOnline) return
+
+        for (const channel of MUSIC_CHANNELS) {
+          const state = playbackRef.current[channel]
+          if (state.status !== 'playing' && state.status !== 'paused') continue
+          await setDoc(
+            doc(db, 'games', gameId, MUSIC_PLAYBACK_COLLECTION, channel),
+            {
+              ...musicPlaybackPayload({
+                ...idlePlaybackState(channel),
+                trackVolume: state.trackVolume,
+              }, uid),
+              startedAt: null,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true },
+          )
+        }
+      } catch {
+        /* best-effort on leave */
+      }
+    }
+
+    const onPageHide = () => {
+      void stopIfLastInSession()
+    }
+    window.addEventListener('pagehide', onPageHide)
+    return () => {
+      window.removeEventListener('pagehide', onPageHide)
+      void stopIfLastInSession()
+    }
+  }, [gameId, user, isGm])
 
   // Catalog listeners
   useEffect(() => {
