@@ -28,6 +28,8 @@ export interface MigratedHeroFields {
   race: HeroRace
   vitals: HeroVitals
   sheetVersion: number
+  /** Present only when the hero already stored a combat skill pin list. */
+  combatSkillKeys?: string[]
 }
 
 export function sanitizeNumericMap(
@@ -59,10 +61,30 @@ export function remapSkillKeys(
   return remapped
 }
 
+/** Remap keys in a combat pin list; drop unknowns after rename; preserve order. */
+export function remapSkillKeyList(
+  keys: unknown,
+  renames: Record<string, string> = SKILL_KEY_RENAMES,
+): string[] | undefined {
+  if (!Array.isArray(keys)) return undefined
+
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const entry of keys) {
+    if (typeof entry !== 'string') continue
+    const key = renames[entry] ?? entry
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(key)
+  }
+  return out
+}
+
 export function buildMigratedHeroFields(
   hero: Pick<Hero, 'attributes' | 'skills'> & {
     race?: HeroRace | string
     vitals?: Partial<HeroVitals> | null
+    combatSkillKeys?: string[]
   },
   targetVersion: number,
   defaults: {
@@ -78,6 +100,7 @@ export function buildMigratedHeroFields(
   const vitals = hadVitals
     ? resolveHeroVitals(hero.vitals, attributes, race)
     : defaultVitals(attributes, race)
+  const combatSkillKeys = remapSkillKeyList(hero.combatSkillKeys)
 
   return {
     attributes,
@@ -85,6 +108,7 @@ export function buildMigratedHeroFields(
     race,
     vitals,
     sheetVersion: targetVersion,
+    ...(combatSkillKeys ? { combatSkillKeys } : {}),
   }
 }
 
@@ -105,6 +129,7 @@ export async function migrateHeroSheet(
       toVersion: targetVersion,
       attributes: sanitizeNumericMap(hero.attributes),
       skills: sanitizeNumericMap(hero.skills),
+      combatSkillKeys: Array.isArray(hero.combatSkillKeys) ? hero.combatSkillKeys : null,
       race: hero.race ?? null,
       vitals: hero.vitals ?? null,
       createdAt: serverTimestamp(),

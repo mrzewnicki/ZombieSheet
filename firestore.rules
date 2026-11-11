@@ -140,10 +140,23 @@ service cloud.firestore {
         }
 
         // Pre-migration sheet backups — immutable once written
+        // Schema: fromVersion, toVersion, attributes, skills, race, vitals,
+        // optional combatSkillKeys (v7+), createdAt.
         match /sheetBackups/{backupId} {
           allow read: if isMember(gameId) || isGameMaster(gameId);
-          allow create: if isGameMaster(gameId) ||
-            get(/databases/$(database)/documents/games/$(gameId)/heroes/$(heroId)).data.ownerId == uid();
+          allow create: if (isGameMaster(gameId) ||
+              get(/databases/$(database)/documents/games/$(gameId)/heroes/$(heroId)).data.ownerId == uid())
+            && request.resource.data.keys().hasAll([
+              'fromVersion', 'toVersion', 'attributes', 'skills',
+              'race', 'vitals', 'createdAt'
+            ])
+            && request.resource.data.fromVersion is number
+            && request.resource.data.toVersion is number
+            && request.resource.data.attributes is map
+            && request.resource.data.skills is map
+            && (!('combatSkillKeys' in request.resource.data)
+                || request.resource.data.combatSkillKeys == null
+                || request.resource.data.combatSkillKeys is list);
           allow update, delete: if false;
         }
       }

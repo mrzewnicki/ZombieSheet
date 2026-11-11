@@ -79,10 +79,10 @@ export const SKILL_CATEGORIES: SkillCategoryDef[] = [
       { key: 'walka_wrecz',        labelKey: 'skills.walka_wrecz',        category: 'walka', docUrl: `${UMIEJETNOSCI}?s=walka+wrecz` },
       { key: 'bron_biala',         labelKey: 'skills.bron_biala',         category: 'walka', docUrl: `${UMIEJETNOSCI}?s=bro%C5%84+bia%C5%82a` },
       { key: 'bron_palna',         labelKey: 'skills.bron_palna',         category: 'walka', docUrl: `${UMIEJETNOSCI}?s=bro%C5%84+palna` },
-      { key: 'bron_miotana',       labelKey: 'skills.bron_miotana',       category: 'walka', docUrl: `${UMIEJETNOSCI}?s=bro%C5%84+miotana` },
-      { key: 'strzelectwo',        labelKey: 'skills.strzelectwo',        category: 'walka', docUrl: `${UMIEJETNOSCI}?s=strzelectwo` },
-      { key: 'taktyka',            labelKey: 'skills.taktyka',            category: 'walka', docUrl: `${UMIEJETNOSCI}?s=taktyka` },
-      { key: 'bron_ciezka',        labelKey: 'skills.bron_ciezka',        category: 'walka', docUrl: `${UMIEJETNOSCI}?s=bro%C5%84+palna+ci%C4%99%C5%BCka` },
+      { key: 'bron_miotana',                labelKey: 'skills.bron_miotana',                category: 'walka', docUrl: `${UMIEJETNOSCI}?s=bro%C5%84+miotana` },
+      { key: 'uniki',                       labelKey: 'skills.uniki',                       category: 'walka', docUrl: `${UMIEJETNOSCI}?s=uniki` },
+      { key: 'taktyka',                     labelKey: 'skills.taktyka',                     category: 'walka', docUrl: `${UMIEJETNOSCI}?s=taktyka` },
+      { key: 'obsluga_ciezkiego_sprzetu',   labelKey: 'skills.obsluga_ciezkiego_sprzetu',   category: 'walka', docUrl: `${UMIEJETNOSCI}?s=obs%C5%82uga+ci%C4%99%C5%BCkiego+sprz%C4%99tu` },
     ],
   },
   {
@@ -157,11 +157,13 @@ export const SKILL_CATEGORIES: SkillCategoryDef[] = [
  * or skills). Existing hero documents whose sheetVersion differs will show an
  * upgrade banner in HeroSheet.
  */
-export const SHEET_VERSION = 6
+export const SHEET_VERSION = 7
 
 /** Skill keys renamed between sheet versions. Applied during migration. */
 export const SKILL_KEY_RENAMES: Record<string, string> = {
   manipulacja: 'oszustwo',
+  strzelectwo: 'uniki',
+  bron_ciezka: 'obsluga_ciezkiego_sprzetu',
 }
 
 export const VITALS_DOC_URL =

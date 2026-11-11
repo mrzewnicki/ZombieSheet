@@ -4,7 +4,12 @@ vi.mock('@/config/firebase', () => ({
   db: {},
 }))
 
-import { buildMigratedHeroFields, remapSkillKeys, sanitizeNumericMap } from './migrateHeroSheet'
+import {
+  buildMigratedHeroFields,
+  remapSkillKeyList,
+  remapSkillKeys,
+  sanitizeNumericMap,
+} from './migrateHeroSheet'
 
 describe('sanitizeNumericMap', () => {
   it('keeps finite numbers and drops invalid values', () => {
@@ -30,6 +35,27 @@ describe('remapSkillKeys', () => {
       { manipulacja: 3, oszustwo: 5 },
       { manipulacja: 'oszustwo' },
     )).toEqual({ oszustwo: 5 })
+  })
+
+  it('renames strzelectwo and bron_ciezka to the v7 keys', () => {
+    expect(remapSkillKeys(
+      { strzelectwo: 2, bron_ciezka: 3, bron_palna: 1 },
+      { strzelectwo: 'uniki', bron_ciezka: 'obsluga_ciezkiego_sprzetu' },
+    )).toEqual({ uniki: 2, obsluga_ciezkiego_sprzetu: 3, bron_palna: 1 })
+  })
+})
+
+describe('remapSkillKeyList', () => {
+  it('returns undefined for non-arrays', () => {
+    expect(remapSkillKeyList(undefined)).toBeUndefined()
+    expect(remapSkillKeyList('walka_wrecz')).toBeUndefined()
+  })
+
+  it('renames keys and dedupes after remap', () => {
+    expect(remapSkillKeyList(
+      ['strzelectwo', 'bron_palna', 'bron_ciezka', 'uniki'],
+      { strzelectwo: 'uniki', bron_ciezka: 'obsluga_ciezkiego_sprzetu' },
+    )).toEqual(['uniki', 'bron_palna', 'obsluga_ciezkiego_sprzetu'])
   })
 })
 
@@ -83,13 +109,35 @@ describe('buildMigratedHeroFields', () => {
     expect(result.skills).not.toHaveProperty('manipulacja')
   })
 
+  it('renames combat skills and remaps combatSkillKeys in v7 migration', () => {
+    const result = buildMigratedHeroFields(
+      {
+        attributes: {},
+        skills: { strzelectwo: 3, bron_ciezka: 2 },
+        combatSkillKeys: ['strzelectwo', 'bron_ciezka', 'bron_palna'],
+      },
+      7,
+    )
+
+    expect(result.skills.uniki).toBe(3)
+    expect(result.skills.obsluga_ciezkiego_sprzetu).toBe(2)
+    expect(result.skills).not.toHaveProperty('strzelectwo')
+    expect(result.skills).not.toHaveProperty('bron_ciezka')
+    expect(result.combatSkillKeys).toEqual([
+      'uniki',
+      'obsluga_ciezkiego_sprzetu',
+      'bron_palna',
+    ])
+    expect(result.sheetVersion).toBe(7)
+  })
+
   it('initializes race and full vitals when missing', () => {
     const result = buildMigratedHeroFields(
       {
         attributes: { kondycja: 2, sila: 1, determinacja: 1, opanowanie: 2 },
         skills: {},
       },
-      6,
+      7,
     )
 
     expect(result.race).toBe('czlowiek')
@@ -118,7 +166,7 @@ describe('buildMigratedHeroFields', () => {
           contamination: { deathNet: 0, liveCore: 3, anomalie: 1 },
         },
       },
-      6,
+      7,
     )
 
     expect(result.race).toBe('zombie')
