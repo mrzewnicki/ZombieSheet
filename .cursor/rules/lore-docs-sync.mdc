@@ -1,0 +1,23 @@
+---
+description: Pin LoreDocs — raport driftu; sync tylko na polecenie użytkownika
+alwaysApply: true
+---
+
+# LoreDocs sync (ZombieSheet)
+
+Źródło kanonu: workspace **LoreDocs** (`C:/Users/mateu/Desktop/Sublime Notatki/rpg/zombie`).  
+Pin: `docs/lore-docs.sync.json`. Historia: `docs/lore-docs.changelog.md`. Opis: `docs/lore-docs.md`.
+
+## Raport (domyślnie)
+
+Przy pracy zależnej od mechanik Docs albo gdy użytkownik pyta o sync/status:
+
+1. Odczytaj `docs/lore-docs.sync.json` (pinned commit).
+2. W LoreDocs: `git rev-parse HEAD` oraz `git log <pinned>..HEAD --oneline`.
+3. Raportuj zwięźle: pinned vs HEAD, lista commitów w zakresie, obszary Sheet które mogą wymagać uwagi (karty, `src/config/rpg-system.ts`, UI cech/umiejętności/ekwipunku).
+
+## Sync — tylko na polecenie użytkownika
+
+- **Nie** bumpuj pinu, **nie** dopisuj changelogu, **nie** wprowadzaj zmian „żeby dogonić Docs” bez wyraźnego zlecenia.
+- Gdy użytkownik zleca sync: wykonaj uzgodniony zakres, potem zaktualizuj pin do HEAD LoreDocs i dopisz wpis w changelogu (`Zmiany w projekcie: …` lub `brak`).
+- Nie edytuj LoreDocs z poziomu ZombieSheet.
